@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "2620"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES"
+      buildArchitectures = "Automatic">
+      <PreActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Run Script"
+               scriptText = "# &#x30ed;&#x30b0;&#x3092;&#x51fa;&#x529b;&#x3059;&#x308b;&#x3088;&#x3046;&#x306b;&#x8a2d;&#x5b9a;&#xff08;&#x30c7;&#x30d0;&#x30c3;&#x30b0;&#x7528;&#xff1a; /tmp/xcode_preaction.log &#x3067;&#x6210;&#x5426;&#x3092;&#x78ba;&#x8a8d;&#x3067;&#x304d;&#x307e;&#x3059;&#xff09;&#10;exec &gt; /tmp/xcode_preaction.log 2&gt;&amp;1&#10;&#10;# 1. &#x51fa;&#x529b;&#x5148;&#x306e;&#x30d1;&#x30b9;&#x3092;&#x6307;&#x5b9a;&#10;DEST_PATH=&quot;/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/${FULL_PRODUCT_NAME}&quot;&#10;&#10;echo &quot;--- Process Started: $(date) ---&quot;&#10;&#10;# 2. &#x65e2;&#x5b58;&#x306e;&#x30d5;&#x30a1;&#x30a4;&#x30eb;&#x3092;&#x524a;&#x9664;&#10;if [ -e &quot;$DEST_PATH&quot; ]; then&#10;    echo &quot;Deleting existing file: $DEST_PATH&quot;&#10;    rm -rf &quot;$DEST_PATH&quot;&#10;fi&#10;&#10;# 3. &#x524a;&#x9664;&#x5f8c;&#x306e;&#x5f85;&#x6a5f;&#xff08;2&#x79d2;&#xff09;&#10;echo &quot;Waiting after deletion...&quot;&#10;sleep 2&#10;&#10;# 4. &#x6210;&#x679c;&#x7269;&#x3092;&#x30b3;&#x30d4;&#x30fc;&#xff08;&#x4f5c;&#x6210;&#xff09;&#10;echo &quot;Copying built product to destination...&quot;&#10;cp -R &quot;${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}&quot; &quot;$DEST_PATH&quot;&#10;&#10;# 5. &#x30b3;&#x30d4;&#x30fc;&#x5f8c;&#x306e;&#x5f85;&#x6a5f;&#xff08;2&#x79d2;&#xff09;&#10;echo &quot;Waiting after copy...&quot;&#10;sleep 2&#10;&#10;echo &quot;--- Process Completed successfully ---&quot;&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "7E83C0F9170F4840008B8043"
+                     BuildableName = "SDK_ProcAmp.plugin"
+                     BlueprintName = "SDK_ProcAmp"
+                     ReferencedContainer = "container:SDK_ProcAmp.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "7E83C0F9170F4840008B8043"
+               BuildableName = "SDK_ProcAmp.plugin"
+               BlueprintName = "SDK_ProcAmp"
+               ReferencedContainer = "container:SDK_ProcAmp.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      shouldAutocreateTestPlan = "YES">
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "7E83C0F9170F4840008B8043"
+            BuildableName = "SDK_ProcAmp.plugin"
+            BlueprintName = "SDK_ProcAmp"
+            ReferencedContainer = "container:SDK_ProcAmp.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>

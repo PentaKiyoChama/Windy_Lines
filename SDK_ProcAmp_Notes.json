@@ -1,0 +1,92 @@
+{
+  "AI_READ_ME_FIRST": {
+    "project": "SDK_ProcAmp Wind Lines Effect",
+    "version": "v51 - 2026-01-27",
+    "status": "STABLE - All features working on Mac/Metal and Windows/CUDA",
+    "last_critical_fix": "v51: Start Time/Duration fixed via GPU fallback estimation"
+  },
+  
+  "QUICK_REF": {
+    "cpu": "SDK_ProcAmp_CPU.cpp",
+    "gpu_cuda": "SDK_ProcAmp.cu (674 lines - REFERENCE)",
+    "gpu_opencl": "SDK_ProcAmp.cl (511 lines)",
+    "gpu_metal": "SDK_ProcAmp.metal (just includes .cl)",
+    "host": "SDK_ProcAmp_GPU.cpp",
+    "log": "/tmp/SDK_ProcAmp_Debug.log"
+  },
+  
+  "CRITICAL_RULES": {
+    "multi_platform": "Update ALL THREE: CPU, CUDA, OpenCL when adding features",
+    "cuda_is_reference": "CUDA is canonical - port to OpenCL/Metal",
+    "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only"
+  },
+  
+  "V51_FIX": {
+    "problem": "Start Time/Duration not working on Mac",
+    "cause": "Mac GPU-only rendering skips CPU, SharedClipData empty",
+    "solution": "GPU fallback: clipStartFrame = GetClipStart() OR (mediaFrameIndex - clipOffset)",
+    "result": "All parameters working on Mac and Windows"
+  },
+  
+  "FRAME_CALCULATION": {
+    "formula": "frameIndex = mediaFrameIndex - clipStartFrame",
+    "mediaFrameIndex": "clipTime / ticksPerFrame",
+    "clipStartFrame": "from CPU GetClipStart() or GPU fallback",
+    "clipOffset": "Premiere parameter, 0 at clip start"
+  },
+  
+  "GPU_SYNTAX_DIFF": {
+    "decorators": {
+      "cuda": "__device__ __forceinline__, __global__",
+      "opencl": "inline, __kernel"
+    },
+    "math": {
+      "cuda": "cosf, sinf, powf, fmaxf",
+      "opencl": "cos, sin, pow, fmax"
+    },
+    "atomic": {
+      "cuda": "atomicAdd(&counter[0], 1)",
+      "opencl": "atomic_add(&counter[0], 1)",
+      "metal": "atomic_fetch_add_explicit((device atomic_uint*)&counter[0], 1, memory_order_relaxed)"
+    }
+  },
+  
+  "METAL_GOTCHAS": {
+    "buffer_init": "Never create Metal buffer with nullptr - use dummy data",
+    "cpu_not_called": "Mac GPU-only may skip CPU - GPU needs fallback"
+  },
+  
+  "BUILD": {
+    "mac": "xcodebuild ARCHS=arm64, install to /Library/Application Support/Adobe/.../MediaCore/",
+    "windows": "Visual Studio SDK_ProcAmp.vcxproj"
+  },
+  
+  "FEATURES": {
+    "line_animation": "Head extends (tail fixed) → tail retracts (head fixed)",
+    "wind_origin": "Adjusts spawn area position, NOT per-line animation",
+    "color_system": "Single/Preset(33)/Custom(8) with per-line random selection",
+    "blend_modes": "Back/Front/BackAndFront/AlphaXOR",
+    "focus_dof": "Pseudo-blur via thickness + alpha (no Gaussian)",
+    "effect_presets": "One-click parameter batch update (8 presets)",
+    "spawn_scale": "X/Y separate spawn area expansion",
+    "shadows": "Offset shadow with configurable color/offset/opacity"
+  },
+  
+  "DO_NOT": [
+    "Use seqTime for frame calc (cache issues)",
+    "Use instance state for clip tracking (thread conflicts)",
+    "Use mNodeID as key (changes frequently)",
+    "Mix originOffset into line animation (spawn area only)",
+    "Create Metal buffer with nullptr",
+    "Use AEFX_CLR_STRUCT for param updates (loses metadata)",
+    "Forget debounce for interactive controls",
+    "Skip CPU implementation when adding GPU features"
+  ],
+  
+  "AI_TROUBLESHOOTING": {
+    "mac_bug": "Check SharedClipData, Metal buffer init, atomic syntax",
+    "frame_timing": "Verify frameIndex calc, SharedClipData populated, GPU fallback",
+    "param_not_updating": "Check SUPERVISE flag, params[] direct use, UpdateParamUI",
+    "new_feature": "1.CUDA 2.OpenCL 3.CPU 4.Test both platforms 5.Update this JSON"
+  }
+}

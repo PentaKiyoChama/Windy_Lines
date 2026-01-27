@@ -1,0 +1,35 @@
+# Build outputs
+*.obj
+*.pdb
+*.lib
+*.exp
+*.bsc
+*.sbr
+*.res
+*.rr
+*.aex
+*.log
+*.recipe
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+Debug/
+Release/
+x64/
+Win/Debug/
+Win/Release/
+Win/x64/
+
+# Xcode
+Mac/build/
+Mac/DerivedData/
+*.xcuserdata/
+xcuserdata/
+
+# macOS
+.DS_Store
+*.dSYM/
+
+# Debug logs
+*_Debug.log
