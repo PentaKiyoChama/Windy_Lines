@@ -125,7 +125,7 @@
 
 namespace ParamNames
 {
-    constexpr const char* LINE_COUNT        = "22線の数";
+    constexpr const char* LINE_COUNT        = "68線の数";
     constexpr const char* LIFETIME          = "寿命(fps)";
     constexpr const char* TRAVEL            = "移動距離(px)";
     constexpr const char* SEED              = "ランダムシード";
@@ -177,6 +177,9 @@ namespace ParamNames
     constexpr const char* MOTION_BLUR       = "モーションブラー";
     constexpr const char* BLUR_SAMPLES      = "ブラー品質(サンプル数)"; 
     constexpr const char* BLUR_STRENGTH     = "ブラー強度";
+    constexpr const char* BLUR_TYPE         = "ブラータイプ";
+    constexpr const char* BLUR_TYPE_MENU    = "双方向|トレイル";
+    constexpr const char* BLUR_VELOCITY     = "速度連動";
     constexpr const char* EFFECT_PRESET     = "エフェクトプリセット";
     constexpr const char* DEFAULT           = "デフォルト";
     constexpr const char* COLOR_MODE_MENU   = "単色|プリセット|カスタム";
@@ -255,6 +258,9 @@ namespace ParamNames
 #define P_MOTION_BLUR       PARAM(ParamNames::MOTION_BLUR)
 #define P_BLUR_SAMPLES      PARAM(ParamNames::BLUR_SAMPLES)
 #define P_BLUR_STRENGTH     PARAM(ParamNames::BLUR_STRENGTH)
+#define P_BLUR_TYPE         PARAM(ParamNames::BLUR_TYPE)
+#define P_BLUR_TYPE_MENU    PARAM(ParamNames::BLUR_TYPE_MENU)
+#define P_BLUR_VELOCITY     PARAM(ParamNames::BLUR_VELOCITY)
 #define P_EFFECT_PRESET     PARAM(ParamNames::EFFECT_PRESET)
 #define P_DEFAULT           PARAM(ParamNames::DEFAULT)
 

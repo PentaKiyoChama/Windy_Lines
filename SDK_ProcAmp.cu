@@ -186,7 +186,8 @@
 		((float)(inAlphaBoundsHeight))
 		((int)(inMotionBlurEnable))
 		((int)(inMotionBlurSamples))
-		((float)(inMotionBlurStrength)),
+		((float)(inMotionBlurStrength))
+		((int)(inMotionBlurType)),
 		((uint2)(inXY)(KERNEL_XY)))
 	{
 		if (inXY.x < inWidth && inXY.y < inHeight)
@@ -312,56 +313,139 @@
 				float coverage = 0.0f;
 				if (inMotionBlurEnable != 0 && inMotionBlurSamples > 1)
 				{
-					// Motion blur enabled: sample multiple positions
 					const int samples = inMotionBlurSamples;
+					// Blur range from global settings
 					const float blurRange = inLineTravel * inMotionBlurStrength / inLineLifetime;
-					const float stepSize = blurRange / (float)(samples - 1);
-					float totalWeight = 0.0f;
+					const float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 					
-					for (int s = 0; s < samples; ++s)
+					if (inMotionBlurType == 1)
 					{
-						const float sampleOffset = (s - (samples - 1) * 0.5f) * stepSize;
+						// Type 1: Trail only (behind the line)
+						float px0 = dx * lineCos + dy * lineSin;
+						const float py0 = -dx * lineSin + dy * lineCos;
+						px0 -= segCenterX;
 						
-					float pxSample = dx * lineCos + dy * lineSin;
-					const float pySample = -dx * lineSin + dy * lineCos;
-					pxSample -= (segCenterX + sampleOffset);
-					
-					float distSample = 0.0f;
-					if (inLineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
-					{
-						// Box distance (flat caps)
-						float dxBox = fabsf(pxSample) - halfLen;
-						float dyBox = fabsf(pySample) - halfThick;
-						float ox = dxBox > 0.0f ? dxBox : 0.0f;
-						float oy = dyBox > 0.0f ? dyBox : 0.0f;
-						float outside = sqrtf(ox * ox + oy * oy);
-						float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-						distSample = outside + inside;
+						float dist0 = 0.0f;
+						if (inLineCap == 0)
+						{
+							float dxBox = fabsf(px0) - halfLen;
+							float dyBox = fabsf(py0) - halfThick;
+							float ox = dxBox > 0.0f ? dxBox : 0.0f;
+							float oy = dyBox > 0.0f ? dyBox : 0.0f;
+							float outside = sqrtf(ox * ox + oy * oy);
+							float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+							dist0 = outside + inside;
+						}
+						else
+						{
+							float ax = fabsf(px0) - halfLen;
+							float qx = ax > 0.0f ? ax : 0.0f;
+							dist0 = sqrtf(qx * qx + py0 * py0) - halfThick;
+						}
+						
+						float tailT0 = fminf(fmaxf((px0 + halfLen) / denom, 0.0f), 1.0f);
+						float tailFade0 = 1.0f + (tailT0 - 1.0f) * inLineTailFade;
+						
+						float coverage0 = 0.0f;
+						if (aa > 0.0f)
+						{
+							float tt = fminf(fmaxf((dist0 - aa) / (0.0f - aa), 0.0f), 1.0f);
+							coverage0 = tt * tt * (3.0f - 2.0f * tt) * tailFade0;
+						}
+						
+						float trailCoverage = 0.0f;
+						for (int s = 1; s < samples; ++s)
+						{
+							const float trailDist = (float)s / fmaxf((float)(samples - 1), 1.0f) * blurRange;
+							const float dxSample = dx + lineCos * trailDist;
+							const float dySample = dy + lineSin * trailDist;
+							
+							float pxSample = dxSample * lineCos + dySample * lineSin;
+							const float pySample = -dxSample * lineSin + dySample * lineCos;
+							pxSample -= segCenterX;
+							
+							float distSample = 0.0f;
+							if (inLineCap == 0)
+							{
+								float dxBox = fabsf(pxSample) - halfLen;
+								float dyBox = fabsf(pySample) - halfThick;
+								float ox = dxBox > 0.0f ? dxBox : 0.0f;
+								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								float outside = sqrtf(ox * ox + oy * oy);
+								float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+								distSample = outside + inside;
+							}
+							else
+							{
+								float ax = fabsf(pxSample) - halfLen;
+								float qx = ax > 0.0f ? ax : 0.0f;
+								distSample = sqrtf(qx * qx + pySample * pySample) - halfThick;
+							}
+							
+							float tailT = fminf(fmaxf((pxSample + halfLen) / denom, 0.0f), 1.0f);
+							float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
+							float sampleCoverage = 0.0f;
+							if (aa > 0.0f)
+							{
+								float tt = fminf(fmaxf((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
+								sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+							}
+							
+							float trailOnly = fmaxf(sampleCoverage - coverage0, 0.0f);
+							float fade = 1.0f - (float)s / (float)samples * 0.8f;
+							trailCoverage = fmaxf(trailCoverage, trailOnly * fade);
+						}
+						
+						coverage = fmaxf(coverage0, coverage0 + trailCoverage) * focusAlpha * depthAlpha;
 					}
 					else
 					{
-						// Capsule distance (rounded caps)
-						float ax = fabsf(pxSample) - halfLen;
-						float qx = ax > 0.0f ? ax : 0.0f;
-						distSample = sqrtf(qx * qx + pySample * pySample) - halfThick;
-					}						float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-						float tailT = fminf(fmaxf((pxSample + halfLen) / denom, 0.0f), 1.0f);
-						float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
-						float sampleCoverage = 0.0f;
-						if (aa > 0.0f)
+						// Type 0: Bidirectional (both front and back, physically correct)
+						float totalWeight = 0.0f;
+						for (int s = 0; s < samples; ++s)
 						{
-							float tt = fminf(fmaxf((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
-							sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+							const float sampleOffset = ((float)s / fmaxf((float)(samples - 1), 1.0f) - 0.5f) * blurRange;
+							const float dxSample = dx + lineCos * sampleOffset;
+							const float dySample = dy + lineSin * sampleOffset;
+							
+							float pxSample = dxSample * lineCos + dySample * lineSin;
+							const float pySample = -dxSample * lineSin + dySample * lineCos;
+							pxSample -= segCenterX;
+							
+							float distSample = 0.0f;
+							if (inLineCap == 0)
+							{
+								float dxBox = fabsf(pxSample) - halfLen;
+								float dyBox = fabsf(pySample) - halfThick;
+								float ox = dxBox > 0.0f ? dxBox : 0.0f;
+								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								float outside = sqrtf(ox * ox + oy * oy);
+								float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+								distSample = outside + inside;
+							}
+							else
+							{
+								float ax = fabsf(pxSample) - halfLen;
+								float qx = ax > 0.0f ? ax : 0.0f;
+								distSample = sqrtf(qx * qx + pySample * pySample) - halfThick;
+							}
+							
+							float tailT = fminf(fmaxf((pxSample + halfLen) / denom, 0.0f), 1.0f);
+							float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
+							float sampleCoverage = 0.0f;
+							if (aa > 0.0f)
+							{
+								float tt = fminf(fmaxf((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
+								sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+							}
+							
+							float normalizedPos = fabsf((float)s / fmaxf((float)(samples - 1), 1.0f) - 0.5f) * 2.0f;
+							float weight = 1.0f - normalizedPos * 0.5f;
+							coverage += sampleCoverage * weight;
+							totalWeight += weight;
 						}
-						
-						float normalizedPos = fabsf(s - (samples - 1) * 0.5f) / fmaxf((samples - 1) * 0.5f, 1.0f);
-						float weight = 1.0f - normalizedPos * 0.5f;
-						
-						coverage += sampleCoverage * weight;
-						totalWeight += weight;
+						coverage = (coverage / fmaxf(totalWeight, 1.0f)) * focusAlpha * depthAlpha;
 					}
-					
-					coverage = (coverage / fmaxf(totalWeight, 1.0f)) * focusAlpha * depthAlpha;
 				}
 				else
 				{
@@ -571,7 +655,9 @@
 		float alphaBoundsHeight,
 		int motionBlurEnable,
 		int motionBlurSamples,
-		float motionBlurStrength)
+		float motionBlurStrength,
+		int motionBlurType,
+		int motionBlurVelocity)
 	{
 		dim3 blockDim(16, 16, 1);
 		dim3 gridDim((width + blockDim.x - 1) / blockDim.x, (height + blockDim.y - 1) / blockDim.y, 1);
@@ -640,7 +726,9 @@
 			alphaBoundsHeight,
 			motionBlurEnable,
 			motionBlurSamples,
-			motionBlurStrength);
+			motionBlurStrength,
+			motionBlurType,
+			motionBlurVelocity);
 
 		cudaDeviceSynchronize();
 	}

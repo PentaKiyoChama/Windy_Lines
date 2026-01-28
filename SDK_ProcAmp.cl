@@ -232,14 +232,20 @@
 		((float)(inAlphaBoundsHeight))
 		((int)(inMotionBlurEnable))
 		((int)(inMotionBlurSamples))
-		((float)(inMotionBlurStrength)),
+		((float)(inMotionBlurStrength))
+		((int)(inMotionBlurType)),
 			((uint2)(inXY)(KERNEL_XY)))
 		{
 			if (inXY.x < inWidth && inXY.y < inHeight)
 			{
 				float4 pixel = ReadFloat4(ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 				
-				// v41: Safe tile access - always write pixel even if no lines
+				// Hide original element - start with transparent black
+				if (inHideElement != 0)
+				{
+					pixel = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+				}
+				
 				const float originalAlpha = pixel.w;
 				const float aa = inLineAA > 0.0f ? inLineAA : 1.0f;
 				
@@ -259,7 +265,7 @@
 					count = inTileCounts[tileIndex];
 				}
 				
-				// Only iterate if we have valid lines
+				// Main line pass
 				for (int j = 0; j < count; ++j)
 				{
 					int lineIndex = inLineIndices[start + j];
@@ -281,64 +287,63 @@
 					float depthScale = DepthScale(lineDepthValue, inLineDepthStrength);
 					float fadeStart = 0.6f;
 					float fadeEnd = 0.2f;
-					float t = fmin(fmax((depthScale - fadeEnd) / (fadeStart - fadeEnd), 0.0f), 1.0f);
-					float depthAlpha = 0.05f + (1.0f - 0.05f) * t;
+					float tDepth = fmin(fmax((depthScale - fadeEnd) / (fadeStart - fadeEnd), 0.0f), 1.0f);
+					float depthAlpha = 0.05f + (1.0f - 0.05f) * tDepth;
 					
-					// Shadow
+					// Draw shadow first (before the line)
 					if (inShadowEnable != 0)
 					{
-					float scenterX = centerX + inShadowOffsetX;
-					float scenterY = centerY + inShadowOffsetY;
-					float sdx = (float)inXY.x + 0.5f - scenterX;
-					float sdy = (float)inXY.y + 0.5f - scenterY;
-					float spx = sdx * lineCos + sdy * lineSin;
-					float spy = -sdx * lineSin + sdy * lineCos;
-					spx -= segCenterX;
+						float scenterX = centerX + inShadowOffsetX;
+						float scenterY = centerY + inShadowOffsetY;
+						float sdx = (float)inXY.x + 0.5f - scenterX;
+						float sdy = (float)inXY.y + 0.5f - scenterY;
+						float spx = sdx * lineCos + sdy * lineSin;
+						float spy = -sdx * lineSin + sdy * lineCos;
+						spx -= segCenterX;
+						
+						float sdist = 0.0f;
+						if (inLineCap == 0) {
+							float dxBox = fabs(spx) - halfLen;
+							float dyBox = fabs(spy) - halfThick;
+							float ox = dxBox > 0.0f ? dxBox : 0.0f;
+							float oy = dyBox > 0.0f ? dyBox : 0.0f;
+							float outside = sqrt(ox * ox + oy * oy);
+							float inside = fmin(fmax(dxBox, dyBox), 0.0f);
+							sdist = outside + inside;
+						} else {
+							float ax = fabs(spx) - halfLen;
+							float qx = ax > 0.0f ? ax : 0.0f;
+							sdist = sqrt(qx * qx + spy * spy) - halfThick;
+						}
+						
+						float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+						float stailT = fmin(fmax((spx + halfLen) / sdenom, 0.0f), 1.0f);
+						float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
+						float scoverage = 0.0f;
+						if (aa > 0.0f) {
+							float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
+							scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * inShadowOpacity * depthAlpha;
+						}
+						if (scoverage > 0.0f) {
+							float shadowBlend = scoverage;
+							if (inBlendMode == 0) {
+								shadowBlend = scoverage * (1.0f - originalAlpha);
+							} else if (inBlendMode == 2 && lineDepthValue < 0.5f) {
+								shadowBlend = scoverage * (1.0f - originalAlpha);
+							}
+							pixel.x = pixel.x + (inShadowColorR - pixel.x) * shadowBlend;
+							pixel.y = pixel.y + (inShadowColorG - pixel.y) * shadowBlend;
+							pixel.z = pixel.z + (inShadowColorB - pixel.z) * shadowBlend;
+							pixel.w = fmax(pixel.w, shadowBlend);
+						}
+					}  // End shadow
 					
-					float sdist = 0.0f;
-					if (inLineCap == 0) {  // 0 = Flat (box), 1 = Round (capsule)
-						// Box distance (flat caps)
-						float dxBox = fabs(spx) - halfLen;
-						float dyBox = fabs(spy) - halfThick;
-						float ox = dxBox > 0.0f ? dxBox : 0.0f;
-						float oy = dyBox > 0.0f ? dyBox : 0.0f;
-						sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
-					} else {
-						// Capsule distance (rounded caps)
-						float ax = fabs(spx) - halfLen;
-						float qx = ax > 0.0f ? ax : 0.0f;
-						sdist = sqrt(qx * qx + spy * spy) - halfThick;
-					}
-					
-					float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-					float stailT = fmin(fmax((spx + halfLen) / sdenom, 0.0f), 1.0f);
-					float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
-					float scoverage = 0.0f;
-					if (aa > 0.0f) {
-						float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
-						scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * inShadowOpacity * depthAlpha;
-					}
-					if (scoverage > 0.0f) {
-						float shadowBlend = scoverage;
-						if (inBlendMode == 0) shadowBlend = scoverage * (1.0f - originalAlpha);
-						else if (inBlendMode == 2 && lineDepthValue < 0.5f) shadowBlend = scoverage * (1.0f - originalAlpha);
-						pixel.x = pixel.x + (inShadowColorR - pixel.x) * shadowBlend;
-						pixel.y = pixel.y + (inShadowColorG - pixel.y) * shadowBlend;
-						pixel.z = pixel.z + (inShadowColorB - pixel.z) * shadowBlend;
-						pixel.w = fmax(pixel.w, shadowBlend);
-					}
-					
+					// Line color from data
 					float lineColorR = d2.x;
 					float lineColorG = d2.y;
 					float lineColorB = d2.z;
 					
-					// DEBUG: Visual debug - Red for Flat (0), Blue for Round (1)
-					if (inLineCap == 0) {
-						lineColorR = 1.0f; lineColorG = 0.0f; lineColorB = 0.0f;  // RED = Flat
-					} else {
-						lineColorR = 0.0f; lineColorG = 0.0f; lineColorB = 1.0f;  // BLUE = Round
-					}
-					
+					// Main line drawing
 					float dx = (float)inXY.x + 0.5f - centerX;
 					float dy = (float)inXY.y + 0.5f - centerY;
 					
@@ -348,78 +353,163 @@
 					if (inMotionBlurEnable != 0 && inMotionBlurSamples > 1)
 					{
 						int samples = inMotionBlurSamples;
+						// Blur range from global settings
 						float blurRange = inLineTravel * inMotionBlurStrength / inLineLifetime;
-						float stepSize = blurRange / (float)(samples - 1);
-						float totalWeight = 0.0f;
+						float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 						
-					for (int s = 0; s < samples; ++s)
+						if (inMotionBlurType == 0)
+						{
+							// Type 0: Bidirectional (both front and back, physically correct)
+							// First, calculate current position (s=0) coverage
+							float px0 = dx * lineCos + dy * lineSin;
+							float py0 = -dx * lineSin + dy * lineCos;
+							px0 -= segCenterX;
+							
+							float dist0 = 0.0f;
+							if (inLineCap == 0) {
+								float dxBox = fabs(px0) - halfLen;
+								float dyBox = fabs(py0) - halfThick;
+								float ox = dxBox > 0.0f ? dxBox : 0.0f;
+								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								float outside = sqrt(ox * ox + oy * oy);
+								float inside = fmin(fmax(dxBox, dyBox), 0.0f);
+								dist0 = outside + inside;
+							} else {
+								float ax = fabs(px0) - halfLen;
+								float qx = ax > 0.0f ? ax : 0.0f;
+								dist0 = sqrt(qx * qx + py0 * py0) - halfThick;
+							}
+							
+							float tailT0 = fmin(fmax((px0 + halfLen) / denom, 0.0f), 1.0f);
+							float tailFade0 = 1.0f + (tailT0 - 1.0f) * inLineTailFade;
+							
+							float coverage0 = 0.0f;
+							if (aa > 0.0f) {
+								float tt = fmin(fmax((dist0 - aa) / (0.0f - aa), 0.0f), 1.0f);
+								coverage0 = tt * tt * (3.0f - 2.0f * tt) * tailFade0;
+							}
+							
+							// Trail samples: only add coverage BEHIND current line
+							float trailCoverage = 0.0f;
+							for (int s = 1; s < samples; ++s)
+							{
+								float trailDist = (float)s / fmax((float)(samples - 1), 1.0f) * blurRange;
+								float dxSample = dx + lineCos * trailDist;
+								float dySample = dy + lineSin * trailDist;
+								
+								float pxSample = dxSample * lineCos + dySample * lineSin;
+								float pySample = -dxSample * lineSin + dySample * lineCos;
+								pxSample -= segCenterX;
+								
+								float distSample = 0.0f;
+								if (inLineCap == 0) {
+									float dxBox = fabs(pxSample) - halfLen;
+									float dyBox = fabs(pySample) - halfThick;
+									float ox = dxBox > 0.0f ? dxBox : 0.0f;
+									float oy = dyBox > 0.0f ? dyBox : 0.0f;
+									float outside = sqrt(ox * ox + oy * oy);
+									float inside = fmin(fmax(dxBox, dyBox), 0.0f);
+									distSample = outside + inside;
+								} else {
+									float ax = fabs(pxSample) - halfLen;
+									float qx = ax > 0.0f ? ax : 0.0f;
+									distSample = sqrt(qx * qx + pySample * pySample) - halfThick;
+								}
+								
+								float tailT = fmin(fmax((pxSample + halfLen) / denom, 0.0f), 1.0f);
+								float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
+								float sampleCoverage = 0.0f;
+								if (aa > 0.0f) {
+									float tt = fmin(fmax((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
+									sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+								}
+								
+								float trailOnly = fmax(sampleCoverage - coverage0, 0.0f);
+								float fade = 1.0f - (float)s / (float)samples * 0.8f;
+								trailCoverage = fmax(trailCoverage, trailOnly * fade);
+							}
+							
+							coverage = fmax(coverage0, coverage0 + trailCoverage) * depthAlpha;
+						}
+						else
+						{
+							// Type 1: Trail only (behind the line)
+							float totalWeight = 0.0f;
+							for (int s = 0; s < samples; ++s)
+							{
+								// Sample from -blurRange/2 to +blurRange/2 (centered)
+								float sampleOffset = ((float)s / fmax((float)(samples - 1), 1.0f) - 0.5f) * blurRange;
+								float dxSample = dx + lineCos * sampleOffset;
+								float dySample = dy + lineSin * sampleOffset;
+								
+								float pxSample = dxSample * lineCos + dySample * lineSin;
+								float pySample = -dxSample * lineSin + dySample * lineCos;
+								pxSample -= segCenterX;
+								
+								float distSample = 0.0f;
+								if (inLineCap == 0) {
+									float dxBox = fabs(pxSample) - halfLen;
+									float dyBox = fabs(pySample) - halfThick;
+									float ox = dxBox > 0.0f ? dxBox : 0.0f;
+									float oy = dyBox > 0.0f ? dyBox : 0.0f;
+									float outside = sqrt(ox * ox + oy * oy);
+									float inside = fmin(fmax(dxBox, dyBox), 0.0f);
+									distSample = outside + inside;
+								} else {
+									float ax = fabs(pxSample) - halfLen;
+									float qx = ax > 0.0f ? ax : 0.0f;
+									distSample = sqrt(qx * qx + pySample * pySample) - halfThick;
+								}
+								
+								float tailT = fmin(fmax((pxSample + halfLen) / denom, 0.0f), 1.0f);
+								float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
+								float sampleCoverage = 0.0f;
+								if (aa > 0.0f) {
+									float tt = fmin(fmax((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
+									sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+								}
+								
+								// Weight: center is strongest, edges fade
+								float normalizedPos = fabs((float)s / fmax((float)(samples - 1), 1.0f) - 0.5f) * 2.0f;
+								float weight = 1.0f - normalizedPos * 0.5f;
+								coverage += sampleCoverage * weight;
+								totalWeight += weight;
+							}
+							coverage = (coverage / fmax(totalWeight, 1.0f)) * depthAlpha;
+						}
+					}
+					else
 					{
-						float sampleOffset = (s - (samples - 1) * 0.5f) * stepSize;
-						float pxSample = dx * lineCos + dy * lineSin;
-						float pySample = -dx * lineSin + dy * lineCos;
-						pxSample -= (segCenterX + sampleOffset);
+						// No motion blur: single-sample calculation
+						float px = dx * lineCos + dy * lineSin;
+						float py = -dx * lineSin + dy * lineCos;
+						px -= segCenterX;
 						
-						float distSample = 0.0f;
-						if (inLineCap == 0) {  // 0 = Flat, 1 = Round
-							// Box distance (flat caps)
-							float dxBox = fabs(pxSample) - halfLen;
-							float dyBox = fabs(pySample) - halfThick;
+						float dist = 0.0f;
+						if (inLineCap == 0) {
+							float dxBox = fabs(px) - halfLen;
+							float dyBox = fabs(py) - halfThick;
 							float ox = dxBox > 0.0f ? dxBox : 0.0f;
 							float oy = dyBox > 0.0f ? dyBox : 0.0f;
-							distSample = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
+							float outside = sqrt(ox * ox + oy * oy);
+							float inside = fmin(fmax(dxBox, dyBox), 0.0f);
+							dist = outside + inside;
 						} else {
-							// Capsule distance (rounded caps)
-							float ax = fabs(pxSample) - halfLen;
+							float ax = fabs(px) - halfLen;
 							float qx = ax > 0.0f ? ax : 0.0f;
-							distSample = sqrt(qx * qx + pySample * pySample) - halfThick;
+							dist = sqrt(qx * qx + py * py) - halfThick;
 						}
 						
 						float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-						float tailT = fmin(fmax((pxSample + halfLen) / denom, 0.0f), 1.0f);
+						float tailT = fmin(fmax((px + halfLen) / denom, 0.0f), 1.0f);
 						float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
-						float sampleCoverage = 0.0f;
 						if (aa > 0.0f) {
-							float tt = fmin(fmax((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
-							sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+							float tt = fmin(fmax((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
+							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
 						}
-						
-						float normalizedPos = fabs(s - (samples - 1) * 0.5f) / fmax((samples - 1) * 0.5f, 1.0f);
-						float weight = 1.0f - normalizedPos * 0.5f;
-						coverage += sampleCoverage * weight;
-						totalWeight += weight;
-					}
-					coverage = (coverage / fmax(totalWeight, 1.0f)) * depthAlpha;
-				}
-				else
-				{
-					// No motion blur
-					float px = dx * lineCos + dy * lineSin;
-					float py = -dx * lineSin + dy * lineCos;
-					px -= segCenterX;
+					}  // End motion blur else
 					
-					float dist = 0.0f;
-					if (inLineCap == 0) {  // 0 = Flat, 1 = Round
-						// Box distance (flat caps)
-						float dxBox = fabs(px) - halfLen;
-						float dyBox = fabs(py) - halfThick;
-						float ox = dxBox > 0.0f ? dxBox : 0.0f;
-						float oy = dyBox > 0.0f ? dyBox : 0.0f;
-						dist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
-					} else {
-						// Capsule distance (rounded caps)
-						float ax = fabs(px) - halfLen;
-						float qx = ax > 0.0f ? ax : 0.0f;
-						dist = sqrt(qx * qx + py * py) - halfThick;
-					}
-					
-					float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-					float tailT = fmin(fmax((px + halfLen) / denom, 0.0f), 1.0f);
-					float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
-					if (aa > 0.0f) {
-						float tt = fmin(fmax((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
-						coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
-					}
-					
+					// Apply blend mode
 					if (coverage > 0.0f)
 					{
 						if (inBlendMode == 0) { // Back
@@ -464,7 +554,7 @@
 							}
 						}
 					}
-				}
+				}  // End line loop
 				
 				// Apply front lines (blend mode 2)
 				if (inBlendMode == 2 && frontA > 0.0f)
@@ -499,19 +589,6 @@
 						pixel.z = baseZ + (inSpawnAreaColorB - baseZ) * blendAlpha;
 						pixel.w = fmax(pixel.w, blendAlpha);
 					}
-				}
-				
-				// Hide element
-				if (inHideElement != 0 && pixel.w < originalAlpha)
-				{
-					pixel.w = pixel.w;  // Keep new alpha
-				}
-				else if (inHideElement != 0)
-				{
-					// When hiding, set alpha to only show lines (not original element)
-					float lineOnlyAlpha = pixel.w - originalAlpha;
-					if (lineOnlyAlpha < 0.0f) lineOnlyAlpha = 0.0f;
-					pixel.w = lineOnlyAlpha > 0.01f ? pixel.w : 0.0f;
 				}
 				
 				WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);

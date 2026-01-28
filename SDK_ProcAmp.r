@@ -32,7 +32,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"SDK ProcAmp v52"
+			"SDK ProcAmp v53"
 		},
 		/* [3] */
 		Category {
@@ -43,16 +43,8 @@ resource 'PiPL' (16000) {
 #ifdef AE_OS_WIN
 		CodeWin64X86 {"EffectMain"},
 #else
-        CodeMacARM64 {
-			0,
-			0,
-			"EffectMain"
-		},
-		CodeMacIntel64 {
-			0,
-			0,
-			"EffectMain"
-		},
+		CodeMacIntel64 {"EffectMain"},
+		CodeMacARM64 {"EffectMain"},
 #endif
 		/* [5] */
 		AE_PiPL_Version {

@@ -71,24 +71,24 @@ enum
 	// ▼ Appearance
 	SDK_PROCAMP_LINE_THICKNESS,               // 19. Line thickness (px)
 	SDK_PROCAMP_LINE_LENGTH,                  // 20. Line length (px)
-	SDK_PROCAMP_LINE_CAP,                     // 21. Line cap style
-	SDK_PROCAMP_LINE_TAIL_FADE,               // 22. Tail fade amount
+	SDK_PROCAMP_LINE_ANGLE,                   // 21. Line angle (degrees)
+	SDK_PROCAMP_LINE_CAP,                     // 22. Line cap style
+	SDK_PROCAMP_LINE_TAIL_FADE,               // 23. Tail fade amount
 	
 	// ▼ Position & Spawn - Line Origin
-	SDK_PROCAMP_POSITION_HEADER,              // 23. Line origin topic start
-	SDK_PROCAMP_SPAWN_SOURCE,                 // 24. Spawn source (Full Frame / Element Bounds)
-	SDK_PROCAMP_LINE_ALPHA_THRESH,            // 25. Alpha threshold
-	SDK_PROCAMP_LINE_ORIGIN_MODE,             // 26. Wind origin mode
-	SDK_PROCAMP_ANIM_PATTERN,                 // 27. Animation pattern (direction)
-	SDK_PROCAMP_LINE_START_TIME,              // 28. Start time (frames)
-	SDK_PROCAMP_LINE_DURATION,                // 29. Duration (frames)
-	SDK_PROCAMP_LINE_DEPTH_STRENGTH,          // 30. Depth strength
-	SDK_PROCAMP_CENTER_GAP,                   // 31. Center gap
-	SDK_PROCAMP_ORIGIN_OFFSET_X,              // 32. Origin Offset X (px)
-	SDK_PROCAMP_ORIGIN_OFFSET_Y,              // 33. Origin Offset Y (px)
-	SDK_PROCAMP_LINE_SPAWN_SCALE_X,           // 34. Spawn area scale X (%)
-	SDK_PROCAMP_LINE_SPAWN_SCALE_Y,           // 35. Spawn area scale Y (%)
-	SDK_PROCAMP_LINE_ANGLE,                   // 36. Line angle (moved here)
+	SDK_PROCAMP_POSITION_HEADER,              // 24. Line origin topic start
+	SDK_PROCAMP_SPAWN_SOURCE,                 // 25. Spawn source (Full Frame / Element Bounds)
+	SDK_PROCAMP_LINE_ALPHA_THRESH,            // 26. Alpha threshold
+	SDK_PROCAMP_LINE_ORIGIN_MODE,             // 27. Wind origin mode
+	SDK_PROCAMP_ANIM_PATTERN,                 // 28. Animation pattern (direction)
+	SDK_PROCAMP_LINE_START_TIME,              // 29. Start time (frames)
+	SDK_PROCAMP_LINE_DURATION,                // 30. Duration (frames)
+	SDK_PROCAMP_LINE_DEPTH_STRENGTH,          // 31. Depth strength
+	SDK_PROCAMP_CENTER_GAP,                   // 32. Center gap
+	SDK_PROCAMP_ORIGIN_OFFSET_X,              // 33. Origin Offset X (px)
+	SDK_PROCAMP_ORIGIN_OFFSET_Y,              // 34. Origin Offset Y (px)
+	SDK_PROCAMP_LINE_SPAWN_SCALE_X,           // 35. Spawn area scale X (%)
+	SDK_PROCAMP_LINE_SPAWN_SCALE_Y,           // 36. Spawn area scale Y (%)
 	SDK_PROCAMP_LINE_SPAWN_ROTATION,          // 37. Spawn area rotation (degrees)
 	SDK_PROCAMP_LINE_SHOW_SPAWN_AREA,         // 38. Show spawn area preview
 	SDK_PROCAMP_LINE_SPAWN_AREA_COLOR,        // 39. Spawn area color
@@ -108,20 +108,21 @@ enum
 	SDK_PROCAMP_MOTION_BLUR_ENABLE,           // 49. Motion blur on/off
 	SDK_PROCAMP_MOTION_BLUR_SAMPLES,          // 50. Motion blur quality (samples)
 	SDK_PROCAMP_MOTION_BLUR_STRENGTH,         // 51. Motion blur strength
-	SDK_PROCAMP_MOTION_BLUR_TOPIC_END,        // 52. Motion blur topic end
+	SDK_PROCAMP_MOTION_BLUR_TYPE,             // 52. Motion blur type (0=Bidirectional, 1=Trail)
+	SDK_PROCAMP_MOTION_BLUR_TOPIC_END,        // 53. Motion blur topic end
 	
 	// ▼ Advanced - Topic group
-	SDK_PROCAMP_ADVANCED_HEADER,              // 53. Advanced topic start
-	SDK_PROCAMP_LINE_AA,                      // 54. Anti-aliasing
-	SDK_PROCAMP_HIDE_ELEMENT,                 // 55. Hide original element (lines only)
-	SDK_PROCAMP_BLEND_MODE,                   // 56. Blend mode with element
-	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 57. Advanced topic end
+	SDK_PROCAMP_ADVANCED_HEADER,              // 54. Advanced topic start
+	SDK_PROCAMP_LINE_AA,                      // 55. Anti-aliasing
+	SDK_PROCAMP_HIDE_ELEMENT,                 // 56. Hide original element (lines only)
+	SDK_PROCAMP_BLEND_MODE,                   // 57. Blend mode with element
+	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 58. Advanced topic end
 	
 	// Hidden params (for backwards compatibility)
-	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 58. (hidden)
-	SDK_PROCAMP_LINE_COLOR_R,                 // 59. (hidden)
-	SDK_PROCAMP_LINE_COLOR_G,                 // 60. (hidden)
-	SDK_PROCAMP_LINE_COLOR_B,                 // 61. (hidden)
+	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 59. (hidden)
+	SDK_PROCAMP_LINE_COLOR_R,                 // 60. (hidden)
+	SDK_PROCAMP_LINE_COLOR_G,                 // 61. (hidden)
+	SDK_PROCAMP_LINE_COLOR_B,                 // 62. (hidden)
 	
 	SDK_PROCAMP_NUM_PARAMS
 };
@@ -535,6 +536,7 @@ static const int kEffectPresetCount = static_cast<int>(sizeof(kEffectPresets) / 
 #define	MOTION_BLUR_STRENGTH_MIN_SLIDER	0.0
 #define	MOTION_BLUR_STRENGTH_MAX_SLIDER	2.0
 #define	MOTION_BLUR_STRENGTH_DFLT		1.0		// 1.0 = 180° shutter (standard)
+#define	MOTION_BLUR_TYPE_DFLT			0		// 0=Bidirectional, 1=Trail
 
 // Preset colors count (8 colors per preset)
 #define PRESET_COLORS_COUNT     8

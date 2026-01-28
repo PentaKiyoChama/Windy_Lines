@@ -182,6 +182,7 @@ typedef struct
 	int mMotionBlurEnable;   // inMotionBlurEnable
 	int mMotionBlurSamples;  // inMotionBlurSamples
 	float mMotionBlurStrength;// inMotionBlurStrength
+	int mMotionBlurType;     // inMotionBlurType (0=Bidirectional, 1=Trail)
 	// Additional fields for CPU-side use (not passed to kernel)
 	int mTileCountY;
 	float mSeqTimeHash;
@@ -309,7 +310,8 @@ extern void ProcAmp2_CUDA(
 	float alphaBoundsHeight,
 	int motionBlurEnable,
 	int motionBlurSamples,
-	float motionBlurStrength);
+	float motionBlurStrength,
+	int motionBlurType);
 extern void ProcAmp2_CUDA_ComputeAlphaBounds(
 	float* ioBuffer,
 	int pitch,
@@ -518,6 +520,37 @@ static float ApplyEasing(float t, int easingType)
 		}
 		default:
 			return t;
+	}
+}
+
+// Derivative of easing function (instantaneous velocity factor)
+// Returns normalized velocity: 1.0 = linear speed, >1.0 = faster, <1.0 = slower
+static float ApplyEasingDerivative(float t, int easingType)
+{
+	switch (easingType)
+	{
+		case 0: return 1.0f; // Linear: constant velocity
+		case 1: return (float)M_PI * 0.5f * cosf((float)M_PI * 0.5f * t); // InSine
+		case 2: return (float)M_PI * 0.5f * sinf((float)M_PI * 0.5f * t); // OutSine
+		case 3: return (float)M_PI * 0.5f * sinf((float)M_PI * t); // InOutSine
+		case 4: return 2.0f * t; // InQuad
+		case 5: return 2.0f * (1.0f - t); // OutQuad
+		case 6: { // InOutQuad
+			if (t < 0.5f) { return 4.0f * t; }
+			return 4.0f * (1.0f - t);
+		}
+		case 7: return 3.0f * t * t; // InCubic
+		case 8: { // OutCubic
+			const float u = 1.0f - t;
+			return 3.0f * u * u;
+		}
+		case 9: { // InOutCubic
+			if (t < 0.5f) { return 6.0f * t * t; }
+			const float u = 1.0f - t;
+			return 6.0f * u * u;
+		}
+		default:
+			return 1.0f;
 	}
 }
 
@@ -1273,9 +1306,13 @@ public:
 		const bool motionBlurEnable = GetParam(SDK_PROCAMP_MOTION_BLUR_ENABLE, inRenderParams->inClipTime).mBool;
 		const int motionBlurSamples = static_cast<int>(GetParam(SDK_PROCAMP_MOTION_BLUR_SAMPLES, inRenderParams->inClipTime).mFloat64 + 0.5f);
 		const float motionBlurStrength = static_cast<float>(GetParam(SDK_PROCAMP_MOTION_BLUR_STRENGTH, inRenderParams->inClipTime).mFloat64);
+		const int motionBlurType = static_cast<int>(GetParam(SDK_PROCAMP_MOTION_BLUR_TYPE, inRenderParams->inClipTime).mInt64) - 1;  // 1-indexed to 0-indexed
 		params.mMotionBlurEnable = motionBlurEnable ? 1 : 0;
 		params.mMotionBlurSamples = motionBlurSamples < 1 ? 1 : (motionBlurSamples > 32 ? 32 : motionBlurSamples);
 		params.mMotionBlurStrength = motionBlurStrength;
+		params.mMotionBlurType = motionBlurType;
+		DebugLog("[MOTION BLUR] enable=%d samples=%d strength=%.2f type=%d", 
+			params.mMotionBlurEnable, params.mMotionBlurSamples, params.mMotionBlurStrength, params.mMotionBlurType);
 		// Note: Color is now stored per-line in lineData, not in params
 
 		const int tileSize = 32;
@@ -1782,7 +1819,7 @@ public:
 			
 			Float4 d0 = { centerX, centerY, lineCos, lineSin };
 			Float4 d1 = { halfLen, halfThick, segCenterX, depth };  // Store depth value for blend mode
-			Float4 d2 = { outColor0, outColor1, outColor2, 1.0f };  // Line color (already in output space)
+			Float4 d2 = { outColor0, outColor1, outColor2, 0.0f };  // Line color
 			
 			// Log first line's data
 			if (i == 0) {
@@ -1960,7 +1997,8 @@ public:
 			params.mAlphaBoundsHeight,
 			params.mMotionBlurEnable,
 			params.mMotionBlurSamples,
-			params.mMotionBlurStrength);
+			params.mMotionBlurStrength,
+			params.mMotionBlurType);
 
 			return cudaPeekAtLastError() == cudaSuccess ? suiteError_NoError : suiteError_Fail;
 #else
@@ -1988,68 +2026,73 @@ public:
 			cl_mem tileCountsBuffer = createBuffer(tileCountsBytes, tileCountsBytes > 0 ? tileCounts.data() : nullptr);
 			cl_mem lineIndicesBuffer = createBuffer(lineIndicesBytes, lineIndicesBytes > 0 ? lineIndices.data() : nullptr);
 			
-			// Set the arguments
+			// Set the arguments - buffers first
 			clSetKernelArg(mKernelOpenCL, 0, sizeof(cl_mem), &buffer);
-			clSetKernelArg(mKernelOpenCL, 1, sizeof(int), &params.mPitch);
-			clSetKernelArg(mKernelOpenCL, 2, sizeof(int), &params.m16f);
-			clSetKernelArg(mKernelOpenCL, 3, sizeof(int), &params.mWidth);
-			clSetKernelArg(mKernelOpenCL, 4, sizeof(int), &params.mHeight);
-			clSetKernelArg(mKernelOpenCL, 5, sizeof(float), &params.mLineCenterX);
-			clSetKernelArg(mKernelOpenCL, 6, sizeof(float), &params.mLineCenterY);
-			clSetKernelArg(mKernelOpenCL, 7, sizeof(float), &params.mLineCos);
-			clSetKernelArg(mKernelOpenCL, 8, sizeof(float), &params.mLineSin);
-		clSetKernelArg(mKernelOpenCL, 9, sizeof(float), &params.mLineLength);
-		clSetKernelArg(mKernelOpenCL, 10, sizeof(float), &params.mLineThickness);
-		clSetKernelArg(mKernelOpenCL, 11, sizeof(float), &params.mLineLifetime);
-		clSetKernelArg(mKernelOpenCL, 12, sizeof(float), &params.mLineTravel);
-		clSetKernelArg(mKernelOpenCL, 13, sizeof(float), &params.mLineTailFade);
-		clSetKernelArg(mKernelOpenCL, 14, sizeof(float), &params.mLineDepthStrength);
-		clSetKernelArg(mKernelOpenCL, 15, sizeof(float), &params.mLineR);
-		clSetKernelArg(mKernelOpenCL, 16, sizeof(float), &params.mLineG);
-		clSetKernelArg(mKernelOpenCL, 17, sizeof(float), &params.mLineB);
-		clSetKernelArg(mKernelOpenCL, 18, sizeof(float), &params.mLineAA);
-		clSetKernelArg(mKernelOpenCL, 19, sizeof(int), &params.mLineCap);
-		clSetKernelArg(mKernelOpenCL, 20, sizeof(int), &params.mLineCount);
-		clSetKernelArg(mKernelOpenCL, 21, sizeof(int), &params.mLineSeed);
-		clSetKernelArg(mKernelOpenCL, 22, sizeof(int), &params.mLineEasing);
-		clSetKernelArg(mKernelOpenCL, 23, sizeof(int), &params.mLineInterval);
-		clSetKernelArg(mKernelOpenCL, 24, sizeof(int), &params.mLineAllowMidPlay);
-		clSetKernelArg(mKernelOpenCL, 25, sizeof(int), &params.mHideElement);
-		clSetKernelArg(mKernelOpenCL, 27, sizeof(float), &params.mFrameIndex);
-		clSetKernelArg(mKernelOpenCL, 28, sizeof(int), &params.mLineDownsample);
-		clSetKernelArg(mKernelOpenCL, 29, sizeof(cl_mem), &lineDataBuffer);
-		clSetKernelArg(mKernelOpenCL, 30, sizeof(cl_mem), &tileOffsetsBuffer);
-		clSetKernelArg(mKernelOpenCL, 31, sizeof(cl_mem), &tileCountsBuffer);
-		clSetKernelArg(mKernelOpenCL, 32, sizeof(cl_mem), &lineIndicesBuffer);
-		clSetKernelArg(mKernelOpenCL, 33, sizeof(int), &params.mTileCountX);
-		clSetKernelArg(mKernelOpenCL, 34, sizeof(int), &params.mTileSize);
-		clSetKernelArg(mKernelOpenCL, 35, sizeof(int), &params.mFocusEnable);
-		clSetKernelArg(mKernelOpenCL, 36, sizeof(float), &params.mFocusDepth);
-		clSetKernelArg(mKernelOpenCL, 37, sizeof(float), &params.mFocusRange);
-		clSetKernelArg(mKernelOpenCL, 38, sizeof(float), &params.mFocusBlurStrength);
-		clSetKernelArg(mKernelOpenCL, 39, sizeof(int), &params.mShadowEnable);
-		clSetKernelArg(mKernelOpenCL, 40, sizeof(float), &params.mShadowColorR);
-		clSetKernelArg(mKernelOpenCL, 41, sizeof(float), &params.mShadowColorG);
-		clSetKernelArg(mKernelOpenCL, 42, sizeof(float), &params.mShadowColorB);
-		clSetKernelArg(mKernelOpenCL, 43, sizeof(float), &params.mShadowOffsetX);
-		clSetKernelArg(mKernelOpenCL, 44, sizeof(float), &params.mShadowOffsetY);
-		clSetKernelArg(mKernelOpenCL, 45, sizeof(float), &params.mShadowOpacity);
-		clSetKernelArg(mKernelOpenCL, 46, sizeof(float), &params.mLineSpawnScaleX);
-		clSetKernelArg(mKernelOpenCL, 47, sizeof(float), &params.mLineSpawnScaleY);
-		clSetKernelArg(mKernelOpenCL, 48, sizeof(float), &params.mSpawnRotationCos);
-		clSetKernelArg(mKernelOpenCL, 49, sizeof(float), &params.mSpawnRotationSin);
-		clSetKernelArg(mKernelOpenCL, 50, sizeof(int), &params.mShowSpawnArea);
-		clSetKernelArg(mKernelOpenCL, 51, sizeof(float), &params.mSpawnAreaColorR);
-		clSetKernelArg(mKernelOpenCL, 52, sizeof(float), &params.mSpawnAreaColorG);
-		clSetKernelArg(mKernelOpenCL, 53, sizeof(float), &params.mSpawnAreaColorB);
-		clSetKernelArg(mKernelOpenCL, 54, sizeof(int), &params.mIsBGRA);
-		clSetKernelArg(mKernelOpenCL, 55, sizeof(float), &params.mAlphaBoundsMinX);
-		clSetKernelArg(mKernelOpenCL, 56, sizeof(float), &params.mAlphaBoundsMinY);
-		clSetKernelArg(mKernelOpenCL, 57, sizeof(float), &params.mAlphaBoundsWidth);
-		clSetKernelArg(mKernelOpenCL, 58, sizeof(float), &params.mAlphaBoundsHeight);
-		clSetKernelArg(mKernelOpenCL, 59, sizeof(int), &params.mMotionBlurEnable);
-		clSetKernelArg(mKernelOpenCL, 60, sizeof(int), &params.mMotionBlurSamples);
-		clSetKernelArg(mKernelOpenCL, 61, sizeof(float), &params.mMotionBlurStrength);
+			clSetKernelArg(mKernelOpenCL, 1, sizeof(cl_mem), &lineDataBuffer);
+			clSetKernelArg(mKernelOpenCL, 2, sizeof(cl_mem), &tileOffsetsBuffer);
+			clSetKernelArg(mKernelOpenCL, 3, sizeof(cl_mem), &tileCountsBuffer);
+			clSetKernelArg(mKernelOpenCL, 4, sizeof(cl_mem), &lineIndicesBuffer);
+			// Scalar parameters
+			clSetKernelArg(mKernelOpenCL, 5, sizeof(int), &params.mPitch);
+			clSetKernelArg(mKernelOpenCL, 6, sizeof(int), &params.m16f);
+			clSetKernelArg(mKernelOpenCL, 7, sizeof(int), &params.mWidth);
+			clSetKernelArg(mKernelOpenCL, 8, sizeof(int), &params.mHeight);
+			clSetKernelArg(mKernelOpenCL, 9, sizeof(float), &params.mLineCenterX);
+			clSetKernelArg(mKernelOpenCL, 10, sizeof(float), &params.mLineCenterY);
+			clSetKernelArg(mKernelOpenCL, 11, sizeof(float), &params.mOriginOffsetX);
+			clSetKernelArg(mKernelOpenCL, 12, sizeof(float), &params.mOriginOffsetY);
+			clSetKernelArg(mKernelOpenCL, 13, sizeof(float), &params.mLineCos);
+			clSetKernelArg(mKernelOpenCL, 14, sizeof(float), &params.mLineSin);
+		clSetKernelArg(mKernelOpenCL, 15, sizeof(float), &params.mLineLength);
+		clSetKernelArg(mKernelOpenCL, 16, sizeof(float), &params.mLineThickness);
+		clSetKernelArg(mKernelOpenCL, 17, sizeof(float), &params.mLineLifetime);
+		clSetKernelArg(mKernelOpenCL, 18, sizeof(float), &params.mLineTravel);
+		clSetKernelArg(mKernelOpenCL, 19, sizeof(float), &params.mLineTailFade);
+		clSetKernelArg(mKernelOpenCL, 20, sizeof(float), &params.mLineDepthStrength);
+		clSetKernelArg(mKernelOpenCL, 21, sizeof(float), &params.mLineR);
+		clSetKernelArg(mKernelOpenCL, 22, sizeof(float), &params.mLineG);
+		clSetKernelArg(mKernelOpenCL, 23, sizeof(float), &params.mLineB);
+		clSetKernelArg(mKernelOpenCL, 24, sizeof(float), &params.mLineAA);
+		clSetKernelArg(mKernelOpenCL, 25, sizeof(int), &params.mLineCap);
+		clSetKernelArg(mKernelOpenCL, 26, sizeof(int), &params.mLineCount);
+		clSetKernelArg(mKernelOpenCL, 27, sizeof(int), &params.mLineSeed);
+		clSetKernelArg(mKernelOpenCL, 28, sizeof(int), &params.mLineEasing);
+		clSetKernelArg(mKernelOpenCL, 29, sizeof(int), &params.mLineInterval);
+		clSetKernelArg(mKernelOpenCL, 30, sizeof(int), &params.mLineAllowMidPlay);
+		clSetKernelArg(mKernelOpenCL, 31, sizeof(int), &params.mHideElement);
+		clSetKernelArg(mKernelOpenCL, 32, sizeof(int), &params.mBlendMode);
+		clSetKernelArg(mKernelOpenCL, 33, sizeof(float), &params.mFrameIndex);
+		clSetKernelArg(mKernelOpenCL, 34, sizeof(int), &params.mLineDownsample);
+		clSetKernelArg(mKernelOpenCL, 35, sizeof(int), &params.mTileCountX);
+		clSetKernelArg(mKernelOpenCL, 36, sizeof(int), &params.mTileSize);
+		clSetKernelArg(mKernelOpenCL, 37, sizeof(int), &params.mFocusEnable);
+		clSetKernelArg(mKernelOpenCL, 38, sizeof(float), &params.mFocusDepth);
+		clSetKernelArg(mKernelOpenCL, 39, sizeof(float), &params.mFocusRange);
+		clSetKernelArg(mKernelOpenCL, 40, sizeof(float), &params.mFocusBlurStrength);
+		clSetKernelArg(mKernelOpenCL, 41, sizeof(int), &params.mShadowEnable);
+		clSetKernelArg(mKernelOpenCL, 42, sizeof(float), &params.mShadowColorR);
+		clSetKernelArg(mKernelOpenCL, 43, sizeof(float), &params.mShadowColorG);
+		clSetKernelArg(mKernelOpenCL, 44, sizeof(float), &params.mShadowColorB);
+		clSetKernelArg(mKernelOpenCL, 45, sizeof(float), &params.mShadowOffsetX);
+		clSetKernelArg(mKernelOpenCL, 46, sizeof(float), &params.mShadowOffsetY);
+		clSetKernelArg(mKernelOpenCL, 47, sizeof(float), &params.mShadowOpacity);
+		clSetKernelArg(mKernelOpenCL, 48, sizeof(float), &params.mLineSpawnScaleX);
+		clSetKernelArg(mKernelOpenCL, 49, sizeof(float), &params.mLineSpawnScaleY);
+		clSetKernelArg(mKernelOpenCL, 50, sizeof(float), &params.mSpawnRotationCos);
+		clSetKernelArg(mKernelOpenCL, 51, sizeof(float), &params.mSpawnRotationSin);
+		clSetKernelArg(mKernelOpenCL, 52, sizeof(int), &params.mShowSpawnArea);
+		clSetKernelArg(mKernelOpenCL, 53, sizeof(float), &params.mSpawnAreaColorR);
+		clSetKernelArg(mKernelOpenCL, 54, sizeof(float), &params.mSpawnAreaColorG);
+		clSetKernelArg(mKernelOpenCL, 55, sizeof(float), &params.mSpawnAreaColorB);
+		clSetKernelArg(mKernelOpenCL, 56, sizeof(int), &params.mIsBGRA);
+		clSetKernelArg(mKernelOpenCL, 57, sizeof(float), &params.mAlphaBoundsMinX);
+		clSetKernelArg(mKernelOpenCL, 58, sizeof(float), &params.mAlphaBoundsMinY);
+		clSetKernelArg(mKernelOpenCL, 59, sizeof(float), &params.mAlphaBoundsWidth);
+		clSetKernelArg(mKernelOpenCL, 60, sizeof(float), &params.mAlphaBoundsHeight);
+		clSetKernelArg(mKernelOpenCL, 61, sizeof(int), &params.mMotionBlurEnable);
+		clSetKernelArg(mKernelOpenCL, 62, sizeof(int), &params.mMotionBlurSamples);
+		clSetKernelArg(mKernelOpenCL, 63, sizeof(float), &params.mMotionBlurStrength);
+		clSetKernelArg(mKernelOpenCL, 64, sizeof(int), &params.mMotionBlurType);
 
 			// Launch the kernel
 			size_t threadBlock[2] = { 16, 16 };

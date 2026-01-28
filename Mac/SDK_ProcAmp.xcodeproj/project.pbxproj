@@ -29,7 +29,7 @@
 			outputFiles = (
 				"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metallib",
 			);
-			script = "set -e\nmkdir -p ${DERIVED_FILE_DIR}/64/PTX/Metal/\nchmod 777 ${DERIVED_FILE_DIR}/64/PTX/Metal/\n\nXCODE_PATH=`xcode-select -p`\nSDK_PATH=\"${XCODE_PATH}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk\"\n\n# Try to use xcrun first, fallback to direct path\nMETAL_CMD=\"$(xcrun --find metal 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/metal)\"\n\n# Check if metal command exists and is executable\nif [ ! -x \"${METAL_CMD}\" ]; then\n    echo \"error: metal command not found at ${METAL_CMD}\"\n    echo \"Please install Metal Toolchain: xcodebuild -downloadComponent MetalToolchain\"\n    exit 1\nfi\n\n# Compile Metal source to AIR\n# Calculate Headers path relative to input file\n# SDK_ProcAmp is at Examples/Projects/GPUVideoFilter/SDK_ProcAmp\n# Headers is at Examples/Headers, so path is ../../../Headers\nINPUT_DIR=\"$(dirname \"${INPUT_FILE_PATH}\")\"\nHEADERS_PATH=\"$(cd \"${INPUT_DIR}/../../../Headers\" 2>/dev/null && pwd || echo \"${INPUT_DIR}/../../../Headers\")\"\n\n# Debug: print paths to verify\necho \"[Metal Build] INPUT_FILE_PATH: ${INPUT_FILE_PATH}\"\necho \"[Metal Build] INPUT_DIR: ${INPUT_DIR}\"\necho \"[Metal Build] HEADERS_PATH: ${HEADERS_PATH}\"\nif [ ! -d \"${HEADERS_PATH}\" ]; then\n    echo \"[Metal Build] ERROR: Headers directory not found at ${HEADERS_PATH}\"\n    exit 1\nfi\nif [ ! -f \"${HEADERS_PATH}/PrGPU/KernelSupport/KernelCore.h\" ]; then\n    echo \"[Metal Build] ERROR: KernelCore.h not found at ${HEADERS_PATH}/PrGPU/KernelSupport/KernelCore.h\"\n    ls -la \"${HEADERS_PATH}/PrGPU/KernelSupport/\" 2>/dev/null || echo \"[Metal Build] PrGPU/KernelSupport directory does not exist\"\n    exit 1\nfi\n\n# Build include paths - BOOST_BASE_PATH is optional\nINCLUDE_PATHS=\"-I${HEADERS_PATH}\"\n\n# Auto-detect Boost if BOOST_BASE_PATH is not set\nif [ -z \"${BOOST_BASE_PATH}\" ] || [ ! -d \"${BOOST_BASE_PATH}\" ]; then\n    # Try common Homebrew locations\n    if [ -d \"/opt/homebrew/include\" ] && [ -f \"/opt/homebrew/include/boost/preprocessor/list/for_each.hpp\" ]; then\n        BOOST_BASE_PATH=\"/opt/homebrew/include\"\n    elif [ -d \"/usr/local/include\" ] && [ -f \"/usr/local/include/boost/preprocessor/list/for_each.hpp\" ]; then\n        BOOST_BASE_PATH=\"/usr/local/include\"\n    elif [ -d \"/opt/homebrew/Cellar/boost\" ]; then\n        # Find latest Boost version in Cellar\n        BOOST_VERSION=\"$(ls -t /opt/homebrew/Cellar/boost 2>/dev/null | head -1)\"\n        if [ -n \"${BOOST_VERSION}\" ] && [ -d \"/opt/homebrew/Cellar/boost/${BOOST_VERSION}/include\" ]; then\n            BOOST_BASE_PATH=\"/opt/homebrew/Cellar/boost/${BOOST_VERSION}/include\"\n        fi\n    fi\nfi\n\nif [ -n \"${BOOST_BASE_PATH}\" ] && [ -d \"${BOOST_BASE_PATH}\" ]; then\n    INCLUDE_PATHS=\"${INCLUDE_PATHS} -I${BOOST_BASE_PATH}\"\n    echo \"[Metal Build] Using Boost at: ${BOOST_BASE_PATH}\"\nelse\n    echo \"[Metal Build] WARNING: Boost not found. Install with: brew install boost\"\nfi\necho \"[Metal Build] Running: ${METAL_CMD} with include paths: ${INCLUDE_PATHS}\"\n\"${METAL_CMD}\" -arch air64 -emit-llvm -c -ffast-math -Wno-missing-prototypes -mmacosx-version-min=10.15 -std=osx-metal2.0 -isysroot \"${SDK_PATH}\" ${INCLUDE_PATHS} -DGF_DEVICE_TARGET_METAL=1 -DGF_DEVICE_TARGET_METAL_IOS=0 -o ${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.air \"${INPUT_FILE_PATH}\"\n\n# Try to find metal-ar or use standard ar\nMETAL_AR_CMD=\"$(xcrun --find metal-ar 2>/dev/null || xcrun --find ar 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar)\"\nif [ ! -x \"${METAL_AR_CMD}\" ]; then\n    echo \"error: metal-ar/ar command not found\"\n    exit 1\nfi\n\n# Create archive\n\"${METAL_AR_CMD}\" ru ${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metal-ar ${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.air\n\n# Try to find metallib\nMETALLIB_CMD=\"$(xcrun --find metallib 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/metallib)\"\nif [ ! -x \"${METALLIB_CMD}\" ]; then\n    echo \"error: metallib command not found at ${METALLIB_CMD}\"\n    echo \"Please install Metal Toolchain: xcodebuild -downloadComponent MetalToolchain\"\n    exit 1\nfi\n\n# Create metallib\n\"${METALLIB_CMD}\" -o ${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metallib ${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metal-ar\n";
+			script = "set -e\nmkdir -p \"${DERIVED_FILE_DIR}/64/PTX/Metal/\"\nchmod 777 \"${DERIVED_FILE_DIR}/64/PTX/Metal/\"\n\nXCODE_PATH=`xcode-select -p`\nSDK_PATH=\"${XCODE_PATH}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk\"\n\n# Try to use xcrun first, fallback to direct path\nMETAL_CMD=\"$(xcrun --find metal 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/metal)\"\n\n# Check if metal command exists and is executable\nif [ ! -x \"${METAL_CMD}\" ]; then\n    echo \"error: metal command not found at ${METAL_CMD}\"\n    echo \"Please install Metal Toolchain: xcodebuild -downloadComponent MetalToolchain\"\n    exit 1\nfi\n\n# Use PREMIERE_SDK_BASE_PATH for Headers\nHEADERS_PATH=\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"\n\n# Debug: print paths to verify\necho \"[Metal Build] INPUT_FILE_PATH: ${INPUT_FILE_PATH}\"\necho \"[Metal Build] PREMIERE_SDK_BASE_PATH: ${PREMIERE_SDK_BASE_PATH}\"\necho \"[Metal Build] HEADERS_PATH: ${HEADERS_PATH}\"\nif [ ! -d \"${HEADERS_PATH}\" ]; then\n    echo \"[Metal Build] ERROR: Headers directory not found at ${HEADERS_PATH}\"\n    echo \"[Metal Build] Please set PREMIERE_SDK_BASE_PATH in build settings\"\n    exit 1\nfi\nif [ ! -f \"${HEADERS_PATH}/PrGPU/KernelSupport/KernelCore.h\" ]; then\n    echo \"[Metal Build] ERROR: KernelCore.h not found at ${HEADERS_PATH}/PrGPU/KernelSupport/KernelCore.h\"\n    ls -la \"${HEADERS_PATH}/PrGPU/KernelSupport/\" 2>/dev/null || echo \"[Metal Build] PrGPU/KernelSupport directory does not exist\"\n    exit 1\nfi\n\n# Auto-detect Boost if BOOST_BASE_PATH is not set\nif [ -z \"${BOOST_BASE_PATH}\" ] || [ ! -d \"${BOOST_BASE_PATH}\" ]; then\n    # Try common Homebrew locations\n    if [ -d \"/opt/homebrew/include\" ] && [ -f \"/opt/homebrew/include/boost/preprocessor/list/for_each.hpp\" ]; then\n        BOOST_BASE_PATH=\"/opt/homebrew/include\"\n    elif [ -d \"/usr/local/include\" ] && [ -f \"/usr/local/include/boost/preprocessor/list/for_each.hpp\" ]; then\n        BOOST_BASE_PATH=\"/usr/local/include\"\n    elif [ -d \"/opt/homebrew/Cellar/boost\" ]; then\n        # Find latest Boost version in Cellar\n        BOOST_VERSION=\"$(ls -t /opt/homebrew/Cellar/boost 2>/dev/null | head -1)\"\n        if [ -n \"${BOOST_VERSION}\" ] && [ -d \"/opt/homebrew/Cellar/boost/${BOOST_VERSION}/include\" ]; then\n            BOOST_BASE_PATH=\"/opt/homebrew/Cellar/boost/${BOOST_VERSION}/include\"\n        fi\n    fi\nfi\n\nif [ -n \"${BOOST_BASE_PATH}\" ] && [ -d \"${BOOST_BASE_PATH}\" ]; then\n    echo \"[Metal Build] Using Boost at: ${BOOST_BASE_PATH}\"\nelse\n    echo \"[Metal Build] WARNING: Boost not found. Install with: brew install boost\"\n    BOOST_BASE_PATH=\"\"\nfi\necho \"[Metal Build] Running metal compiler...\"\n\"${METAL_CMD}\" -arch air64 -emit-llvm -c -ffast-math -Wno-missing-prototypes -mmacosx-version-min=10.15 -std=osx-metal2.0 -isysroot \"${SDK_PATH}\" \"-I${HEADERS_PATH}\" \"-I${BOOST_BASE_PATH}\" -DGF_DEVICE_TARGET_METAL=1 -DGF_DEVICE_TARGET_METAL_IOS=0 -o \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.air\" \"${INPUT_FILE_PATH}\"\n\n# Try to find metal-ar or use standard ar\nMETAL_AR_CMD=\"$(xcrun --find metal-ar 2>/dev/null || xcrun --find ar 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar)\"\nif [ ! -x \"${METAL_AR_CMD}\" ]; then\n    echo \"error: metal-ar/ar command not found\"\n    exit 1\nfi\n\n# Create archive\n\"${METAL_AR_CMD}\" ru \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metal-ar\" \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.air\"\n\n# Try to find metallib\nMETALLIB_CMD=\"$(xcrun --find metallib 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/metallib)\"\nif [ ! -x \"${METALLIB_CMD}\" ]; then\n    echo \"error: metallib command not found at ${METALLIB_CMD}\"\n    echo \"Please install Metal Toolchain: xcodebuild -downloadComponent MetalToolchain\"\n    exit 1\nfi\n\n# Create metallib\n\"${METALLIB_CMD}\" -o \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metallib\" \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metal-ar\"\n";
 		};
 /* End PBXBuildRule section */
 
@@ -234,7 +234,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "echo \"Copying Metallib Files to Resource Folder\"\nDEST_DIR=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Resources/MetalLib\"\necho \"Destination: ${DEST_DIR}\"\nmkdir -p \"${DEST_DIR}\"\ncp ${DERIVED_FILES_DIR}/64/PTX/Metal/*.metallib \"${DEST_DIR}/\"\nls -la \"${DEST_DIR}\" || echo \"Failed to list destination\"\n";
+			shellScript = "echo \"Copying Metallib Files to Resource Folder\"\nDEST_DIR=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Resources/MetalLib\"\necho \"Destination: ${DEST_DIR}\"\nmkdir -p \"${DEST_DIR}\"\n\n# Remove extended attributes from source metallib files before copying\nfor f in ${DERIVED_FILES_DIR}/64/PTX/Metal/*.metallib; do\n    xattr -cr \"$f\" 2>/dev/null || true\ndone\n\ncp ${DERIVED_FILES_DIR}/64/PTX/Metal/*.metallib \"${DEST_DIR}/\"\nls -la \"${DEST_DIR}\" || echo \"Failed to list destination\"\n\n# Remove ALL extended attributes from the entire bundle recursively\n# This must be done at the very end before code signing\necho \"Removing extended attributes from bundle for code signing...\"\nxattr -cr \"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\n\n# Also remove resource forks if any exist\nfind \"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\" -type f -exec xattr -c {} \\; 2>/dev/null || true\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -266,6 +266,7 @@
 		7E83C10A170F4840008B8043 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				AE_SDK_BASE_PATH = /Users/kiyotonakamura/Desktop/AfterEffectsSDK;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
@@ -286,14 +287,17 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = (
-					../../../../Headers/,
-					../../../../Utils/,
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
 				);
+				INSTALL_PATH = "";
 				ONLY_ACTIVE_ARCH = YES;
+				PREMIERE_SDK_BASE_PATH = "/Users/kiyotonakamura/Desktop/Premiere Pro 26.0 C++ SDK";
 				SDKROOT = macosx;
 				SYMROOT = "$(BUILD_DIR)";
 				WRAPPER_EXTENSION = plugin;
@@ -303,6 +307,7 @@
 		7E83C10B170F4840008B8043 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				AE_SDK_BASE_PATH = /Users/kiyotonakamura/Desktop/AfterEffectsSDK;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
@@ -316,13 +321,16 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = (
-					../../../../Headers/,
-					../../../../Utils/,
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
 				);
+				INSTALL_PATH = "$(INSTALL_PATH)";
+				PREMIERE_SDK_BASE_PATH = "/Users/kiyotonakamura/Desktop/Premiere Pro 26.0 C++ SDK";
 				SDKROOT = macosx;
 				SYMROOT = "$(BUILD_DIR)";
 				WRAPPER_EXTENSION = plugin;
@@ -333,21 +341,23 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
+				DSTROOT = "/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "SDK_ProcAmp-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
-					../../../../Headers/,
-					../../../../Utils/,
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
 					"\"${DERIVED_FILE_DIR}/64/PreprocessedOpenCL\"",
 					"\"${DERIVED_FILE_DIR}/64/PreprocessedMetal\"",
 				);
 				INFOPLIST_FILE = "SDK_ProcAmp-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
-				OBJROOT = "";
+				OBJROOT = "$(PROJECT_DIR)/build";
 				OTHER_LDFLAGS = (
 					"-framework",
 					Cocoa,
@@ -360,14 +370,14 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "MyCompany.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REZ_SEARCH_PATHS = (
-					../../../../Headers,
-					../../../../Resources,
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Resources\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
 				);
 				SDKROOT = macosx;
-				SHARED_PRECOMPS_DIR = "";
-				SYMROOT = "$(BUILD_DIR)";
+				SHARED_PRECOMPS_DIR = "$(PROJECT_DIR)/build/SharedPrecompiledHeaders";
+				SYMROOT = "$(PROJECT_DIR)/build";
 			};
 			name = Debug;
 		};
@@ -375,20 +385,22 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
+				DSTROOT = "/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "SDK_ProcAmp-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
-					../../../../Headers/,
-					../../../../Utils/,
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
 					"\"${DERIVED_FILE_DIR}/64/PreprocessedOpenCL\"",
 				);
 				INFOPLIST_FILE = "SDK_ProcAmp-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
-				OBJROOT = "";
+				OBJROOT = "$(PROJECT_DIR)/build";
 				OTHER_LDFLAGS = (
 					"-framework",
 					Cocoa,
@@ -401,14 +413,14 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "MyCompany.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REZ_SEARCH_PATHS = (
-					../../../../Headers,
-					../../../../Resources,
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Resources\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
 				);
 				SDKROOT = macosx;
-				SHARED_PRECOMPS_DIR = "";
-				SYMROOT = "$(BUILD_DIR)";
+				SHARED_PRECOMPS_DIR = "$(PROJECT_DIR)/build/SharedPrecompiledHeaders";
+				SYMROOT = "$(PROJECT_DIR)/build";
 			};
 			name = Release;
 		};

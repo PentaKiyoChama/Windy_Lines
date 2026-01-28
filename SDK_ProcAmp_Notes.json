@@ -1,24 +1,103 @@
 {
   "AI_READ_ME_FIRST": {
     "project": "SDK_ProcAmp Wind Lines Effect",
-    "version": "v51 - 2026-01-27",
+    "version": "v53 - 2026-01-28",
     "status": "STABLE - All features working on Mac/Metal and Windows/CUDA",
-    "last_critical_fix": "v51: Start Time/Duration fixed via GPU fallback estimation"
+    "last_critical_fix": "v53: OpenCL/Metal brace structure bug - lines not rendering"
   },
   
   "QUICK_REF": {
     "cpu": "SDK_ProcAmp_CPU.cpp",
     "gpu_cuda": "SDK_ProcAmp.cu (674 lines - REFERENCE)",
-    "gpu_opencl": "SDK_ProcAmp.cl (511 lines)",
+    "gpu_opencl": "SDK_ProcAmp.cl (516 lines)",
     "gpu_metal": "SDK_ProcAmp.metal (just includes .cl)",
     "host": "SDK_ProcAmp_GPU.cpp",
-    "log": "/tmp/SDK_ProcAmp_Debug.log"
+    "log": "/Users/kiyotonakamura/Desktop/SDK_ProcAmp_Debug.log"
   },
   
   "CRITICAL_RULES": {
     "multi_platform": "Update ALL THREE: CPU, CUDA, OpenCL when adding features",
     "cuda_is_reference": "CUDA is canonical - port to OpenCL/Metal",
     "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only"
+  },
+
+  "V53_FIX_CRITICAL": {
+    "problem": "Lines not rendering on Mac/Metal (CUDA worked fine)",
+    "symptom": "No lines visible, no errors, kernel appeared to run",
+    "root_cause": "Brace/bracket mismatch in SDK_ProcAmp.cl - line drawing code was INSIDE shadow if-block",
+    "bad_code_structure": "if (inShadowEnable != 0) { shadow code... line color... line drawing... } // WRONG - line drawing inside shadow block!",
+    "correct_structure": "if (inShadowEnable != 0) { shadow code only } // then line drawing OUTSIDE",
+    "why_hard_to_find": [
+      "No compile errors - syntax was valid",
+      "No runtime errors - kernel executed",
+      "CUDA version had correct structure - comparing line-by-line missed structural difference",
+      "Indentation in .cl file was misleading - code looked correct visually"
+    ],
+    "debug_approach": [
+      "1. Add simple test shape (red rectangle) to verify kernel runs",
+      "2. If test shape appears, kernel pipeline is OK",
+      "3. Problem is in rendering logic, not data passing",
+      "4. Compare CUDA vs OpenCL STRUCTURE, not just syntax",
+      "5. Check every if/else/for block has matching braces"
+    ],
+    "lesson": "When porting CUDA to OpenCL, verify BLOCK STRUCTURE matches exactly, not just line content"
+  },
+  
+  "FLAT_ROUND_CAP_FIX": {
+    "problem": "Flat/Round cap styles not switching correctly on Mac/Metal",
+    "parameter": "inLineCap: 0 = Flat (box SDF), 1 = Round (capsule SDF)",
+    "symptom": "Cap style appears stuck or wrong shape regardless of setting",
+    "root_cause": "Same as V53 - if cap logic is inside wrong conditional block, only one path executes",
+    "correct_implementation": {
+      "locations_in_kernel": [
+        "Shadow distance calculation (sdist)",
+        "Line distance calculation (dist)"
+      ],
+      "flat_cap_sdf": {
+        "description": "Box signed distance field",
+        "code": [
+          "float dxBox = fabs(px) - halfLen;",
+          "float dyBox = fabs(py) - halfThick;",
+          "float ox = dxBox > 0.0f ? dxBox : 0.0f;",
+          "float oy = dyBox > 0.0f ? dyBox : 0.0f;",
+          "float outside = sqrt(ox * ox + oy * oy);",
+          "float inside = fmin(fmax(dxBox, dyBox), 0.0f);",
+          "dist = outside + inside;"
+        ]
+      },
+      "round_cap_sdf": {
+        "description": "Capsule signed distance field",
+        "code": [
+          "float ax = fabs(px) - halfLen;",
+          "float qx = ax > 0.0f ? ax : 0.0f;",
+          "dist = sqrt(qx * qx + py * py) - halfThick;"
+        ]
+      }
+    },
+    "verification_steps": [
+      "1. Ensure inLineCap parameter is passed to kernel (check buffer index)",
+      "2. Verify if (inLineCap == 0) block is NOT inside another conditional",
+      "3. Both shadow AND line drawing sections need the cap check",
+      "4. Test with thick lines (thickness > 10) to see cap shape clearly"
+    ],
+    "common_mistakes": [
+      "Cap check inside shadow-only block - line drawing ignores cap setting",
+      "Using wrong variable name (lineCap vs inLineCap)",
+      "Missing cap check in one of the three distance calculations"
+    ],
+    "reference": "CUDA SDK_ProcAmp.cu lines 252, 330, 374 have correct implementation"
+  },
+  
+  "MOTION_BLUR_FIX": {
+    "problem": "Motion blur was showing blur in BOTH directions (front and back)",
+    "correct_behavior": "Motion blur should only trail BEHIND the moving object (opposite to travel direction)",
+    "old_code": "sampleOffset = (s - (samples - 1) * 0.5f) * stepSize  // Centered - WRONG",
+    "new_code": "sampleOffset = -(float)s / (float)(samples - 1) * blurRange  // Behind only - CORRECT",
+    "weight_change": {
+      "old": "Symmetrical weight around center",
+      "new": "s=0 (current pos) = strongest, s=samples-1 (trail end) = 30% strength"
+    },
+    "files_modified": ["SDK_ProcAmp.cu", "SDK_ProcAmp.cl"]
   },
   
   "V51_FIX": {
@@ -41,23 +120,42 @@
       "opencl": "inline, __kernel"
     },
     "math": {
-      "cuda": "cosf, sinf, powf, fmaxf",
-      "opencl": "cos, sin, pow, fmax"
+      "cuda": "cosf, sinf, powf, fmaxf, fabsf, sqrtf, fminf",
+      "opencl": "cos, sin, pow, fmax, fabs, sqrt, fmin"
     },
     "atomic": {
       "cuda": "atomicAdd(&counter[0], 1)",
       "opencl": "atomic_add(&counter[0], 1)",
       "metal": "atomic_fetch_add_explicit((device atomic_uint*)&counter[0], 1, memory_order_relaxed)"
+    },
+    "float4_init": {
+      "cuda": "make_float4(0.0f, 0.0f, 0.0f, 0.0f)",
+      "opencl": "(float4)(0.0f, 0.0f, 0.0f, 0.0f)"
     }
   },
   
   "METAL_GOTCHAS": {
     "buffer_init": "Never create Metal buffer with nullptr - use dummy data",
-    "cpu_not_called": "Mac GPU-only may skip CPU - GPU needs fallback"
+    "cpu_not_called": "Mac GPU-only may skip CPU - GPU needs fallback",
+    "brace_structure": "OpenCL/Metal .cl file brace structure MUST match CUDA exactly"
+  },
+  
+  "DEBUGGING_METAL_ISSUES": {
+    "step1_verify_kernel_runs": "Add visible test shape (colored rectangle) at start of kernel",
+    "step2_check_data_passing": "Visualize tile counts or line data with color coding",
+    "step3_isolate_logic": "Comment out sections to find which block causes issue",
+    "step4_compare_structure": "Use diff tool on CUDA vs OpenCL, focus on { } balance",
+    "common_traps": [
+      "Indentation looks correct but braces are wrong",
+      "Code inside conditional that should be outside",
+      "Missing closing brace causes entire section to be conditional",
+      "OpenCL has no compiler warning for valid-but-wrong logic"
+    ]
   },
   
   "BUILD": {
     "mac": "xcodebuild ARCHS=arm64, install to /Library/Application Support/Adobe/.../MediaCore/",
+    "mac_clean": "xcodebuild clean before testing .cl changes - metallib may be cached",
     "windows": "Visual Studio SDK_ProcAmp.vcxproj"
   },
   
@@ -80,11 +178,15 @@
     "Create Metal buffer with nullptr",
     "Use AEFX_CLR_STRUCT for param updates (loses metadata)",
     "Forget debounce for interactive controls",
-    "Skip CPU implementation when adding GPU features"
+    "Skip CPU implementation when adding GPU features",
+    "Trust indentation in .cl files - always verify brace matching",
+    "Assume 'no errors' means 'code is correct' in GPU kernels"
   ],
   
   "AI_TROUBLESHOOTING": {
-    "mac_bug": "Check SharedClipData, Metal buffer init, atomic syntax",
+    "mac_lines_not_rendering": "CHECK BRACE STRUCTURE FIRST - see V53_FIX_CRITICAL",
+    "flat_round_not_working": "See FLAT_ROUND_CAP_FIX - check if cap logic is inside wrong conditional block, verify inLineCap passed correctly",
+    "mac_bug": "Check SharedClipData, Metal buffer init, atomic syntax, BRACE STRUCTURE",
     "frame_timing": "Verify frameIndex calc, SharedClipData populated, GPU fallback",
     "param_not_updating": "Check SUPERVISE flag, params[] direct use, UpdateParamUI",
     "new_feature": "1.CUDA 2.OpenCL 3.CPU 4.Test both platforms 5.Update this JSON"

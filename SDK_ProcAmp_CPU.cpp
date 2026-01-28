@@ -741,6 +741,13 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_LINE_LENGTH);
 
+	// Line Angle
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_ANGLE(
+		P_ANGLE,
+		0,
+		SDK_PROCAMP_LINE_ANGLE);
+
 	// Line Cap
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_POPUP(
@@ -923,14 +930,7 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_LINE_SPAWN_SCALE_Y);
 
-	// 13. Line Angle (moved from Appearance)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_ANGLE(
-		P_ANGLE,
-		0,
-		SDK_PROCAMP_LINE_ANGLE);
-
-	// 14. Spawn Rotation
+	// 13. Spawn Rotation
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_FLOAT_SLIDERX(
 		P_SPAWN_ROTATION,
@@ -944,7 +944,7 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_LINE_SPAWN_ROTATION);
 
-	// 15. Show Spawn Area
+	// 14. Show Spawn Area
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_CHECKBOX(P_SHOW_SPAWN, "", SHOW_SPAWN_AREA_DFLT, 0, SDK_PROCAMP_LINE_SHOW_SPAWN_AREA);
 
@@ -1056,6 +1056,15 @@ static PF_Err ParamsSetup(
 		0,
 		0,
 		SDK_PROCAMP_MOTION_BLUR_STRENGTH);
+
+	// Motion Blur Type (0=Bidirectional, 1=Trail)
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POPUP(
+		P_BLUR_TYPE,
+		2,  // num_choices
+		MOTION_BLUR_TYPE_DFLT + 1,  // default (1-indexed)
+		P_BLUR_TYPE_MENU,
+		SDK_PROCAMP_MOTION_BLUR_TYPE);
 
 	AEFX_CLR_STRUCT(def);
 	PF_END_TOPIC(SDK_PROCAMP_MOTION_BLUR_TOPIC_END);

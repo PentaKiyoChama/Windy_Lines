@@ -6,12 +6,12 @@
       parallelizeBuildables = "YES"
       buildImplicitDependencies = "YES"
       buildArchitectures = "Automatic">
-      <PreActions>
+      <PostActions>
          <ExecutionAction
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Script"
-               scriptText = "# &#x30ed;&#x30b0;&#x3092;&#x51fa;&#x529b;&#x3059;&#x308b;&#x3088;&#x3046;&#x306b;&#x8a2d;&#x5b9a;&#xff08;&#x30c7;&#x30d0;&#x30c3;&#x30b0;&#x7528;&#xff1a; /tmp/xcode_preaction.log &#x3067;&#x6210;&#x5426;&#x3092;&#x78ba;&#x8a8d;&#x3067;&#x304d;&#x307e;&#x3059;&#xff09;&#10;exec &gt; /tmp/xcode_preaction.log 2&gt;&amp;1&#10;&#10;# 1. &#x51fa;&#x529b;&#x5148;&#x306e;&#x30d1;&#x30b9;&#x3092;&#x6307;&#x5b9a;&#10;DEST_PATH=&quot;/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/${FULL_PRODUCT_NAME}&quot;&#10;&#10;echo &quot;--- Process Started: $(date) ---&quot;&#10;&#10;# 2. &#x65e2;&#x5b58;&#x306e;&#x30d5;&#x30a1;&#x30a4;&#x30eb;&#x3092;&#x524a;&#x9664;&#10;if [ -e &quot;$DEST_PATH&quot; ]; then&#10;    echo &quot;Deleting existing file: $DEST_PATH&quot;&#10;    rm -rf &quot;$DEST_PATH&quot;&#10;fi&#10;&#10;# 3. &#x524a;&#x9664;&#x5f8c;&#x306e;&#x5f85;&#x6a5f;&#xff08;2&#x79d2;&#xff09;&#10;echo &quot;Waiting after deletion...&quot;&#10;sleep 2&#10;&#10;# 4. &#x6210;&#x679c;&#x7269;&#x3092;&#x30b3;&#x30d4;&#x30fc;&#xff08;&#x4f5c;&#x6210;&#xff09;&#10;echo &quot;Copying built product to destination...&quot;&#10;cp -R &quot;${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}&quot; &quot;$DEST_PATH&quot;&#10;&#10;# 5. &#x30b3;&#x30d4;&#x30fc;&#x5f8c;&#x306e;&#x5f85;&#x6a5f;&#xff08;2&#x79d2;&#xff09;&#10;echo &quot;Waiting after copy...&quot;&#10;sleep 2&#10;&#10;echo &quot;--- Process Completed successfully ---&quot;&#10;">
+               scriptText = "# &#x30af;&#x30a9;&#x30fc;&#x30c8;&#x3067;&#x3057;&#x3063;&#x304b;&#x308a;&#x56f2;&#x3080;&#10;DEST_DIR=&quot;/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore&quot;&#10;&#10;if [ ! -d &quot;$DEST_DIR&quot; ]; then&#10;    # &#x6a29;&#x9650;&#x4e0d;&#x8db3;&#x3067;&#x5931;&#x6557;&#x3059;&#x308b;&#x53ef;&#x80fd;&#x6027;&#x304c;&#x3042;&#x308b;&#x305f;&#x3081;&#x3001;&#x30a8;&#x30e9;&#x30fc;&#x30ed;&#x30b0;&#x3092;&#x78ba;&#x8a8d;&#x3067;&#x304d;&#x308b;&#x3088;&#x3046;&#x306b;&#x3059;&#x308b;&#10;    mkdir -p &quot;$DEST_DIR&quot; || { echo &quot;Error: Cannot create directory&quot;; exit 1; }&#10;fi&#10;&#10;# &#x30b3;&#x30d4;&#x30fc;&#x5b9f;&#x884c;&#10;cp -Rf &quot;${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}&quot; &quot;$DEST_DIR/&quot;&#10;&#10;echo &quot;Copy attempted from: ${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}&quot;&#10;echo &quot;To: $DEST_DIR&quot;&#10;">
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"
@@ -23,7 +23,7 @@
                </EnvironmentBuildable>
             </ActionContent>
          </ExecutionAction>
-      </PreActions>
+      </PostActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -58,6 +58,11 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
+      <PathRunnable
+         runnableDebuggingMode = "0"
+         BundleIdentifier = "com.adobe.PremierePro.26"
+         FilePath = "/Applications/Adobe Premiere Pro 2026/Adobe Premiere Pro 2026.app">
+      </PathRunnable>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

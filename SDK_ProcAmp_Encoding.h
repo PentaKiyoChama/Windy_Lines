@@ -164,6 +164,15 @@
 // "ブラー強度"
 #define SJIS_BLUR_STRENGTH "\x83\x75\x83\x89\x81\x5b\x8b\xad\x93\x78"
 
+// "ブラータイプ"
+#define SJIS_BLUR_TYPE "\x83\x75\x83\x89\x81\x5b\x83\x5e\x83\x43\x83\x76"
+
+// "双方向|トレイル"
+#define SJIS_BLUR_TYPE_MENU "\x91\x6f\x95\xfb\x8c\xfc\x7c\x83\x67\x83\x8c\x83\x43\x83\x8b"
+
+// "速度連動"
+#define SJIS_BLUR_VELOCITY "\x91\xac\x93\x78\x98\x41\x93\xae"
+
 // エフェクトプリセット
 // "エフェクトプリセット"
 #define SJIS_EFFECT_PRESET "\x83\x47\x83\x74\x83\x46\x83\x4e\x83\x67\x83\x76\x83\x8a\x83\x5a\x83\x62\x83\x67"
@@ -236,6 +245,9 @@
     #define PARAM_MOTION_BLUR     "モーションブラー"
     #define PARAM_BLUR_SAMPLES    "ブラー品質"
     #define PARAM_BLUR_STRENGTH   "ブラー強度"
+    #define PARAM_BLUR_TYPE       "ブラータイプ"
+    #define PARAM_BLUR_TYPE_MENU  "双方向|トレイル"
+    #define PARAM_BLUR_VELOCITY   "速度連動"
     #define PARAM_EFFECT_PRESET   "エフェクトプリセット"
     #define PARAM_DEFAULT         "デフォルト"
     #define PARAM_COLOR_MODE_MENU "単色|プリセット|カスタム"
@@ -292,6 +304,9 @@
     #define PARAM_MOTION_BLUR     SJIS_MOTION_BLUR
     #define PARAM_BLUR_SAMPLES    SJIS_BLUR_SAMPLES
     #define PARAM_BLUR_STRENGTH   SJIS_BLUR_STRENGTH
+    #define PARAM_BLUR_TYPE       SJIS_BLUR_TYPE
+    #define PARAM_BLUR_TYPE_MENU  SJIS_BLUR_TYPE_MENU
+    #define PARAM_BLUR_VELOCITY   SJIS_BLUR_VELOCITY
     #define PARAM_EFFECT_PRESET   SJIS_EFFECT_PRESET
     #define PARAM_DEFAULT         SJIS_DEFAULT
     #define PARAM_COLOR_MODE_MENU SJIS_COLOR_MODE_MENU
