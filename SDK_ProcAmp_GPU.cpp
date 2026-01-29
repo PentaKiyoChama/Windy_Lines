@@ -183,6 +183,7 @@ typedef struct
 	int mMotionBlurSamples;  // inMotionBlurSamples
 	float mMotionBlurStrength;// inMotionBlurStrength
 	int mMotionBlurType;     // inMotionBlurType (0=Bidirectional, 1=Trail)
+	float mMotionBlurVelocity;// inMotionBlurVelocity (0=fixed, 1=full velocity link)
 	// Additional fields for CPU-side use (not passed to kernel)
 	int mTileCountY;
 	float mSeqTimeHash;
@@ -1307,12 +1308,14 @@ public:
 		const int motionBlurSamples = static_cast<int>(GetParam(SDK_PROCAMP_MOTION_BLUR_SAMPLES, inRenderParams->inClipTime).mFloat64 + 0.5f);
 		const float motionBlurStrength = static_cast<float>(GetParam(SDK_PROCAMP_MOTION_BLUR_STRENGTH, inRenderParams->inClipTime).mFloat64);
 		const int motionBlurType = static_cast<int>(GetParam(SDK_PROCAMP_MOTION_BLUR_TYPE, inRenderParams->inClipTime).mInt64) - 1;  // 1-indexed to 0-indexed
+		const float motionBlurVelocity = static_cast<float>(GetParam(SDK_PROCAMP_MOTION_BLUR_VELOCITY, inRenderParams->inClipTime).mFloat64);
 		params.mMotionBlurEnable = motionBlurEnable ? 1 : 0;
 		params.mMotionBlurSamples = motionBlurSamples < 1 ? 1 : (motionBlurSamples > 32 ? 32 : motionBlurSamples);
 		params.mMotionBlurStrength = motionBlurStrength;
 		params.mMotionBlurType = motionBlurType;
-		DebugLog("[MOTION BLUR] enable=%d samples=%d strength=%.2f type=%d", 
-			params.mMotionBlurEnable, params.mMotionBlurSamples, params.mMotionBlurStrength, params.mMotionBlurType);
+		params.mMotionBlurVelocity = motionBlurVelocity;
+		DebugLog("[MOTION BLUR] enable=%d samples=%d strength=%.2f type=%d velocity=%.2f", 
+			params.mMotionBlurEnable, params.mMotionBlurSamples, params.mMotionBlurStrength, params.mMotionBlurType, params.mMotionBlurVelocity);
 		// Note: Color is now stored per-line in lineData, not in params
 
 		const int tileSize = 32;
@@ -1665,6 +1668,16 @@ public:
 			const float maxLen = baseLen;
 			const float travelScaled = travelRange * depthScale;
 			
+			// Calculate instantaneous velocity (derivative of eased progress)
+			// Use small delta to approximate derivative
+			const float tDelta = 1.0f / lifeFrames;  // One frame's worth of t
+			const float tPrev = t > tDelta ? (t - tDelta) : 0.0f;
+			const float easedPrev = ApplyEasing(tPrev, easingType);
+			const float easedCurr = ApplyEasing(t, easingType);
+			// Normalized velocity: how much the eased value changes per frame
+			// Range: 0 to ~2 (depends on easing, highest at steep parts)
+			const float instantVelocity = (easedCurr - easedPrev) / tDelta;
+			
 			// "Head extends from tail, then tail retracts" animation
 			// Total travel distance includes line length for proper appearance/disappearance
 			const float totalTravelDist = travelScaled + maxLen;  // Total distance for full animation
@@ -1819,13 +1832,13 @@ public:
 			
 			Float4 d0 = { centerX, centerY, lineCos, lineSin };
 			Float4 d1 = { halfLen, halfThick, segCenterX, depth };  // Store depth value for blend mode
-			Float4 d2 = { outColor0, outColor1, outColor2, 0.0f };  // Line color
+			Float4 d2 = { outColor0, outColor1, outColor2, instantVelocity };  // Line color + velocity
 			
 			// Log first line's data
 			if (i == 0) {
 				DebugLog("[LINE0] d0: cx=%.1f cy=%.1f cos=%.3f sin=%.3f", centerX, centerY, lineCos, lineSin);
 				DebugLog("[LINE0] d1: halfLen=%.1f halfThick=%.1f segCX=%.1f depth=%.3f", halfLen, halfThick, segCenterX, depth);
-				DebugLog("[LINE0] d2: R=%.3f G=%.3f B=%.3f", outColor0, outColor1, outColor2);
+				DebugLog("[LINE0] d2: R=%.3f G=%.3f B=%.3f velocity=%.3f", outColor0, outColor1, outColor2, instantVelocity);
 			}
 			
 			lineData.push_back(d0);
@@ -2093,6 +2106,7 @@ public:
 		clSetKernelArg(mKernelOpenCL, 62, sizeof(int), &params.mMotionBlurSamples);
 		clSetKernelArg(mKernelOpenCL, 63, sizeof(float), &params.mMotionBlurStrength);
 		clSetKernelArg(mKernelOpenCL, 64, sizeof(int), &params.mMotionBlurType);
+		clSetKernelArg(mKernelOpenCL, 65, sizeof(float), &params.mMotionBlurVelocity);
 
 			// Launch the kernel
 			size_t threadBlock[2] = { 16, 16 };

@@ -73,7 +73,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [10] */
 		AE_Effect_Match_Name {
-			"SDK ProcAmp v52"
+			"SDK ProcAmp v53"
 		},
 		/* [11] */
 		AE_Reserved_Info {

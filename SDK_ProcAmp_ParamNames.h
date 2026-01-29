@@ -125,7 +125,7 @@
 
 namespace ParamNames
 {
-    constexpr const char* LINE_COUNT        = "68線の数";
+    constexpr const char* LINE_COUNT        = "84線の数";
     constexpr const char* LIFETIME          = "寿命(fps)";
     constexpr const char* TRAVEL            = "移動距離(px)";
     constexpr const char* SEED              = "ランダムシード";
@@ -175,8 +175,8 @@ namespace ParamNames
     constexpr const char* SPAWN_SOURCE_CHOICES = "画面全体|元要素";
     constexpr const char* ALPHA_THRESH      = "元要素のアルファしきい値"; 
     constexpr const char* MOTION_BLUR       = "モーションブラー";
-    constexpr const char* BLUR_SAMPLES      = "ブラー品質(サンプル数)"; 
-    constexpr const char* BLUR_STRENGTH     = "ブラー強度";
+    constexpr const char* BLUR_SAMPLES      = "サンプル数"; 
+    constexpr const char* BLUR_ANGLE        = "シャッター角度";
     constexpr const char* BLUR_TYPE         = "ブラータイプ";
     constexpr const char* BLUR_TYPE_MENU    = "双方向|トレイル";
     constexpr const char* BLUR_VELOCITY     = "速度連動";
@@ -257,7 +257,7 @@ namespace ParamNames
 #define P_ALPHA_THRESH      PARAM(ParamNames::ALPHA_THRESH)
 #define P_MOTION_BLUR       PARAM(ParamNames::MOTION_BLUR)
 #define P_BLUR_SAMPLES      PARAM(ParamNames::BLUR_SAMPLES)
-#define P_BLUR_STRENGTH     PARAM(ParamNames::BLUR_STRENGTH)
+#define P_BLUR_ANGLE        PARAM(ParamNames::BLUR_ANGLE)
 #define P_BLUR_TYPE         PARAM(ParamNames::BLUR_TYPE)
 #define P_BLUR_TYPE_MENU    PARAM(ParamNames::BLUR_TYPE_MENU)
 #define P_BLUR_VELOCITY     PARAM(ParamNames::BLUR_VELOCITY)

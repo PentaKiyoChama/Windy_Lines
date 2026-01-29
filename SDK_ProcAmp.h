@@ -109,20 +109,21 @@ enum
 	SDK_PROCAMP_MOTION_BLUR_SAMPLES,          // 50. Motion blur quality (samples)
 	SDK_PROCAMP_MOTION_BLUR_STRENGTH,         // 51. Motion blur strength
 	SDK_PROCAMP_MOTION_BLUR_TYPE,             // 52. Motion blur type (0=Bidirectional, 1=Trail)
-	SDK_PROCAMP_MOTION_BLUR_TOPIC_END,        // 53. Motion blur topic end
+	SDK_PROCAMP_MOTION_BLUR_VELOCITY,         // 53. Motion blur velocity link (0-1)
+	SDK_PROCAMP_MOTION_BLUR_TOPIC_END,        // 54. Motion blur topic end
 	
 	// ▼ Advanced - Topic group
-	SDK_PROCAMP_ADVANCED_HEADER,              // 54. Advanced topic start
-	SDK_PROCAMP_LINE_AA,                      // 55. Anti-aliasing
-	SDK_PROCAMP_HIDE_ELEMENT,                 // 56. Hide original element (lines only)
-	SDK_PROCAMP_BLEND_MODE,                   // 57. Blend mode with element
-	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 58. Advanced topic end
+	SDK_PROCAMP_ADVANCED_HEADER,              // 55. Advanced topic start
+	SDK_PROCAMP_LINE_AA,                      // 56. Anti-aliasing
+	SDK_PROCAMP_HIDE_ELEMENT,                 // 57. Hide original element (lines only)
+	SDK_PROCAMP_BLEND_MODE,                   // 58. Blend mode with element
+	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 59. Advanced topic end
 	
 	// Hidden params (for backwards compatibility)
-	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 59. (hidden)
-	SDK_PROCAMP_LINE_COLOR_R,                 // 60. (hidden)
-	SDK_PROCAMP_LINE_COLOR_G,                 // 61. (hidden)
-	SDK_PROCAMP_LINE_COLOR_B,                 // 62. (hidden)
+	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 60. (hidden)
+	SDK_PROCAMP_LINE_COLOR_R,                 // 61. (hidden)
+	SDK_PROCAMP_LINE_COLOR_G,                 // 62. (hidden)
+	SDK_PROCAMP_LINE_COLOR_B,                 // 63. (hidden)
 	
 	SDK_PROCAMP_NUM_PARAMS
 };
@@ -527,16 +528,23 @@ static const int kEffectPresetCount = static_cast<int>(sizeof(kEffectPresets) / 
 // Motion Blur
 #define	MOTION_BLUR_ENABLE_DFLT			0		// Off by default
 #define	MOTION_BLUR_SAMPLES_MIN_VALUE	1
-#define	MOTION_BLUR_SAMPLES_MAX_VALUE	32
+#define	MOTION_BLUR_SAMPLES_MAX_VALUE	64
 #define	MOTION_BLUR_SAMPLES_MIN_SLIDER	1
-#define	MOTION_BLUR_SAMPLES_MAX_SLIDER	16
-#define	MOTION_BLUR_SAMPLES_DFLT		8		// 8 samples = good quality
-#define	MOTION_BLUR_STRENGTH_MIN_VALUE	0.0
-#define	MOTION_BLUR_STRENGTH_MAX_VALUE	2.0
-#define	MOTION_BLUR_STRENGTH_MIN_SLIDER	0.0
-#define	MOTION_BLUR_STRENGTH_MAX_SLIDER	2.0
-#define	MOTION_BLUR_STRENGTH_DFLT		1.0		// 1.0 = 180° shutter (standard)
+#define	MOTION_BLUR_SAMPLES_MAX_SLIDER	32
+#define	MOTION_BLUR_SAMPLES_DFLT		8		// 8 samples default
+#define	MOTION_BLUR_ANGLE_MIN_VALUE		0.0
+#define	MOTION_BLUR_ANGLE_MAX_VALUE		360.0
+#define	MOTION_BLUR_ANGLE_MIN_SLIDER	0.0
+#define	MOTION_BLUR_ANGLE_MAX_SLIDER	360.0
+#define	MOTION_BLUR_ANGLE_DFLT			180.0	// 180° = film standard shutter angle
 #define	MOTION_BLUR_TYPE_DFLT			0		// 0=Bidirectional, 1=Trail
+
+// Motion Blur Velocity Link
+#define	MOTION_BLUR_VELOCITY_MIN_VALUE		0.0
+#define	MOTION_BLUR_VELOCITY_MAX_VALUE		1.0
+#define	MOTION_BLUR_VELOCITY_MIN_SLIDER		0.0
+#define	MOTION_BLUR_VELOCITY_MAX_SLIDER		1.0
+#define	MOTION_BLUR_VELOCITY_DFLT			0.0		// 0 = no velocity link, 1 = full velocity link
 
 // Preset colors count (8 colors per preset)
 #define PRESET_COLORS_COUNT     8
