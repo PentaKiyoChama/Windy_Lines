@@ -1,9 +1,9 @@
 {
   "AI_READ_ME_FIRST": {
     "project": "SDK_ProcAmp Wind Lines Effect",
-    "version": "v60 - 2026-02-01",
-    "status": "STABLE - All features working on Mac/Metal and Windows/CUDA",
-    "last_critical_fix": "v55: Appear/Disappear scale+fade - smooth fade-in/out to prevent abrupt pop"
+    "version": "v61 - 2026-02-01",
+    "status": "STABLE - Easing reorganization and length animation improvements complete",
+    "last_critical_fix": "v61: Length animation unified with travel easing, round cap visual fix"
   },
   
   "QUICK_REF": {
@@ -21,9 +21,55 @@
     "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only"
   },
 
+  "V61_EASING_REORGANIZATION_AND_LENGTH_ANIMATION": {
+    "problem": "OutIn easing curves had incorrect behavior, easing menu was disorganized, length animation felt disconnected from travel",
+    "changes": {
+      "easing_menu_reorg": {
+        "old_order": "0-23 (all base types), 24-27 (all OutIn types)",
+        "new_order": "OutIn grouped with base families - 0: Linear, 1-2: SmoothStep, 3-6: Sine(In/Out/InOut/OutIn), 7-10: Quad, 11-14: Cubic, 15-18: Circ, 19-21: Back, 22-24: Elastic, 25-27: Bounce",
+        "files": "SDK_ProcAmp_ParamNames.h (EASING_MENU), SDK_ProcAmp_GPU.cpp (ApplyEasing switch cases)"
+      },
+      "insine_outsine_swap_fix": {
+        "problem": "InSine and OutSine implementations were reversed",
+        "correction": "InSine=1-cos(π/2*t) (slow→fast), OutSine=sin(π/2*t) (fast→slow)"
+      },
+      "length_animation_unified": {
+        "old_method": "Split extend/retract into separate halves (0→0.5, 0.5→1), each with different easing mappings",
+        "new_method": "Unified sin(π*easedT) curve where easedT uses same easing as travel",
+        "formula": "currentLength = maxLen * sin(π * ApplyEasing(t, easingType))",
+        "benefit": "Length animation perfectly synchronized with travel easing - when travel is slow, length changes slow too",
+        "behavior": "All easing types now feel natural - In(slow→fast), Out(fast→slow), InOut(slow→fast→slow), OutIn(fast→slow→fast) all work smoothly"
+      },
+      "round_cap_visual_fix": {
+        "problem": "Round cap adds visual length (radius on each end), and short lines showed just a circle",
+        "solution": "Subtract thickness from line length, clamp thickness when too short",
+        "implementation": [
+          "effectiveLength = currentLength - thickness (subtract both end caps)",
+          "if effectiveLength < 0: effectiveThickness = currentLength, effectiveLength = 0",
+          "Result: visual length matches parameter, no floating circles"
+        ]
+      },
+      "appear_disappear_removed": {
+        "reason": "Time-based appear/disappear had fixed easing that conflicted with user-selected easing, causing speed discontinuities at transitions",
+        "solution": "Removed entirely - length animation (0→max→0) naturally handles appearance/disappearance",
+        "benefit": "Smooth continuous easing throughout entire line lifetime"
+      }
+    },
+    "technical_details": {
+      "easing_application": "easedT = ApplyEasing(t, easingType) used for both travel position AND length curve input",
+      "position_logic": "if easedT <= 0.5: tail fixed, head extends | else: head fixed, tail retracts",
+      "data_structure": "d3 Float4 simplified to { 1.0f, 0.0f, 0.0f, 0.0f } (appearAlpha removed)"
+    },
+    "files_modified": [
+      "SDK_ProcAmp_ParamNames.h (menu reorg)",
+      "SDK_ProcAmp_GPU.cpp (ApplyEasing cases, ApplyEasingDerivative, length animation logic, round cap fix)"
+    ]
+  },
+
   "V55_APPEAR_DISAPPEAR_SCALE_FADE": {
+    "note": "DEPRECATED in v61 - Removed due to easing conflicts. Length animation now handles appearance naturally.",
     "problem": "Lines appear/disappear abruptly (pop in/out)",
-    "solution": "Added smooth scale + alpha fade animation at start and end of line lifetime",
+    "old_solution": "Added smooth scale + alpha fade animation at start and end of line lifetime",
     "implementation": {
       "appear": "First 5% of lifetime: easeOutQuad scale 0→1 AND alpha 0→1",
       "disappear": "Last 5% of lifetime: easeInQuad scale 1→0 AND alpha 1→0",
@@ -217,6 +263,9 @@
   ],
   
   "AI_TROUBLESHOOTING": {
+    "easing_feels_wrong": "Check if length animation matches travel - should use same easedT = ApplyEasing(t, easingType) for both",
+    "round_cap_issues": "Verify effectiveLength = currentLength - thickness, and thickness clamping when length < thickness",
+    "speed_discontinuities": "Removed in v61 - length animation now unified with travel easing throughout entire lifetime",
     "mac_lines_not_rendering": "CHECK BRACE STRUCTURE FIRST - see V53_FIX_CRITICAL",
     "flat_round_not_working": "See FLAT_ROUND_CAP_FIX - check if cap logic is inside wrong conditional block, verify inLineCap passed correctly",
     "mac_bug": "Check SharedClipData, Metal buffer init, atomic syntax, BRACE STRUCTURE",
