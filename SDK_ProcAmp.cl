@@ -700,12 +700,17 @@
 						pixel.y = 0.5f;   // G = 0.5
 						pixel.z = 0.0f;   // B = 0
 						pixel.w = 1.0f;   // A = 1
-					}
-				}
-				
-				WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 			}
 		}
+		
+		// Premultiply alpha for proper Premiere Pro compositing
+		pixel.x *= pixel.w;
+		pixel.y *= pixel.w;
+		pixel.z *= pixel.w;
+		
+		WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
+	}
+}
 
 #endif  // GF_DEVICE_TARGET_OPENCL || GF_DEVICE_TARGET_METAL
 #endif  // SDK_PROC_AMP

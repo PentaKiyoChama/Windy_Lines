@@ -2027,18 +2027,22 @@ static PF_Err Render(
 						outU = 0.0f;   // U for red in YUV
 						outY = 0.3f;   // Y for red in YUV (low luma)
 						a = 1.0f;      // A = 1
-					}
 				}
-
-				((float*)destData)[x * 4 + 0] = outV;
-				((float*)destData)[x * 4 + 1] = outU;
-				((float*)destData)[x * 4 + 2] = outY;
-				((float*)destData)[x * 4 + 3] = a;
 			}
+			
+			// Premultiply alpha for proper Premiere Pro compositing
+			// Note: In YUV space, we premultiply the chroma (U,V) channels but not luma (Y)
+			outV *= a;
+			outU *= a;
+			// outY is typically not premultiplied in YUV workflows
+
+			((float*)destData)[x * 4 + 0] = outV;
+			((float*)destData)[x * 4 + 1] = outU;
+			((float*)destData)[x * 4 + 2] = outY;
+			((float*)destData)[x * 4 + 3] = a;
 		}
 	}
-
-	return PF_Err_NONE;
+}	return PF_Err_NONE;
 }
 
 /*

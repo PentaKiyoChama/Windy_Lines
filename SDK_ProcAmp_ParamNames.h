@@ -125,13 +125,13 @@
 
 namespace ParamNames
 {
-    constexpr const char* LINE_COUNT        = "84線の数";
+    constexpr const char* LINE_COUNT        = "線の数";
     constexpr const char* LIFETIME          = "寿命(fps)";
     constexpr const char* TRAVEL            = "移動距離(px)";
     constexpr const char* SEED              = "ランダムシード";
     constexpr const char* COLOR_MODE        = "カラーモード";
-    constexpr const char* COLOR             = "色";
-    constexpr const char* COLOR_PRESET      = "プリセット";
+    constexpr const char* COLOR             = "色:単色";
+    constexpr const char* COLOR_PRESET      = "色:プリセット";
     constexpr const char* CUSTOM_1          = "カスタム1";
     constexpr const char* CUSTOM_2          = "カスタム2";
     constexpr const char* CUSTOM_3          = "カスタム3";
@@ -191,7 +191,7 @@ namespace ParamNames
         "ムーンライト|きらめく光|ネオン|警告|オーロラ|"
         "溶岩|ゴールド|モノクローム";
     constexpr const char* ORIGIN_MODE_MENU  = "中央|前方|後方"; 
-    constexpr const char* ANIM_PATTERN_MENU = "標準|半反転|分割"; 
+    constexpr const char* ANIM_PATTERN_MENU = "全て同じ|半反転|分割"; 
     constexpr const char* EASING_MENU       = 
         "リニア|スムースステップ|スムーサーステップ|"
         "サインイン|サインアウト|サインインアウト|サインアウトイン|"

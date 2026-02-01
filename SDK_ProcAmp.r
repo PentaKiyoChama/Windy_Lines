@@ -32,11 +32,11 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"SDK ProcAmp v53"
+			"流れる線"
 		},
 		/* [3] */
 		Category {
-			"SDK"
+			"おしゃれテロップ"
 		},
 
 		/* [4] */
@@ -73,7 +73,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [10] */
 		AE_Effect_Match_Name {
-			"SDK ProcAmp v53"
+			"流れる線"
 		},
 		/* [11] */
 		AE_Reserved_Info {

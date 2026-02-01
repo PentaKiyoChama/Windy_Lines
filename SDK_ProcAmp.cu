@@ -282,7 +282,8 @@
 					if (aa > 0.0f)
 					{
 						float tt = fminf(fmaxf((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
-						scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * inShadowOpacity * depthAlpha;
+						float smoothCov = tt * tt * (3.0f - 2.0f * tt);
+						scoverage = smoothCov * smoothCov * stailFade * inShadowOpacity * depthAlpha;  // Square for sharper edges
 					}
 					if (scoverage > 0.0f)
 					{
@@ -380,7 +381,8 @@
 							if (aa > 0.0f)
 							{
 								float tt = fminf(fmaxf((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
-								sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+								float smoothCov = tt * tt * (3.0f - 2.0f * tt);
+								sampleCoverage = smoothCov * smoothCov * tailFade;  // Square for sharper edges
 							}
 							
 							// Uniform averaging (standard motion blur)
@@ -420,7 +422,8 @@
 						if (aa > 0.0f)
 						{
 							float tt = fminf(fmaxf((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
-							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * focusAlpha * depthAlpha;
+							float smoothCov = tt * tt * (3.0f - 2.0f * tt);
+							coverage = smoothCov * smoothCov * tailFade * focusAlpha * depthAlpha;  // Square for sharper edges
 						}
 					}
 				}
@@ -455,7 +458,8 @@
 					if (aa > 0.0f)
 					{
 						float tt = fminf(fmaxf((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
-						coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * focusAlpha * depthAlpha;
+						float smoothCov = tt * tt * (3.0f - 2.0f * tt);
+						coverage = smoothCov * smoothCov * tailFade * focusAlpha * depthAlpha;  // Square for sharper edges
 					}
 				}
 				if (coverage > 0.0f)
@@ -605,6 +609,11 @@
 				pixel.z = 0.0f;   // B = 0
 				pixel.w = 1.0f;   // A = 1
 			}
+			
+			// Premultiply alpha for proper Premiere Pro compositing
+			pixel.x *= pixel.w;
+			pixel.y *= pixel.w;
+			pixel.z *= pixel.w;
 
 			WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 		}

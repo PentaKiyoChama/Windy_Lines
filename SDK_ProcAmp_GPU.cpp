@@ -1358,9 +1358,14 @@ public:
 		params.mLineCos = lineCos;
 		params.mLineSin = lineSin;
 		const float lineLengthScaled = lineLength * dsScale;
-		const float lineThicknessScaled = lineThickness * dsScale;
+		// Ensure minimum thickness of 1.0px even at low preview resolutions
+		const float lineThicknessScaled = (lineThickness * dsScale) < 1.0f ? 1.0f : (lineThickness * dsScale);
 		const float lineTravelScaled = lineTravel * dsScale;
 		const float lineAAScaled = lineAA * dsScale;
+		const float shadowOffsetXScaled = shadowOffsetX * dsScale;
+		const float shadowOffsetYScaled = shadowOffsetY * dsScale;
+		const float originOffsetXScaled = originOffsetX * dsScale;
+		const float originOffsetYScaled = originOffsetY * dsScale;
 	params.mLineLength = lineLengthScaled;
 	params.mLineThickness = lineThicknessScaled;
 	params.mLineLifetime = lineLifetime;
@@ -1408,8 +1413,8 @@ public:
 			params.mShadowColorG = shadowColorR * -0.168736f + shadowColorG * -0.331264f + shadowColorB * 0.5f; // U
 			params.mShadowColorB = shadowColorR * 0.299f + shadowColorG * 0.587f + shadowColorB * 0.114f;       // Y
 		}
-		params.mShadowOffsetX = shadowOffsetX;
-		params.mShadowOffsetY = shadowOffsetY;
+		params.mShadowOffsetX = shadowOffsetXScaled;
+		params.mShadowOffsetY = shadowOffsetYScaled;
 		params.mShadowOpacity = shadowOpacity;
 		params.mLineSpawnScaleX = spawnScaleX;
 		params.mLineSpawnScaleY = spawnScaleY;
@@ -1431,8 +1436,8 @@ public:
 			params.mSpawnAreaColorB = spawnAreaColorR * 0.299f + spawnAreaColorG * 0.587f + spawnAreaColorB * 0.114f;       // Y
 		}
 		// Note: mAlphaBounds* fields are set later after alpha bounds calculation
-		params.mOriginOffsetX = originOffsetX;
-		params.mOriginOffsetY = originOffsetY;
+		params.mOriginOffsetX = originOffsetXScaled;
+		params.mOriginOffsetY = originOffsetYScaled;
 		params.mLineDownsample = lineDownsample;
 		params.mFrameIndex = (float)frameIndex;
 		// Use clipTime for cache hash - fully cache-consistent
@@ -1728,14 +1733,11 @@ public:
 			const float depth = Rand01(base + 6);
 			const float depthScale = DepthScale(depth, lineDepthStrength);
 
-			const float baseLen = baseLength * depthScale;
-			const float baseThick = baseThickness * depthScale;
-			// Skip if thickness is less than 1px (effectively invisible)
-			if (baseThick < 1.0f)
-			{
-				skipThick++;
-				continue;
-			}
+			// Apply depth scaling but ensure minimum 1px for thickness and length
+			const float baseLenScaled = baseLength * depthScale;
+			const float baseThickScaled = baseThickness * depthScale;
+			const float baseLen = baseLenScaled < 1.0f ? 1.0f : baseLenScaled;
+			const float baseThick = baseThickScaled < 1.0f ? 1.0f : baseThickScaled;
 
 			const float rx = Rand01(base + 1);
 			const float ry = Rand01(base + 2);
@@ -1949,8 +1951,8 @@ public:
 			const float spawnOffsetY = (adjustedPosY - 0.5f) * alphaBoundsHeightSafe * spawnScaleY;
 			const float rotatedSpawnX = spawnOffsetX * spawnCos - spawnOffsetY * spawnSin;
 			const float rotatedSpawnY = spawnOffsetX * spawnSin + spawnOffsetY * spawnCos;
-			const float centerX = alphaCenterX + rotatedSpawnX + originOffset * lineCos + originOffsetX;
-			const float centerY = alphaCenterY + rotatedSpawnY + originOffset * lineSin + originOffsetY;
+			const float centerX = alphaCenterX + rotatedSpawnX + originOffset * lineCos + originOffsetXScaled;
+			const float centerY = alphaCenterY + rotatedSpawnY + originOffset * lineSin + originOffsetYScaled;
 
 			// Select color from palette: Simple mode uses 0, Preset/Custom uses random based on seed
 			int colorIndex = 0;
