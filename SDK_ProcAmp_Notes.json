@@ -1,15 +1,15 @@
 {
   "AI_READ_ME_FIRST": {
     "project": "SDK_ProcAmp Wind Lines Effect",
-    "version": "v53 - 2026-01-28",
+    "version": "v60 - 2026-02-01",
     "status": "STABLE - All features working on Mac/Metal and Windows/CUDA",
-    "last_critical_fix": "v53: OpenCL/Metal brace structure bug - lines not rendering"
+    "last_critical_fix": "v55: Appear/Disappear scale+fade - smooth fade-in/out to prevent abrupt pop"
   },
   
   "QUICK_REF": {
     "cpu": "SDK_ProcAmp_CPU.cpp",
-    "gpu_cuda": "SDK_ProcAmp.cu (674 lines - REFERENCE)",
-    "gpu_opencl": "SDK_ProcAmp.cl (516 lines)",
+    "gpu_cuda": "SDK_ProcAmp.cu (729 lines - REFERENCE)",
+    "gpu_opencl": "SDK_ProcAmp.cl (642 lines)",
     "gpu_metal": "SDK_ProcAmp.metal (just includes .cl)",
     "host": "SDK_ProcAmp_GPU.cpp",
     "log": "/Users/kiyotonakamura/Desktop/SDK_ProcAmp_Debug.log"
@@ -19,6 +19,25 @@
     "multi_platform": "Update ALL THREE: CPU, CUDA, OpenCL when adding features",
     "cuda_is_reference": "CUDA is canonical - port to OpenCL/Metal",
     "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only"
+  },
+
+  "V55_APPEAR_DISAPPEAR_SCALE_FADE": {
+    "problem": "Lines appear/disappear abruptly (pop in/out)",
+    "solution": "Added smooth scale + alpha fade animation at start and end of line lifetime",
+    "implementation": {
+      "appear": "First 5% of lifetime: easeOutQuad scale 0→1 AND alpha 0→1",
+      "disappear": "Last 5% of lifetime: easeInQuad scale 1→0 AND alpha 1→0",
+      "applied_to": {
+        "scale": ["halfLen", "halfThick"],
+        "alpha": ["coverage (line)", "scoverage (shadow)"]
+      },
+      "formula": "eased = 1 - (1 - t/0.05)^2 for appear, eased = ((1 - t) / 0.05)^2 for disappear"
+    },
+    "data_structure_change": {
+      "lineData": "Now 4 Float4s per line (was 3): d0=position, d1=size, d2=color+velocity, d3=appearAlpha",
+      "base_index": "lineIndex * 4 (was lineIndex * 3)"
+    },
+    "files_modified": ["SDK_ProcAmp_GPU.cpp", "SDK_ProcAmp_CPU.cpp", "SDK_ProcAmp.cu", "SDK_ProcAmp.cl"]
   },
 
   "V53_FIX_CRITICAL": {
@@ -89,15 +108,29 @@
   },
   
   "MOTION_BLUR_FIX": {
-    "problem": "Motion blur was showing blur in BOTH directions (front and back)",
-    "correct_behavior": "Motion blur should only trail BEHIND the moving object (opposite to travel direction)",
-    "old_code": "sampleOffset = (s - (samples - 1) * 0.5f) * stepSize  // Centered - WRONG",
-    "new_code": "sampleOffset = -(float)s / (float)(samples - 1) * blurRange  // Behind only - CORRECT",
-    "weight_change": {
-      "old": "Symmetrical weight around center",
-      "new": "s=0 (current pos) = strongest, s=samples-1 (trail end) = 30% strength"
+    "problem": "Motion blur implementation unified and corrected",
+    "correct_behavior": "Motion blur now always trails BEHIND the moving line with standard uniform temporal sampling",
+    "changes_v54": [
+      "Removed SDK_PROCAMP_MOTION_BLUR_TYPE parameter from SDK_ProcAmp.h",
+      "Removed MOTION_BLUR_TYPE_DFLT definition",
+      "Removed blur type popup from SDK_ProcAmp_CPU.cpp ParamsSetup",
+      "Fixed motionBlurType to 0 (Trail mode) in SDK_ProcAmp_GPU.cpp",
+      "Removed type branching from SDK_ProcAmp.cl and SDK_ProcAmp.cu",
+      "Removed P_BLUR_TYPE and related strings from SDK_ProcAmp_ParamNames.h"
+    ],
+    "changes_v54_1": [
+      "CUDA implementation now matches OpenCL/Metal exactly",
+      "Both use uniform temporal sampling with simple averaging",
+      "Both use lineVelocity (instantaneous velocity from easing) for physically correct blur",
+      "blurRange = effectiveVelocity * shutterFraction (where effectiveVelocity = pixelsPerFrame * lineVelocity)"
+    ],
+    "algorithm": {
+      "description": "Standard motion blur with uniform temporal sampling",
+      "formula": "coverage = Σ(sampleCoverage[i]) / numSamples",
+      "sample_distribution": "Evenly distributed from -blurRange to 0 (trail behind)",
+      "velocity_linked": "Blur length scales with instantaneous velocity (fast movement = longer blur)"
     },
-    "files_modified": ["SDK_ProcAmp.cu", "SDK_ProcAmp.cl"]
+    "files_modified": ["SDK_ProcAmp.h", "SDK_ProcAmp_CPU.cpp", "SDK_ProcAmp_GPU.cpp", "SDK_ProcAmp.cu", "SDK_ProcAmp.cl", "SDK_ProcAmp_ParamNames.h"]
   },
   
   "V51_FIX": {

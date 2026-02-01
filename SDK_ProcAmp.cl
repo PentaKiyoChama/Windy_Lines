@@ -233,7 +233,6 @@
 		((int)(inMotionBlurEnable))
 		((int)(inMotionBlurSamples))
 		((float)(inMotionBlurStrength))
-		((int)(inMotionBlurType))
 		((float)(inMotionBlurVelocity)),
 			((uint2)(inXY)(KERNEL_XY)))
 		{
@@ -248,10 +247,17 @@
 				}
 				
 				const float originalAlpha = pixel.w;
+				const float originalR = pixel.x;  // Save original color for Alpha XOR mode
+				const float originalG = pixel.y;
+				const float originalB = pixel.z;
 				const float aa = inLineAA > 0.0f ? inLineAA : 1.0f;
 				
 				// Front lines accumulator for blend mode 2
 				float frontR = 0.0f, frontG = 0.0f, frontB = 0.0f, frontA = 0.0f;
+				float frontAppearAlpha = 1.0f;
+				
+				// Track line-only alpha for Alpha XOR mode (blend mode 3)
+				float lineOnlyAlpha = 0.0f;
 				
 				// Safe tile-based access
 				int count = 0;
@@ -270,10 +276,11 @@
 				for (int j = 0; j < count; ++j)
 				{
 					int lineIndex = inLineIndices[start + j];
-					int base = lineIndex * 3;
+					int base = lineIndex * 4;  // 4 float4s per line: d0, d1, d2, d3
 					float4 d0 = inLineData[base];
 					float4 d1 = inLineData[base + 1];
 					float4 d2 = inLineData[base + 2];
+					float4 d3 = inLineData[base + 3];  // Extra data (appearAlpha)
 					
 					float centerX = d0.x;
 					float centerY = d0.y;
@@ -283,6 +290,7 @@
 					float halfThick = d1.y;
 					float segCenterX = d1.z;
 					float lineDepthValue = d1.w;
+					float appearAlpha = d3.x;  // Appear/disappear fade alpha
 					
 					// Depth scaling
 					float depthScale = DepthScale(lineDepthValue, inLineDepthStrength);
@@ -309,128 +317,109 @@
 					float shadowCoverage = 0.0f;
 					
 					// ========================================
-					// Motion Blur Implementation
+					// NEW Motion Blur Implementation (v2)
 					// ========================================
-					// Improvements:
-					// 1. User-specified sample count
-					// 2. Linear Space Accumulation: gamma-correct blending
-					// 3. Temporal Jittering: reduces banding artifacts
+					// Simple approach:
+					// - Line moves in +X direction (local coords)
+					// - Trail = render line at PAST positions (where it came from)
+					// - Past positions have SMALLER X values
+					// - To render past: shift LINE position backward = shift PIXEL position forward
 					// ========================================
 					
 					if (inMotionBlurEnable != 0 && inMotionBlurStrength > 0.0f && inMotionBlurSamples > 1)
 					{
-						// Shutter angle based motion blur calculation
 						float shutterFraction = inMotionBlurStrength / 360.0f;
 						float pixelsPerFrame = inLineTravel / inLineLifetime;
 						float effectiveVelocity = pixelsPerFrame * lineVelocity;
-						float blurRange = effectiveVelocity * shutterFraction;
+						float blurLength = effectiveVelocity * shutterFraction;
 						
 						int samples = inMotionBlurSamples;
 						
-						if (blurRange > 0.5f)
+						if (blurLength > 0.5f)
 						{
 							float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 							
-							// Accumulate coverage using averaging (not compositing)
-							// This gives more natural-looking motion blur
+							// Transform pixel to line's local coordinate system ONCE
+							float pxBase = dx * lineCos + dy * lineSin - segCenterX;
+							float py = -dx * lineSin + dy * lineCos;
+							
+							// Shadow base position
+							float spxBase = sdx * lineCos + sdy * lineSin - segCenterX;
+							float spy = -sdx * lineSin + sdy * lineCos;
+							
 							float accumA = 0.0f;
 							float saccumA = 0.0f;
 							
 							for (int s = 0; s < samples; ++s)
 							{
-								// Calculate sample offset (evenly distributed)
-								float t = (float)s / fmax((float)(samples - 1), 1.0f);
+								// t: -0.5 to +0.5 for centered bidirectional blur
+								// t=-0.5: behind (past), t=0: current, t=+0.5: ahead (future)
+								float t = ((float)s / fmax((float)(samples - 1), 1.0f)) - 0.5f;
 								
-								float sampleOffset;
-								if (inMotionBlurType == 0) {
-									// Type 0: Trail - blur extends BEHIND the line only
-									// Map t from [0,1] to [-blurRange, 0]
-									// t=0 -> furthest back (-blurRange), t=1 -> current position (0)
-									sampleOffset = -blurRange * (1.0f - t);
-								} else {
-									// Type 1: Centered - blur extends both directions
-									// t=0 -> -blurRange/2, t=0.5 -> 0, t=1 -> +blurRange/2
-									sampleOffset = (t - 0.5f) * blurRange;
-								}
+								// Bidirectional blur offset: centered on current position
+								float blurOffset = blurLength * t;
 								
-								// === Line sample ===
-								float dxSample = dx + lineCos * sampleOffset;
-								float dySample = dy + lineSin * sampleOffset;
+								// Line sample
+								float px = pxBase + blurOffset;
 								
-								float pxSample = dxSample * lineCos + dySample * lineSin;
-								float pySample = -dxSample * lineSin + dySample * lineCos;
-								pxSample -= segCenterX;
-								
-								float distSample = 0.0f;
+								// Distance calculation (SDF)
+								float dist = 0.0f;
 								if (inLineCap == 0) {
-									float dxBox = fabs(pxSample) - halfLen;
-									float dyBox = fabs(pySample) - halfThick;
+									float dxBox = fabs(px) - halfLen;
+									float dyBox = fabs(py) - halfThick;
 									float ox = dxBox > 0.0f ? dxBox : 0.0f;
 									float oy = dyBox > 0.0f ? dyBox : 0.0f;
-									float outside = sqrt(ox * ox + oy * oy);
-									float inside = fmin(fmax(dxBox, dyBox), 0.0f);
-									distSample = outside + inside;
+									dist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
 								} else {
-									float ax = fabs(pxSample) - halfLen;
+									float ax = fabs(px) - halfLen;
 									float qx = ax > 0.0f ? ax : 0.0f;
-									distSample = sqrt(qx * qx + pySample * pySample) - halfThick;
+									dist = sqrt(qx * qx + py * py) - halfThick;
 								}
 								
-								float tailT = fmin(fmax((pxSample + halfLen) / denom, 0.0f), 1.0f);
+								float tailT = fmin(fmax((px + halfLen) / denom, 0.0f), 1.0f);
 								float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
 								
-								float sampleCoverage = 0.0f;
+								float sampleCov = 0.0f;
 								if (aa > 0.0f) {
-									float tt = fmin(fmax((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
-									sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
+									float tt = fmin(fmax((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
+									sampleCov = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
 								}
+								accumA += sampleCov;
 								
-								// Simple averaging
-								accumA += sampleCoverage;
-								
-								// === Shadow sample ===
+								// Shadow sample
 								if (inShadowEnable != 0) {
-									float sdxSample = sdx + lineCos * sampleOffset;
-									float sdySample = sdy + lineSin * sampleOffset;
+									float spx = spxBase + blurOffset;
 									
-									float spxSample = sdxSample * lineCos + sdySample * lineSin;
-									float spySample = -sdxSample * lineSin + sdySample * lineCos;
-									spxSample -= segCenterX;
-									
-									float sdistSample = 0.0f;
+									float sdist = 0.0f;
 									if (inLineCap == 0) {
-										float dxBox = fabs(spxSample) - halfLen;
-										float dyBox = fabs(spySample) - halfThick;
+										float dxBox = fabs(spx) - halfLen;
+										float dyBox = fabs(spy) - halfThick;
 										float ox = dxBox > 0.0f ? dxBox : 0.0f;
 										float oy = dyBox > 0.0f ? dyBox : 0.0f;
-										float outside = sqrt(ox * ox + oy * oy);
-										float inside = fmin(fmax(dxBox, dyBox), 0.0f);
-										sdistSample = outside + inside;
+										sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
 									} else {
-										float ax = fabs(spxSample) - halfLen;
+										float ax = fabs(spx) - halfLen;
 										float qx = ax > 0.0f ? ax : 0.0f;
-										sdistSample = sqrt(qx * qx + spySample * spySample) - halfThick;
+										sdist = sqrt(qx * qx + spy * spy) - halfThick;
 									}
 									
-									float stailT = fmin(fmax((spxSample + halfLen) / denom, 0.0f), 1.0f);
+									float stailT = fmin(fmax((spx + halfLen) / denom, 0.0f), 1.0f);
 									float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
 									
-									float ssampleCoverage = 0.0f;
+									float ssampleCov = 0.0f;
 									if (aa > 0.0f) {
-										float tt = fmin(fmax((sdistSample - aa) / (0.0f - aa), 0.0f), 1.0f);
-										ssampleCoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * depthAlpha;
+										float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
+										ssampleCov = tt * tt * (3.0f - 2.0f * tt) * stailFade * depthAlpha;
 									}
-									
-									// Simple averaging
-									saccumA += ssampleCoverage;
+									saccumA += ssampleCov;
 								}
 							}
 							
-							// Average the coverage
+							// Simple average coverage (equal weight for all samples)
 							float lineAlpha = accumA / (float)samples;
 							float shadowAlphaFinal = saccumA / (float)samples;
 							
-							// Apply shadow first using Over compositing
+							// Apply shadow first
 							if (inShadowEnable != 0 && shadowAlphaFinal > 0.0f)
 							{
 								float shadowBlend = shadowAlphaFinal * inShadowOpacity;
@@ -439,8 +428,6 @@
 								} else if (inBlendMode == 2 && lineDepthValue < 0.5f) {
 									shadowBlend = shadowBlend * (1.0f - originalAlpha);
 								}
-								// Over compositing: new_color = src + dst * (1 - src_alpha)
-								// For straight alpha in Premiere: blend colors, combine alphas
 								float invShadow = 1.0f - shadowBlend;
 								float outAlpha = shadowBlend + pixel.w * invShadow;
 								if (outAlpha > 0.0f) {
@@ -448,21 +435,22 @@
 									pixel.y = (inShadowColorG * shadowBlend + pixel.y * pixel.w * invShadow) / outAlpha;
 									pixel.z = (inShadowColorB * shadowBlend + pixel.z * pixel.w * invShadow) / outAlpha;
 								}
-								pixel.w = outAlpha;
+								float prevAlphaShadow = pixel.w;
+								pixel.w = prevAlphaShadow + (outAlpha - prevAlphaShadow) * appearAlpha;
 							}
 							
-							// Apply line color using Over compositing
+							// Apply line color
 							if (lineAlpha > 0.0f)
 							{
+								float prevAlphaLine = pixel.w;
 								float srcAlpha = lineAlpha;
-								if (inBlendMode == 0) { // Back
+								if (inBlendMode == 0) {
 									srcAlpha = lineAlpha * (1.0f - originalAlpha);
 								} else if (inBlendMode == 2 && lineDepthValue < 0.5f) {
 									srcAlpha = lineAlpha * (1.0f - originalAlpha);
 								}
 								
 								if (inBlendMode == 2 && lineDepthValue >= 0.5f) {
-									// Front layer accumulator
 									float invFront = 1.0f - srcAlpha;
 									float outA = srcAlpha + frontA * invFront;
 									if (outA > 0.0f) {
@@ -471,8 +459,10 @@
 										frontB = (lineColorB * srcAlpha + frontB * frontA * invFront) / outA;
 									}
 									frontA = outA;
+									frontAppearAlpha = fmin(frontAppearAlpha, appearAlpha);
 								}
-								else if (inBlendMode == 3) { // Alpha (XOR)
+								else if (inBlendMode == 3) {
+									// Alpha XOR: line-to-line uses normal blend (XOR applied after loop)
 									float invAlpha = 1.0f - srcAlpha;
 									float outAlpha = srcAlpha + pixel.w * invAlpha;
 									if (outAlpha > 0.0f) {
@@ -480,12 +470,11 @@
 										pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
 										pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
 									}
-									// XOR alpha
-									float newAlpha = pixel.w + srcAlpha - 2.0f * pixel.w * srcAlpha;
-									pixel.w = fmax(newAlpha, 0.0f);
+									pixel.w = prevAlphaLine + (outAlpha - prevAlphaLine) * appearAlpha;
+									// Track line-only alpha
+									lineOnlyAlpha = fmax(lineOnlyAlpha, srcAlpha * appearAlpha);
 								}
 								else {
-									// Normal Over compositing for Back, Front, Back&Front(back part)
 									float invAlpha = 1.0f - srcAlpha;
 									float outAlpha = srcAlpha + pixel.w * invAlpha;
 									if (outAlpha > 0.0f) {
@@ -493,11 +482,10 @@
 										pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
 										pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
 									}
-									pixel.w = outAlpha;
+									pixel.w = prevAlphaLine + (outAlpha - prevAlphaLine) * appearAlpha;
 								}
 							}
 						}
-						// else: blur too small, fall through to single sample below
 					}
 					
 					// No motion blur OR blur too small: single-sample calculation
@@ -580,18 +568,23 @@
 						// Apply blend mode
 						if (coverage > 0.0f)
 						{
+							// Save alpha before this line's contribution
+							float prevAlpha = pixel.w;
+							
 							if (inBlendMode == 0) { // Back
 								float backBlend = coverage * (1.0f - originalAlpha);
 								pixel.x = pixel.x + (lineColorR - pixel.x) * backBlend;
 								pixel.y = pixel.y + (lineColorG - pixel.y) * backBlend;
 								pixel.z = pixel.z + (lineColorB - pixel.z) * backBlend;
-								pixel.w = fmax(pixel.w, backBlend);
+								float newAlpha = fmax(prevAlpha, backBlend);
+								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
 							}
 							else if (inBlendMode == 1) { // Front
 								pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
 								pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
 								pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
-								pixel.w = fmax(pixel.w, coverage);
+								float newAlpha = fmax(prevAlpha, coverage);
+								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
 							}
 							else if (inBlendMode == 2) { // Back and Front
 								if (lineDepthValue < 0.5f) {
@@ -599,7 +592,8 @@
 									pixel.x = pixel.x + (lineColorR - pixel.x) * backBlend;
 									pixel.y = pixel.y + (lineColorG - pixel.y) * backBlend;
 									pixel.z = pixel.z + (lineColorB - pixel.z) * backBlend;
-									pixel.w = fmax(pixel.w, backBlend);
+									float newAlpha = fmax(prevAlpha, backBlend);
+									pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
 								} else {
 									float aFront = coverage;
 									float premR = lineColorR * aFront;
@@ -609,26 +603,61 @@
 									frontG = premG + frontG * (1.0f - aFront);
 									frontB = premB + frontB * (1.0f - aFront);
 									frontA = aFront + frontA * (1.0f - aFront);
+									frontAppearAlpha = fmin(frontAppearAlpha, appearAlpha);
 								}
 							}
-							else if (inBlendMode == 3) { // Alpha (XOR)
+							else if (inBlendMode == 3) { // Alpha (XOR with original element only)
+								// Line-to-line blending: normal Front mode (additive)
 								pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
 								pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
 								pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
-								float newAlpha = pixel.w + coverage - 2.0f * pixel.w * coverage;
-								pixel.w = fmax(newAlpha, 0.0f);
+								// Normal alpha blend between lines (like Front mode)
+								float newAlpha = fmax(prevAlpha, coverage);
+								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+								// Track line-only alpha
+								lineOnlyAlpha = fmax(lineOnlyAlpha, coverage * appearAlpha);
 							}
 						}
 					}
 				}  // End line loop
 				
+				// Apply XOR with original element AFTER all lines are drawn (blend mode 3)
+				if (inBlendMode == 3 && originalAlpha > 0.0f)
+				{
+					// Alpha XOR mode: 
+					// - Where lines exist: XOR alpha with original, show original color
+					// - Where only original exists (no lines): show original element as-is
+					
+					if (lineOnlyAlpha > 0.0f)
+					{
+						// XOR alpha calculation: where overlap exists, alpha is reduced
+						float xorAlpha = fmin(fmax(originalAlpha + lineOnlyAlpha - (originalAlpha * lineOnlyAlpha * 2.0f), 0.0f), 1.0f);
+						
+						// For color: where original element exists, show original color
+						pixel.x = pixel.x * (1.0f - originalAlpha) + originalR * originalAlpha;
+						pixel.y = pixel.y * (1.0f - originalAlpha) + originalG * originalAlpha;
+						pixel.z = pixel.z * (1.0f - originalAlpha) + originalB * originalAlpha;
+						pixel.w = xorAlpha;
+					}
+					else
+					{
+						// No lines here, but original element exists - show original element
+						pixel.x = originalR;
+						pixel.y = originalG;
+						pixel.z = originalB;
+						pixel.w = originalAlpha;
+					}
+				}
+				
 				// Apply front lines (blend mode 2)
 				if (inBlendMode == 2 && frontA > 0.0f)
 				{
+					float prevAlpha = pixel.w;
 					pixel.x = frontR + pixel.x * (1.0f - frontA);
 					pixel.y = frontG + pixel.y * (1.0f - frontA);
 					pixel.z = frontB + pixel.z * (1.0f - frontA);
-					pixel.w = frontA + pixel.w * (1.0f - frontA);
+					float newAlpha = frontA + prevAlpha * (1.0f - frontA);
+					pixel.w = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
 				}
 				
 				// Draw spawn area preview

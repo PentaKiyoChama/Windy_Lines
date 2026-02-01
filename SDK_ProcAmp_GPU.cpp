@@ -205,7 +205,7 @@ static const char* GetDebugLogPath()
 #if defined(_WIN32)
 	return "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp_Debug.log";
 #else
-	return "/Users/kiyotonakamura/Desktop/SDK_ProcAmp_Debug.log";
+	return "/Users/kiyotonakamura/Desktop/Windy_Lines/SDK_ProcAmp_Debug.log";
 #endif
 }
 
@@ -311,8 +311,7 @@ extern void ProcAmp2_CUDA(
 	float alphaBoundsHeight,
 	int motionBlurEnable,
 	int motionBlurSamples,
-	float motionBlurStrength,
-	int motionBlurType);
+	float motionBlurStrength);
 extern void ProcAmp2_CUDA_ComputeAlphaBounds(
 	float* ioBuffer,
 	int pitch,
@@ -497,27 +496,185 @@ static float ApplyEasing(float t, int easingType)
 	switch (easingType)
 	{
 		case 0: return t; // Linear
-		case 1: return sinf((float)M_PI * 0.5f * t); // InSine
-		case 2: return 1.0f - cosf((float)M_PI * 0.5f * t); // OutSine
-		case 3: return 0.5f * (1.0f - cosf((float)M_PI * t)); // InOutSine
-		case 4: return t * t; // InQuad
-		case 5: return 1.0f - (1.0f - t) * (1.0f - t); // OutQuad
-		case 6: {
+		// SmoothStep (moved to 1-2)
+		case 1: return t * t * (3.0f - 2.0f * t); // SmoothStep (3rd order Hermite)
+		case 2: return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f); // SmootherStep (5th order, Ken Perlin)
+		// Sine (3-6)
+		case 3: return 1.0f - cosf((float)M_PI * 0.5f * t); // InSine (slow→fast)
+		case 4: return sinf((float)M_PI * 0.5f * t); // OutSine (fast→slow)
+		case 5: return 0.5f * (1.0f - cosf((float)M_PI * t)); // InOutSine
+		case 6: { // OutInSine
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 4);  // OutSine
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 3);  // InSine
+			}
+		}
+		// Quad (7-10)
+		case 7: return t * t; // InQuad
+		case 8: return 1.0f - (1.0f - t) * (1.0f - t); // OutQuad
+		case 9: {
 			const float u = t * 2.0f;
 			if (u < 1.0f) { return 0.5f * u * u; }
 			const float v = u - 1.0f;
 			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v));
 		}
-		case 7: return t * t * t; // InCubic
-		case 8: {
+		case 10: { // OutInQuad
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 8);  // OutQuad
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 7);  // InQuad
+			}
+		}
+		// Cubic (11-14)
+		case 11: return t * t * t; // InCubic
+		case 12: {
 			const float u = 1.0f - t;
 			return 1.0f - u * u * u; // OutCubic
 		}
-		case 9: {
+		case 13: {
 			const float u = t * 2.0f;
 			if (u < 1.0f) { return 0.5f * u * u * u; }
 			const float v = u - 1.0f;
 			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v) * (1.0f - v));
+		}
+		case 14: { // OutInCubic
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 12);  // OutCubic
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 11);  // InCubic
+			}
+		}
+		// Circular (15-18)
+		case 15: return 1.0f - sqrtf(1.0f - t * t); // InCirc
+		case 16: { // OutCirc
+			const float u = t - 1.0f;
+			return sqrtf(1.0f - u * u);
+		}
+		case 17: { // InOutCirc
+			const float u = t * 2.0f;
+			if (u < 1.0f) {
+				return 0.5f * (1.0f - sqrtf(1.0f - u * u));
+			}
+			const float v = u - 2.0f;
+			return 0.5f * (sqrtf(1.0f - v * v) + 1.0f);
+		}
+		case 18: { // OutInCirc
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 16);  // OutCirc
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 15);  // InCirc
+			}
+		}
+		// Back easing (overshoots) (19-21)
+		case 19: { // InBack
+			const float s = 1.70158f;
+			return t * t * ((s + 1.0f) * t - s);
+		}
+		case 20: { // OutBack
+			const float s = 1.70158f;
+			const float u = t - 1.0f;
+			return u * u * ((s + 1.0f) * u + s) + 1.0f;
+		}
+		case 21: { // InOutBack
+			const float s = 1.70158f * 1.525f;
+			const float u = t * 2.0f;
+			if (u < 1.0f) {
+				return 0.5f * u * u * ((s + 1.0f) * u - s);
+			}
+			const float v = u - 2.0f;
+			return 0.5f * (v * v * ((s + 1.0f) * v + s) + 2.0f);
+		}
+		// Elastic easing (22-24)
+		case 22: { // InElastic
+			if (t == 0.0f) return 0.0f;
+			if (t == 1.0f) return 1.0f;
+			const float p = 0.3f;
+			return -powf(2.0f, 10.0f * (t - 1.0f)) * sinf((t - 1.0f - p / 4.0f) * (2.0f * (float)M_PI) / p);
+		}
+		case 23: { // OutElastic
+			if (t == 0.0f) return 0.0f;
+			if (t == 1.0f) return 1.0f;
+			const float p = 0.3f;
+			return powf(2.0f, -10.0f * t) * sinf((t - p / 4.0f) * (2.0f * (float)M_PI) / p) + 1.0f;
+		}
+		case 24: { // InOutElastic
+			if (t == 0.0f) return 0.0f;
+			if (t == 1.0f) return 1.0f;
+			const float p = 0.45f;
+			const float s = p / 4.0f;
+			const float u = t * 2.0f;
+			if (u < 1.0f) {
+				return -0.5f * powf(2.0f, 10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p);
+			}
+			return powf(2.0f, -10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p) * 0.5f + 1.0f;
+		}
+		// Bounce easing (25-27)
+		case 25: { // InBounce
+			const float u = 1.0f - t;
+			float b;
+			if (u < 1.0f / 2.75f) {
+				b = 7.5625f * u * u;
+			} else if (u < 2.0f / 2.75f) {
+				const float v = u - 1.5f / 2.75f;
+				b = 7.5625f * v * v + 0.75f;
+			} else if (u < 2.5f / 2.75f) {
+				const float v = u - 2.25f / 2.75f;
+				b = 7.5625f * v * v + 0.9375f;
+			} else {
+				const float v = u - 2.625f / 2.75f;
+				b = 7.5625f * v * v + 0.984375f;
+			}
+			return 1.0f - b;
+		}
+		case 26: { // OutBounce
+			if (t < 1.0f / 2.75f) {
+				return 7.5625f * t * t;
+			} else if (t < 2.0f / 2.75f) {
+				const float u = t - 1.5f / 2.75f;
+				return 7.5625f * u * u + 0.75f;
+			} else if (t < 2.5f / 2.75f) {
+				const float u = t - 2.25f / 2.75f;
+				return 7.5625f * u * u + 0.9375f;
+			} else {
+				const float u = t - 2.625f / 2.75f;
+				return 7.5625f * u * u + 0.984375f;
+			}
+		}
+		case 27: { // InOutBounce
+			if (t < 0.5f) {
+				const float u = 1.0f - t * 2.0f;
+				float b;
+				if (u < 1.0f / 2.75f) {
+					b = 7.5625f * u * u;
+				} else if (u < 2.0f / 2.75f) {
+					const float v = u - 1.5f / 2.75f;
+					b = 7.5625f * v * v + 0.75f;
+				} else if (u < 2.5f / 2.75f) {
+					const float v = u - 2.25f / 2.75f;
+					b = 7.5625f * v * v + 0.9375f;
+				} else {
+					const float v = u - 2.625f / 2.75f;
+					b = 7.5625f * v * v + 0.984375f;
+				}
+				return (1.0f - b) * 0.5f;
+			} else {
+				const float u = t * 2.0f - 1.0f;
+				float b;
+				if (u < 1.0f / 2.75f) {
+					b = 7.5625f * u * u;
+				} else if (u < 2.0f / 2.75f) {
+					const float v = u - 1.5f / 2.75f;
+					b = 7.5625f * v * v + 0.75f;
+				} else if (u < 2.5f / 2.75f) {
+					const float v = u - 2.25f / 2.75f;
+					b = 7.5625f * v * v + 0.9375f;
+				} else {
+					const float v = u - 2.625f / 2.75f;
+					b = 7.5625f * v * v + 0.984375f;
+				}
+				return b * 0.5f + 0.5f;
+			}
 		}
 		default:
 			return t;
@@ -528,27 +685,28 @@ static float ApplyEasing(float t, int easingType)
 // Returns normalized velocity: 1.0 = linear speed, >1.0 = faster, <1.0 = slower
 static float ApplyEasingDerivative(float t, int easingType)
 {
+	// For complex easing types, use numerical approximation
+	const float epsilon = 0.001f;
 	switch (easingType)
 	{
 		case 0: return 1.0f; // Linear: constant velocity
-		case 1: return (float)M_PI * 0.5f * cosf((float)M_PI * 0.5f * t); // InSine
-		case 2: return (float)M_PI * 0.5f * sinf((float)M_PI * 0.5f * t); // OutSine
-		case 3: return (float)M_PI * 0.5f * sinf((float)M_PI * t); // InOutSine
-		case 4: return 2.0f * t; // InQuad
-		case 5: return 2.0f * (1.0f - t); // OutQuad
-		case 6: { // InOutQuad
-			if (t < 0.5f) { return 4.0f * t; }
-			return 4.0f * (1.0f - t);
-		}
-		case 7: return 3.0f * t * t; // InCubic
-		case 8: { // OutCubic
-			const float u = 1.0f - t;
-			return 3.0f * u * u;
-		}
-		case 9: { // InOutCubic
-			if (t < 0.5f) { return 6.0f * t * t; }
-			const float u = 1.0f - t;
-			return 6.0f * u * u;
+		// For all other types - use numerical differentiation
+		case 1: case 2: // SmoothStep, SmootherStep
+		case 3: case 4: case 5: case 6: // Sine (In, Out, InOut, OutIn)
+		case 7: case 8: case 9: case 10: // Quad (In, Out, InOut, OutIn)
+		case 11: case 12: case 13: case 14: // Cubic (In, Out, InOut, OutIn)
+		case 15: case 16: case 17: case 18: // Circ (In, Out, InOut, OutIn)
+		case 19: case 20: case 21: // Back (In, Out, InOut)
+		case 22: case 23: case 24: // Elastic (In, Out, InOut)
+		case 25: case 26: case 27: // Bounce (In, Out, InOut)
+		{
+			const float t1 = t > epsilon ? t - epsilon : 0.0f;
+			const float t2 = t < 1.0f - epsilon ? t + epsilon : 1.0f;
+			const float dt = t2 - t1;
+			if (dt > 0.0f) {
+				return (ApplyEasing(t2, easingType) - ApplyEasing(t1, easingType)) / dt;
+			}
+			return 1.0f;
 		}
 		default:
 			return 1.0f;
@@ -878,8 +1036,6 @@ public:
 		csSDK_size_t inFrameCount,
 		PPixHand* outFrame)
 	{
-		DebugLog("[RENDER] GPU Render called - v33");
-		
 		auto normalizePopup = [](int value, int maxValue) {
 			if (value >= 1 && value <= maxValue)
 			{
@@ -1020,27 +1176,10 @@ public:
 	csSDK_int64 frameIndex = mediaFrameIndex - clipStartFrame;
 	if (frameIndex < 0) frameIndex = 0;
 	
-		// Log occasionally
-		static int sLogCount = 0;
-		if (sLogCount < 20 || sLogCount % 100 == 0)
-		{
-			DebugLog("[GPU] v51 frame=%lld media=%lld clipStart=%lld",
-				(long long)frameIndex,
-				(long long)mediaFrameIndex,
-				(long long)clipStartFrame);
-		}
-		sLogCount++;
-		
 		// Color Mode and Palette Setup
 		// normalizePopup returns 0-based: 0=Single, 1=Preset, 2=Custom
 		const int colorMode = NormalizePopupParam(GetParam(SDK_PROCAMP_COLOR_MODE, inRenderParams->inClipTime), 3);
 		const int presetIndex = NormalizePopupParam(GetParam(SDK_PROCAMP_COLOR_PRESET, inRenderParams->inClipTime), 33);
-		
-		// Debug: log color mode and preset
-		if (frameIndex < 3)
-		{
-			DebugLog("[COLOR] colorMode=%d preset=%d", colorMode, presetIndex);
-		}
 		
 		// Build color palette (8 colors)
 		float colorPalette[8][3];  // RGB normalized
@@ -1176,15 +1315,12 @@ public:
 		const float lineThickness = static_cast<float>(GetParam(SDK_PROCAMP_LINE_THICKNESS, inRenderParams->inClipTime).mFloat64);
 	const float lineLength = static_cast<float>(GetParam(SDK_PROCAMP_LINE_LENGTH, inRenderParams->inClipTime).mFloat64);
 	const int lineCap = NormalizePopupParam(GetParam(SDK_PROCAMP_LINE_CAP, inRenderParams->inClipTime), 2);
-	DebugLog("[GPU LINECAP %s] Raw value=%d, Normalized lineCap=%d (0=Flat, 1=Round)", 
-	         SDK_PROCAMP_VERSION_SHORT, (int)GetParam(SDK_PROCAMP_LINE_CAP, inRenderParams->inClipTime).mInt32, lineCap);
 		const float lineAngle = static_cast<float>(GetParam(SDK_PROCAMP_LINE_ANGLE, inRenderParams->inClipTime).mFloat32);
 		const float lineAA = static_cast<float>(GetParam(SDK_PROCAMP_LINE_AA, inRenderParams->inClipTime).mFloat64);
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
 		const int spawnSource = NormalizePopupParam(GetParam(SDK_PROCAMP_SPAWN_SOURCE, inRenderParams->inClipTime), 2);
 		float lineAlphaThreshold = static_cast<float>(GetParam(SDK_PROCAMP_LINE_ALPHA_THRESH, inRenderParams->inClipTime).mFloat64);
-		DebugLog("[GPU SPAWN] spawnSource=%d (0=Element, 1=Full) thresh=%.3f", spawnSource, lineAlphaThreshold);
 		if (spawnSource == SPAWN_SOURCE_FULL_FRAME) {
 			lineAlphaThreshold = 1.0f;  // Full frame: ignore alpha, spawn everywhere
 		}
@@ -1201,7 +1337,7 @@ public:
 		const float lineStartTime = static_cast<float>(GetParam(SDK_PROCAMP_LINE_START_TIME, inRenderParams->inClipTime).mFloat64);
 		const float lineDuration = static_cast<float>(GetParam(SDK_PROCAMP_LINE_DURATION, inRenderParams->inClipTime).mFloat64);
 		const float lineSeedF = static_cast<float>(GetParam(SDK_PROCAMP_LINE_SEED, inRenderParams->inClipTime).mFloat64);
-		const int lineEasing = NormalizePopupParam(GetParam(SDK_PROCAMP_LINE_EASING, inRenderParams->inClipTime), 10);
+		const int lineEasing = NormalizePopupParam(GetParam(SDK_PROCAMP_LINE_EASING, inRenderParams->inClipTime), 28);
 		const float lineTravel = static_cast<float>(GetParam(SDK_PROCAMP_LINE_TRAVEL, inRenderParams->inClipTime).mFloat64);
 		const float lineTailFade = static_cast<float>(GetParam(SDK_PROCAMP_LINE_TAIL_FADE, inRenderParams->inClipTime).mFloat64);
 		const float lineDepthStrength = static_cast<float>(GetParam(SDK_PROCAMP_LINE_DEPTH_STRENGTH, inRenderParams->inClipTime).mFloat64) / 10.0f; // Normalize 0-10 to 0-1
@@ -1307,15 +1443,13 @@ public:
 		const bool motionBlurEnable = GetParam(SDK_PROCAMP_MOTION_BLUR_ENABLE, inRenderParams->inClipTime).mBool;
 		const int motionBlurSamples = static_cast<int>(GetParam(SDK_PROCAMP_MOTION_BLUR_SAMPLES, inRenderParams->inClipTime).mFloat64 + 0.5f);
 		const float motionBlurStrength = static_cast<float>(GetParam(SDK_PROCAMP_MOTION_BLUR_STRENGTH, inRenderParams->inClipTime).mFloat64);
-		const int motionBlurType = static_cast<int>(GetParam(SDK_PROCAMP_MOTION_BLUR_TYPE, inRenderParams->inClipTime).mInt64) - 1;  // 1-indexed to 0-indexed
-		const float motionBlurVelocity = static_cast<float>(GetParam(SDK_PROCAMP_MOTION_BLUR_VELOCITY, inRenderParams->inClipTime).mFloat64);
+		const int motionBlurType = 0;  // Always use Trail mode (unified behavior)
+		const float motionBlurVelocity = 0.0f;  // Removed parameter, use default
 		params.mMotionBlurEnable = motionBlurEnable ? 1 : 0;
 		params.mMotionBlurSamples = motionBlurSamples < 1 ? 1 : (motionBlurSamples > 32 ? 32 : motionBlurSamples);
 		params.mMotionBlurStrength = motionBlurStrength;
 		params.mMotionBlurType = motionBlurType;
 		params.mMotionBlurVelocity = motionBlurVelocity;
-		DebugLog("[MOTION BLUR] enable=%d samples=%d strength=%.2f type=%d velocity=%.2f", 
-			params.mMotionBlurEnable, params.mMotionBlurSamples, params.mMotionBlurStrength, params.mMotionBlurType, params.mMotionBlurVelocity);
 		// Note: Color is now stored per-line in lineData, not in params
 
 		const int tileSize = 32;
@@ -1581,7 +1715,7 @@ public:
 		std::vector<int> tileCounts(tileCount, 0);
 		std::vector<int> tileOffsets(tileCount + 1, 0);
 		std::vector<int> lineIndices;
-		lineData.reserve(lineCount * 3);  // 3 Float4s per line: position, size, color
+		lineData.reserve(lineCount * 4);  // 4 Float4s per line: position, size, color, extra(appearAlpha)
 		lineBounds.reserve(lineCount);
 
 		int skipThick = 0, skipStartTime = 0, skipEndTime = 0, skipAge = 0;
@@ -1688,27 +1822,51 @@ public:
 			
 			float headPosX, tailPosX, currentLength;
 			
-			if (t <= 0.5f)
+			// Length animation: use sin(π * easedT) for smooth 0→max→0 curve
+			// This links length to travel easing - when travel is slow, length changes slow too
+			// sin(π * t) gives: 0 at t=0, 1 at t=0.5, 0 at t=1
+			const float easedT = ApplyEasing(t, easingType);  // Same easing as travel
+			const float lengthFactor = sinf((float)M_PI * easedT);
+			currentLength = maxLen * lengthFactor;
+			
+			// Position: head extends from tail, then tail retracts toward head
+			// Use easedT to determine position within the length animation
+			if (easedT <= 0.5f)
 			{
-				// First half: tail at current travel position, head extends from it
-				const float extendT = ApplyEasing(t * 2.0f, easingType);
+				// First half: tail at travel position, head extends forward
 				tailPosX = currentTravelPos;
-				headPosX = tailPosX + maxLen * extendT;
-				currentLength = maxLen * extendT;
+				headPosX = tailPosX + currentLength;
 			}
 			else
 			{
-				// Second half: head at current travel position + maxLen, tail retracts toward it
-				const float retractT = ApplyEasing((t - 0.5f) * 2.0f, easingType);
+				// Second half: head at max position, tail catches up
 				headPosX = currentTravelPos + maxLen;
-				tailPosX = headPosX - maxLen * (1.0f - retractT);
-				currentLength = maxLen * (1.0f - retractT);
+				tailPosX = headPosX - currentLength;
 			}
 			
 			// For shader: center = midpoint between head and tail
 			const float segCenterX = (headPosX + tailPosX) * 0.5f;
-			const float halfLen = currentLength * 0.5f;
-			const float halfThick = baseThick * 0.5f;
+			
+			// Round cap adjustment: subtract the round cap radius from line length
+			// so the visual length matches the intended length
+			// Round cap adds (thickness/2) on each end = thickness total
+			float effectiveLength = currentLength;
+			float effectiveThickness = baseThick;
+			const int lineCap = params.mLineCap;  // 0=Flat, 1=Round
+			if (lineCap == 1)
+			{
+				// Subtract cap radius from each end
+				effectiveLength = currentLength - baseThick;
+				if (effectiveLength < 0.0f)
+				{
+					// Line too short - shrink thickness to match length
+					effectiveThickness = currentLength;
+					effectiveLength = 0.0f;
+				}
+			}
+			
+			const float halfLen = effectiveLength * 0.5f;
+			const float halfThick = effectiveThickness * 0.5f;
 			const float alphaCenterX = alphaBoundsMinX + alphaBoundsWidthSafe * 0.5f;
 			const float alphaCenterY = alphaBoundsMinY + alphaBoundsHeightSafe * 0.5f;
 			
@@ -1821,29 +1979,15 @@ public:
 				outColor2 = r * 0.299f + g * 0.587f + b * 0.114f;       // Y
 			}
 			
-			// Debug: log first few lines' color
-			if (i < 3 && (frameIndex < 3 || frameIndex % 60 == 0))
-			{
-				DebugLog("[LINE%d] colorIdx=%d RGB=(%.2f,%.2f,%.2f) output=(%.2f,%.2f,%.2f)", 
-					i, colorIndex,
-					colorPalette[colorIndex][0], colorPalette[colorIndex][1], colorPalette[colorIndex][2],
-					outColor0, outColor1, outColor2);
-			}
-			
 			Float4 d0 = { centerX, centerY, lineCos, lineSin };
 			Float4 d1 = { halfLen, halfThick, segCenterX, depth };  // Store depth value for blend mode
 			Float4 d2 = { outColor0, outColor1, outColor2, instantVelocity };  // Line color + velocity
-			
-			// Log first line's data
-			if (i == 0) {
-				DebugLog("[LINE0] d0: cx=%.1f cy=%.1f cos=%.3f sin=%.3f", centerX, centerY, lineCos, lineSin);
-				DebugLog("[LINE0] d1: halfLen=%.1f halfThick=%.1f segCX=%.1f depth=%.3f", halfLen, halfThick, segCenterX, depth);
-				DebugLog("[LINE0] d2: R=%.3f G=%.3f B=%.3f velocity=%.3f", outColor0, outColor1, outColor2, instantVelocity);
-			}
+			Float4 d3 = { 1.0f, 0.0f, 0.0f, 0.0f };  // Reserved for future use
 			
 			lineData.push_back(d0);
 			lineData.push_back(d1);
 			lineData.push_back(d2);
+			lineData.push_back(d3);
 
 			const float radius = fabsf(segCenterX) + halfLen + halfThick + aa;
 			const float minXf = centerX + segCenterX * lineCos - radius;
@@ -1909,11 +2053,6 @@ public:
 				}
 			}
 		}
-
-		DebugLog("[TIMING] frame=%.1f startTime=%.1f endTime=%.1f period=%.1f",
-			timeFrames, startTimeFrames, endTimeFrames, period);
-		DebugLog("[METAL] totalLines=%d lineData.size=%zu (lines=%zu) skip: thick=%d startT=%d endT=%d age=%d",
-			totalLines, lineData.size(), lineData.size()/3, skipThick, skipStartTime, skipEndTime, skipAge);
 
 		const size_t lineDataBytes = lineData.size() * sizeof(Float4);
 		const size_t tileOffsetsBytes = tileOffsets.size() * sizeof(int);
@@ -2010,8 +2149,7 @@ public:
 			params.mAlphaBoundsHeight,
 			params.mMotionBlurEnable,
 			params.mMotionBlurSamples,
-			params.mMotionBlurStrength,
-			params.mMotionBlurType);
+			params.mMotionBlurStrength);
 
 			return cudaPeekAtLastError() == cudaSuccess ? suiteError_NoError : suiteError_Fail;
 #else
@@ -2105,8 +2243,7 @@ public:
 		clSetKernelArg(mKernelOpenCL, 61, sizeof(int), &params.mMotionBlurEnable);
 		clSetKernelArg(mKernelOpenCL, 62, sizeof(int), &params.mMotionBlurSamples);
 		clSetKernelArg(mKernelOpenCL, 63, sizeof(float), &params.mMotionBlurStrength);
-		clSetKernelArg(mKernelOpenCL, 64, sizeof(int), &params.mMotionBlurType);
-		clSetKernelArg(mKernelOpenCL, 65, sizeof(float), &params.mMotionBlurVelocity);
+		clSetKernelArg(mKernelOpenCL, 64, sizeof(float), &params.mMotionBlurVelocity);
 
 			// Launch the kernel
 			size_t threadBlock[2] = { 16, 16 };
@@ -2213,24 +2350,8 @@ public:
                 // v43: If no lines to draw, skip kernel and return original image unchanged
                 if (lineData.empty())
                 {
-                    DebugLog("[METAL] v43: No lines to draw, returning original image");
                     return suiteError_NoError;
                 }
-                
-                // Debug: Log Metal parameters
-                DebugLog("[METAL] lineCount=%d seed=%d lifetime=%.1f thickness=%.1f length=%.1f travel=%.1f",
-                    params.mLineCount, params.mLineSeed, params.mLineLifetime, 
-                    params.mLineThickness, params.mLineLength, params.mLineTravel);
-                DebugLog("[METAL] width=%d height=%d pitch=%d hideElement=%d version=v45",
-                    params.mWidth, params.mHeight, params.mPitch, params.mHideElement);
-                
-                // Debug: Check pipeline state
-                if (!sMetalPipelineStateCache[mDeviceIndex]) {
-                    DebugLog("[METAL ERROR] Pipeline state is nil!");
-                    return suiteError_Fail;
-                }
-                DebugLog("[METAL] Pipeline OK, frameData=%p lineDataBytes=%zu lineData.size=%zu", 
-                    frameData, lineDataBytes, lineData.size());
                 
                 //Set the arguments
                 id<MTLDevice> device = (id<MTLDevice>)mDeviceInfo.outDeviceHandle;

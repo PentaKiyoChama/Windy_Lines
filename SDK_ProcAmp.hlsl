@@ -320,18 +320,30 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			{
 				// Motion blur enabled: sample multiple positions
 				const int samples = mMotionBlurSamples;
-				const float blurRange = mLineTravel * mMotionBlurStrength / mLineLifetime;  // Blur range based on travel speed
-				const float stepSize = blurRange / (float)(samples - 1);
-				float totalWeight = 0.0f;
+				// Shutter angle based motion blur calculation
+				const float shutterFraction = mMotionBlurStrength / 360.0f;
+				const float pixelsPerFrame = mLineTravel / mLineLifetime;
+				const float effectiveVelocity = pixelsPerFrame * lineVelocity;
+				const float blurRange = effectiveVelocity * shutterFraction;
+				const float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+				
+				float accumA = 0.0f;
 				
 				for (int s = 0; s < samples; ++s)
 				{
-					// Sample offset: from -blurRange/2 to +blurRange/2
-					const float sampleOffset = (s - (samples - 1) * 0.5f) * stepSize;
+					// Trail mode: blur extends BEHIND the line only
+					// t: 0 -> current position, 1 -> furthest back
+					const float t = (float)s / max((float)(samples - 1), 1.0f);
 					
-					// Transform to line-local space with blur offset applied to segCenterX
+					// t=0 -> current position, t=1 -> furthest back (oldest position)
+					// Line moves in +X direction locally, so past position has smaller segCenterX
+					const float sampleOffset = blurRange * t;
+					
+					// Transform to line-local space
 					float pxSample = dx * lineCos + dy * lineSin;
 					const float pySample = -dx * lineSin + dy * lineCos;
+					// For trail: sample past positions (line was at smaller X values before)
+					// segCenterX + sampleOffset shifts the reference point forward
 					pxSample -= (segCenterX + sampleOffset);
 					
 					// Calculate distance for this sample
@@ -352,21 +364,16 @@ void main(uint3 inXY : SV_DispatchThreadID)
 					}
 					
 					// Calculate coverage for this sample
-					float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 					float tailT = saturate((pxSample + halfLen) / denom);
 					float tailFade = 1.0f + (tailT - 1.0f) * mLineTailFade;
 					float sampleCoverage = smoothstep(aa, 0.0f, distSample) * tailFade;
 					
-					// Weight: center samples have more weight (Gaussian-like falloff)
-					float normalizedPos = abs(s - (samples - 1) * 0.5f) / max((samples - 1) * 0.5f, 1.0f);
-					float weight = 1.0f - normalizedPos * 0.5f;  // Center=1.0, edges=0.5
-					
-					coverage += sampleCoverage * weight;
-					totalWeight += weight;
+					// Simple averaging (standard motion blur)
+					accumA += sampleCoverage;
 				}
 				
-				// Normalize and apply alpha factors
-				coverage = (coverage / max(totalWeight, 1.0f)) * focusAlpha * depthAlpha;
+				// Average the coverage
+				coverage = (accumA / max((float)samples, 1.0f)) * focusAlpha * depthAlpha;
 			}
 			else
 			{

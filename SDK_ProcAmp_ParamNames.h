@@ -177,8 +177,6 @@ namespace ParamNames
     constexpr const char* MOTION_BLUR       = "モーションブラー";
     constexpr const char* BLUR_SAMPLES      = "サンプル数"; 
     constexpr const char* BLUR_ANGLE        = "シャッター角度";
-    constexpr const char* BLUR_TYPE         = "ブラータイプ";
-    constexpr const char* BLUR_TYPE_MENU    = "双方向|トレイル";
     constexpr const char* BLUR_VELOCITY     = "速度連動";
     constexpr const char* EFFECT_PRESET     = "エフェクトプリセット";
     constexpr const char* DEFAULT           = "デフォルト";
@@ -195,9 +193,14 @@ namespace ParamNames
     constexpr const char* ORIGIN_MODE_MENU  = "中央|前方|後方"; 
     constexpr const char* ANIM_PATTERN_MENU = "標準|半反転|分割"; 
     constexpr const char* EASING_MENU       = 
-        "リニア|サインイン|サインアウト|サインインアウト|"
-        "二次イン|二次アウト|二次インアウト|"
-        "三次イン|三次アウト|三次インアウト"; 
+        "リニア|スムースステップ|スムーサーステップ|"
+        "サインイン|サインアウト|サインインアウト|サインアウトイン|"
+        "二次イン|二次アウト|二次インアウト|二次アウトイン|"
+        "三次イン|三次アウト|三次インアウト|三次アウトイン|"
+        "サークルイン|サークルアウト|サークルインアウト|サークルアウトイン|"
+        "バックイン|バックアウト|バックインアウト|"
+        "エラスティックイン|エラスティックアウト|エラスティックインアウト|"
+        "バウンスイン|バウンスアウト|バウンスインアウト"; 
     constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ"; 
 }
 
@@ -258,8 +261,6 @@ namespace ParamNames
 #define P_MOTION_BLUR       PARAM(ParamNames::MOTION_BLUR)
 #define P_BLUR_SAMPLES      PARAM(ParamNames::BLUR_SAMPLES)
 #define P_BLUR_ANGLE        PARAM(ParamNames::BLUR_ANGLE)
-#define P_BLUR_TYPE         PARAM(ParamNames::BLUR_TYPE)
-#define P_BLUR_TYPE_MENU    PARAM(ParamNames::BLUR_TYPE_MENU)
 #define P_BLUR_VELOCITY     PARAM(ParamNames::BLUR_VELOCITY)
 #define P_EFFECT_PRESET     PARAM(ParamNames::EFFECT_PRESET)
 #define P_DEFAULT           PARAM(ParamNames::DEFAULT)

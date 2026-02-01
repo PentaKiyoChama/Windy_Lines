@@ -138,6 +138,7 @@ struct LineDerived
 	float depth;       // Depth value for blend mode
 	int colorIndex;    // Palette color index (0-7)
 	float focusAlpha;  // Alpha multiplier for focus blur (1.0 = in focus)
+	float appearAlpha; // Alpha multiplier for appear/disappear fade (0-1)
 };
 
 struct LineInstanceState
@@ -384,13 +385,10 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_7, showCustomColors);
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_8, showCustomColors);
 
-	// Single Color: visible only when Color Mode = Single (value 1)
-	const bool showSingleColor = (colorMode == 1); // 1 = Single
-	setVisible(SDK_PROCAMP_LINE_COLOR, showSingleColor);
-
-	// Color Preset: visible only when Color Mode = Preset (value 2)
-	const bool showPreset = (colorMode == 2); // 2 = Preset
-	setVisible(SDK_PROCAMP_COLOR_PRESET, showPreset);
+	// Single Color and Color Preset: always visible regardless of Color Mode
+	// (User requested these to never be disabled)
+	setVisible(SDK_PROCAMP_LINE_COLOR, true);
+	setVisible(SDK_PROCAMP_COLOR_PRESET, true);
 
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
 }
@@ -651,7 +649,7 @@ static PF_Err ParamsSetup(
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_POPUP(
 		P_EASING,
-		10,
+		28,
 		LINE_EASING_DFLT,
 		PM_EASING,
 		SDK_PROCAMP_LINE_EASING);
@@ -1057,32 +1055,6 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_MOTION_BLUR_STRENGTH);
 
-	// Motion Blur Type (0=Bidirectional, 1=Trail)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_BLUR_TYPE,
-		2,  // num_choices
-		MOTION_BLUR_TYPE_DFLT + 1,  // default (1-indexed)
-		P_BLUR_TYPE_MENU,
-		SDK_PROCAMP_MOTION_BLUR_TYPE);
-
-	// Motion Blur Velocity Link - DEPRECATED (kept for compatibility, hidden from UI)
-	// Physical motion blur now automatically uses instantaneous velocity
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
-	def.ui_flags = PF_PUI_INVISIBLE;
-	PF_ADD_FLOAT_SLIDERX(
-		"",
-		MOTION_BLUR_VELOCITY_MIN_VALUE,
-		MOTION_BLUR_VELOCITY_MAX_VALUE,
-		MOTION_BLUR_VELOCITY_MIN_SLIDER,
-		MOTION_BLUR_VELOCITY_MAX_SLIDER,
-		MOTION_BLUR_VELOCITY_DFLT,
-		PF_Precision_HUNDREDTHS,
-		0,
-		PF_PUI_INVISIBLE,
-		SDK_PROCAMP_MOTION_BLUR_VELOCITY);
-
 	AEFX_CLR_STRUCT(def);
 	PF_END_TOPIC(SDK_PROCAMP_MOTION_BLUR_TOPIC_END);
 
@@ -1283,7 +1255,7 @@ static PF_Err Render(
 		const float lineLifetime = (float)params[SDK_PROCAMP_LINE_LIFETIME]->u.fs_d.value;
 		const float lineInterval = (float)params[SDK_PROCAMP_LINE_INTERVAL]->u.fs_d.value;
 		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
-		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 10);
+		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
 		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
 		const float lineTravelScaled = lineTravel * dsScale;
 		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
@@ -1532,10 +1504,36 @@ static PF_Err Render(
 		
 		// For rendering: center = midpoint between head and tail
 		const float segCenterX = (headPosX + tailPosX) * 0.5f;
-		const float halfLen = currentLength * 0.5f;
+		
+		// Appear/Disappear scale + fade: smooth fade-in at start, fade-out at end
+		// Uses easeOutCubic for appear (fast start, very slow end - more natural)
+		// Uses easeInCubic for disappear (very slow start, fast end - more natural)
+		const float appearDuration = 0.10f;   // 10% of lifetime for appear
+		const float disappearDuration = 0.10f; // 10% of lifetime for disappear
+		float appearScale = 1.0f;
+		float appearAlpha = 1.0f;
+		if (t < appearDuration)
+		{
+			// Appear: easeOutCubic (1 - (1-t)^3) - starts fast, ends very smoothly
+			const float at = t / appearDuration;
+			const float inv = 1.0f - at;
+			const float eased = 1.0f - inv * inv * inv;
+			appearScale = eased;
+			appearAlpha = eased;  // Fade in with scale
+		}
+		else if (t > (1.0f - disappearDuration))
+		{
+			// Disappear: easeInCubic (t^3) - starts very smoothly, ends fast
+			const float dt = (1.0f - t) / disappearDuration;
+			const float eased = dt * dt * dt;
+			appearScale = eased;
+			appearAlpha = eased;  // Fade out with scale
+		}
+		
+		const float halfLen = currentLength * 0.5f * appearScale;
 
 		// Skip if thickness is less than 1px (effectively invisible)
-		const bool isTiny = (lp.baseThick < 1.0f);
+		const bool isTiny = (lp.baseThick * appearScale < 1.0f);
 		lineState->lineActive[i] = isTiny ? 0 : 1;
 		if (isTiny)
 		{
@@ -1627,8 +1625,9 @@ static PF_Err Render(
 		ld.depth = lp.depthValue;  // Store depth value for consistent blend mode
 
 		// Focus (Depth of Field) disabled
-		ld.halfThick = lp.baseThick * 0.5f;
+		ld.halfThick = lp.baseThick * 0.5f * appearScale;
 		ld.focusAlpha = 1.0f;
+		ld.appearAlpha = appearAlpha;  // Appear/disappear fade alpha
 		
 		// Select color from palette: Single mode uses 0, Preset/Custom uses random based on seed
 		if (colorMode == 0)  // Single mode
@@ -1743,11 +1742,18 @@ static PF_Err Render(
 				float outU = u;
 				float outY = luma;
 				const float originalAlpha = a;  // Save original alpha for blend modes
+				const float originalV = v;  // Save original color for Alpha XOR mode
+				const float originalU = u;
+				const float originalY = luma;
 				// Accumulate front lines separately for blend mode 2
 				float frontV = 0.0f;
 				float frontU = 0.0f;
 				float frontY = 0.0f;
 				float frontA = 0.0f;
+				float frontAppearAlpha = 1.0f;
+				
+				// Track line-only alpha for Alpha XOR mode (blend mode 3)
+				float lineOnlyAlpha = 0.0f;
 
 				const int tileX = x / tileSize;
 				const int tileY = y / tileSize;
@@ -1872,6 +1878,9 @@ static PF_Err Render(
 						// Get color from palette based on line's color index
 						const int ci = ld.colorIndex >= 0 && ld.colorIndex < 8 ? ld.colorIndex : 0;
 						
+						// Save alpha before this line's contribution
+						const float prevAlpha = a;
+						
 						// Apply blend mode
 						if (blendMode == 0)  // Back (behind element)
 						{
@@ -1879,14 +1888,16 @@ static PF_Err Render(
 							outV = outV + (paletteV[ci] - outV) * backBlend;
 							outU = outU + (paletteU[ci] - outU) * backBlend;
 							outY = outY + (paletteY[ci] - outY) * backBlend;
-							a = std::max(a, backBlend);
+							const float newAlpha = std::max(prevAlpha, backBlend);
+							a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
 						}
 						else if (blendMode == 1)  // Front (in front of element)
 						{
 							outV = outV + (paletteV[ci] - outV) * coverage;
 							outU = outU + (paletteU[ci] - outU) * coverage;
 							outY = outY + (paletteY[ci] - outY) * coverage;
-							a = std::max(a, coverage);
+							const float newAlpha = std::max(prevAlpha, coverage);
+							a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
 						}
 						else if (blendMode == 2)  // Back and Front (split by per-line depth)
 						{
@@ -1898,7 +1909,8 @@ static PF_Err Render(
 								outV = outV + (paletteV[ci] - outV) * backBlend;
 								outU = outU + (paletteU[ci] - outU) * backBlend;
 								outY = outY + (paletteY[ci] - outY) * backBlend;
-								a = std::max(a, backBlend);
+								const float newAlpha = std::max(prevAlpha, backBlend);
+								a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
 							}
 							else
 							{
@@ -1911,25 +1923,61 @@ static PF_Err Render(
 								frontU = premU + frontU * (1.0f - aFront);
 								frontY = premY + frontY * (1.0f - aFront);
 								frontA = aFront + frontA * (1.0f - aFront);
+								frontAppearAlpha = std::min(frontAppearAlpha, ld.appearAlpha);
 							}
 						}
-					else if (blendMode == 3)  // Alpha (XOR transparency)
+					else if (blendMode == 3)  // Alpha (XOR with original element only)
 					{
-						// Always draw line color
+						// Line-to-line blending: normal Front mode (additive)
 						outV = outV + (paletteV[ci] - outV) * coverage;
 						outU = outU + (paletteU[ci] - outU) * coverage;
 						outY = outY + (paletteY[ci] - outY) * coverage;
-						// XOR alpha only when overlapping element, otherwise normal blend
-						if (originalAlpha > 0.0f)
-						{
-							a = saturate(originalAlpha + coverage - (originalAlpha * coverage * 2.0f));
-						}
-						else
-						{
-							a = std::max(a, coverage);
-						}
+						// Normal alpha blend between lines (like Front mode)
+						const float newAlpha = std::max(prevAlpha, coverage);
+						a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
+						// Track line-only alpha
+						lineOnlyAlpha = std::max(lineOnlyAlpha, coverage * ld.appearAlpha);
 					}
 					}
+				}
+
+				// Apply XOR with original element AFTER all lines are drawn (blend mode 3)
+				if (blendMode == 3 && originalAlpha > 0.0f)
+				{
+					// Alpha XOR mode: 
+					// - Where lines exist: XOR alpha with original, show original color
+					// - Where only original exists (no lines): show original element as-is
+					
+					if (lineOnlyAlpha > 0.0f)
+					{
+						// XOR alpha calculation: where overlap exists, alpha is reduced
+						const float xorAlpha = saturate(originalAlpha + lineOnlyAlpha - (originalAlpha * lineOnlyAlpha * 2.0f));
+						
+						// For color: where original element exists, show original color
+						outV = outV * (1.0f - originalAlpha) + originalV * originalAlpha;
+						outU = outU * (1.0f - originalAlpha) + originalU * originalAlpha;
+						outY = outY * (1.0f - originalAlpha) + originalY * originalAlpha;
+						a = xorAlpha;
+					}
+					else
+					{
+						// No lines here, but original element exists - show original element
+						outV = originalV;
+						outU = originalU;
+						outY = originalY;
+						a = originalAlpha;
+					}
+				}
+
+				// Apply front lines after back lines (blend mode 2)
+				if (blendMode == 2 && frontA > 0.0f)
+				{
+					const float prevAlpha = a;
+					outV = frontV + outV * (1.0f - frontA);
+					outU = frontU + outU * (1.0f - frontA);
+					outY = frontY + outY * (1.0f - frontA);
+					const float newAlpha = frontA + prevAlpha * (1.0f - frontA);
+					a = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
 				}
 
 				// Draw spawn area preview (filled with inverted colors)
