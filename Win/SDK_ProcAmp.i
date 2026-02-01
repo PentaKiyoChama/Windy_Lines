@@ -10620,9 +10620,26 @@ static __inline__ float saturate(float inX)
 					}
 				}
 				
+				
+				
+				{
+					int dx = (int)inXY.x - 20;
+					int dy = (int)inXY.y - 20;
+					
+					int absDx = dx < 0 ? -dx : dx;
+					int absDy = dy < 0 ? -dy : dy;
+					if (absDx + absDy <= 15)
+					{
+						pixel.x = 1.0f;   
+						pixel.y = 0.5f;   
+						pixel.z = 0.0f;   
+						pixel.w = 1.0f;   
+					}
+				}
+				
 				WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 			}
 		}
 
-#line 694 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
-#line 695 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 711 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 712 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
