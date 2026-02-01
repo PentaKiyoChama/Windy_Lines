@@ -686,6 +686,23 @@
 					}
 				}
 				
+				// DEBUG: Draw ORANGE DIAMOND in top-left corner to indicate OpenCL is being used
+				// Shape: Diamond (OpenCL = cross-platform)
+				{
+					int dx = (int)inXY.x - 20;
+					int dy = (int)inXY.y - 20;
+					// Diamond shape: |dx| + |dy| <= 15
+					int absDx = dx < 0 ? -dx : dx;
+					int absDy = dy < 0 ? -dy : dy;
+					if (absDx + absDy <= 15)
+					{
+						pixel.x = 1.0f;   // R = 1 (Orange)
+						pixel.y = 0.5f;   // G = 0.5
+						pixel.z = 0.0f;   // B = 0
+						pixel.w = 1.0f;   // A = 1
+					}
+				}
+				
 				WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 			}
 		}
