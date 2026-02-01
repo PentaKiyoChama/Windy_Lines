@@ -223,6 +223,9 @@ void main(uint3 inXY : SV_DispatchThreadID)
 		const int start = LoadInt(mTileOffsets, tileIndex);
 		const int count = LoadInt(mTileCounts, tileIndex);
 		
+		// Focus (Depth of Field) disabled
+		float focusAlpha = 1.0f;
+		
 		// Main line pass (with shadow drawn first for each line)
 		for (int j = 0; j < count; ++j)
 		{
@@ -242,6 +245,10 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			const float centerY = d0.y;
 			const float lineCos = d0.z;
 			const float lineSin = d0.w;
+			
+			// Pixel distance from line center
+			const float dx = (float)inXY.x + 0.5f - centerX;
+			const float dy = (float)inXY.y + 0.5f - centerY;
 			
 			// Draw shadow first (before the line)
 			if (mShadowEnable != 0)
@@ -308,11 +315,7 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			const float segCenterX = d1.z;
 			// d2 contains line color (already in output color space)
 			const float3 lineColor = float3(d2.x, d2.y, d2.z);
-			// Focus (Depth of Field) disabled
-			float focusAlpha = 1.0f;
-
-			const float dx = (float)inXY.x + 0.5f - centerX;
-			const float dy = (float)inXY.y + 0.5f - centerY;
+		const float lineVelocity = d2.w;  // Instantaneous velocity from easing (0-2 range typically)
 			
 			// Motion blur: sample multiple positions along the movement direction
 			float coverage = 0.0f;
@@ -507,6 +510,21 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			float hashVal = frac(mSeqTimeHash * 0.0000001f);
 			float cacheBuster = hashVal * 0.0000001f; // Extremely small, visually invisible
 			pixel.w = saturate(pixel.w + cacheBuster);
+		}
+
+		// DEBUG: Draw BLUE TRIANGLE in top-left corner to indicate HLSL/DirectX is being used
+		// Shape: Triangle (HLSL = DirectX/Windows)
+		{
+			const int tx = (int)inXY.x - 5;
+			const int ty = (int)inXY.y - 5;
+			// Triangle: y >= 0, y < 30, x >= 0, x < (30 - y) creates right triangle
+			if (tx >= 0 && ty >= 0 && ty < 30 && tx < (30 - ty))
+			{
+				pixel.x = 0.0f;   // R = 0
+				pixel.y = 0.0f;   // G = 0
+				pixel.z = 1.0f;   // B = 1 (Blue for HLSL)
+				pixel.w = 1.0f;   // A = 1
+			}
 		}
 		
 		if (mIs16f)

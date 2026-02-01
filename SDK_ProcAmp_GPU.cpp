@@ -825,6 +825,9 @@ public:
 			return suiteError_Fail;
 		}
 
+		// NOTE: GPU Override parameter is checked in Render() function
+		// because we don't have access to parameters during Initialize()
+
 		if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_CUDA)
 		{
 #if HAS_CUDA

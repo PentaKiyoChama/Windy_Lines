@@ -169,7 +169,7 @@ namespace ParamNames
     constexpr const char* SHADOW_OPACITY    = "不透明度";       
     constexpr const char* ADVANCED_HEADER   = "詳細";
     constexpr const char* HIDE_ELEMENT      = "要素を隠す";      
-    constexpr const char* BLEND_MODE        = "合成モード";      
+    constexpr const char* BLEND_MODE        = "合成モード";
     constexpr const char* DEPTH_STRENGTH    = "奥行き強度";     
     constexpr const char* SPAWN_SOURCE      = "範囲ソース";
     constexpr const char* SPAWN_SOURCE_CHOICES = "画面全体|元要素";
@@ -201,7 +201,7 @@ namespace ParamNames
         "バックイン|バックアウト|バックインアウト|"
         "エラスティックイン|エラスティックアウト|エラスティックインアウト|"
         "バウンスイン|バウンスアウト|バウンスインアウト"; 
-    constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ"; 
+    constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ";
 }
 
 // ========================================

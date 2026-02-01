@@ -19,20 +19,7 @@
 		return x;
 	}
 
-	__device__ __forceinline__ float Rand01				{
-					// Capsule distance (rounded caps)
-					float ax = fabsf(px) - halfLen;
-					float qx = ax > 0.0f ? ax : 0.0f;
-					dist = sqrtf(qx * qx + py * py) - halfThick;
-				}					float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-					float tailT = fminf(fmaxf((px + halfLen) / denom, 0.0f), 1.0f);
-					float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
-					if (aa > 0.0f)
-					{
-						float tt = fminf(fmaxf((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
-						coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * focusAlpha * depthAlpha;
-					}
-				}x)
+	__device__ __forceinline__ float Rand01(unsigned int x)
 	{
 		return (float)(HashUInt(x) & 0x00FFFFFF) / 16777215.0f;
 	}
@@ -607,6 +594,16 @@
 					pixel.z = blendedZ;
 					pixel.w = fmaxf(pixel.w, blendAlpha);
 				}
+			}
+
+			// DEBUG: Draw GREEN SQUARE in top-left corner to indicate CUDA is being used
+			// Shape: Square (CUDA = NVIDIA)
+			if (inXY.x >= 5 && inXY.x < 35 && inXY.y >= 5 && inXY.y < 35)
+			{
+				pixel.x = 0.0f;   // R = 0
+				pixel.y = 1.0f;   // G = 1 (Green for CUDA)
+				pixel.z = 0.0f;   // B = 0
+				pixel.w = 1.0f;   // A = 1
 			}
 
 			WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);

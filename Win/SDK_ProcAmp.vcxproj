@@ -36,10 +36,19 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC70.props" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="UserMacros">
+    <!-- Set default paths if environment variables are not defined -->
+    <!-- Relative path from vcxproj (Win folder) to SDK root: Win -> Windy_Lines -> GPUVideoFilter -> Projects -> Examples -> SDK -->
+    <AE_SDK_BASE_PATH Condition="'$(AE_SDK_BASE_PATH)' == ''">..\..\..\..\..\..\..\..</AE_SDK_BASE_PATH>
+    <CUDA_SDK_BASE_PATH Condition="'$(CUDA_SDK_BASE_PATH)' == ''">C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0</CUDA_SDK_BASE_PATH>
+    <PREMSDKBUILDPATH Condition="'$(PREMSDKBUILDPATH)' == ''">$(ProjectDir)Build</PREMSDKBUILDPATH>
+    <PREMIERE_PLUGINS_PATH Condition="'$(PREMIERE_PLUGINS_PATH)' == ''">$(ProjectDir)Build\Debug</PREMIERE_PLUGINS_PATH>
+    <BOOST_BASE_PATH Condition="'$(BOOST_BASE_PATH)' == ''">C:\boost</BOOST_BASE_PATH>
+    <DXC_BASE_PATH Condition="'$(DXC_BASE_PATH)' == ''">C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\DirectXShaderCompiler</DXC_BASE_PATH>
+  </PropertyGroup>
   <PropertyGroup>
     <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(PREMIERE_PLUGINS_PATH)</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(PREMIERE_PLUGINS_PATH)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\</IntDir>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IgnoreImportLibrary>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -109,9 +118,10 @@ if not defined BOOST_BASE_PATH echo "BOOST_BASE_PATH is not defined! Please make
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\..\Headers;..\..\..\..\Headers\SP;..\..\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Resources;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\..\Headers;..\..\..\..\Headers\SP;..\..\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PreprocessorDefinitions>MSWindows;_USE_MATH_DEFINES;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/source-charset:utf-8 /execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>

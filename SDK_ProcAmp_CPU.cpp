@@ -2013,6 +2013,23 @@ static PF_Err Render(
 					}
 				}
 
+				// DEBUG: Draw RED CIRCLE in top-left corner to indicate CPU is being used
+				// Shape: Circle (CPU = fallback)
+				{
+					const float cx = 20.0f;  // Circle center X
+					const float cy = 20.0f;  // Circle center Y
+					const float radius = 15.0f;
+					const float dx = (x + 0.5f) - cx;
+					const float dy = (y + 0.5f) - cy;
+					if (dx * dx + dy * dy <= radius * radius)
+					{
+						outV = 0.5f;   // V for red in YUV
+						outU = 0.0f;   // U for red in YUV
+						outY = 0.3f;   // Y for red in YUV (low luma)
+						a = 1.0f;      // A = 1
+					}
+				}
+
 				((float*)destData)[x * 4 + 0] = outV;
 				((float*)destData)[x * 4 + 1] = outU;
 				((float*)destData)[x * 4 + 2] = outY;
