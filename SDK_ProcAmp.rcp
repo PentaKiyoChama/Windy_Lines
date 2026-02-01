@@ -15,8 +15,8 @@ BEGIN
 	"MIB8",
 	"eman",/* 'name' PINameProperty */
 	RSCS32(0),
-	RSCS32(12),
-	"\x0BSDK ProcAmp", 
+	RSCS32(16),
+	"\x0FSDK ProcAmp v53", 
 
 	"MIB8",
 	"gtac", /* 'catg' PICategoryProperty */
@@ -69,8 +69,8 @@ BEGIN
 	"MIB8",
 	"ANMe",/* 'name' PINameProperty */
 	RSCS32(0),
-	RSCS32(12),
-	"\x0BSDK ProcAmp", 
+	RSCS32(16),
+	"\x0FSDK ProcAmp v53", 
 
 	"MIB8",
 	0x6165464CL, /* 'aeFL' */

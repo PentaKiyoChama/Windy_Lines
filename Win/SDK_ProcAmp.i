@@ -1,4 +1,4 @@
-#line 1 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 1 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 
 
 
@@ -9607,7 +9607,7 @@ static __inline__ float saturate(float inX)
 #line 622 "..\\..\\..\\..\\Headers\\PrGPU/KernelSupport/KernelCore.h"
 
 #line 624 "..\\..\\..\\..\\Headers\\PrGPU/KernelSupport/KernelCore.h"
-#line 5 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 5 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 #line 1 "..\\..\\..\\..\\Headers\\PrGPU/KernelSupport/KernelMemory.h"
 
 
@@ -10009,101 +10009,91 @@ static __inline__ float saturate(float inX)
 #line 275 "..\\..\\..\\..\\Headers\\PrGPU/KernelSupport/KernelMemory.h"
 
 #line 277 "..\\..\\..\\..\\Headers\\PrGPU/KernelSupport/KernelMemory.h"
-#line 6 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#line 100 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 6 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+
+
+
+
+
+
+#line 13 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+
+
+		uint HashUInt(uint x)
+		{
+			x ^= x >> 16;
+			x *= 0x7feb352d;
+			x ^= x >> 15;
+			x *= 0x846ca68b;
+			x ^= x >> 16;
+			return x;
+		}
+
+		float Rand01(uint x)
+		{
+			return (float)(HashUInt(x) & 0x00FFFFFF) / 16777215.0f;
+		}
+
+		float EaseInOutSine(float t)
+		{
+			return 0.5f * (1.0f - cos(3.14159265f * t));
+		}
+
+		float DepthScale(float depth, float strength)
+		{
+			
+			float v = 1.0f - (1.0f - depth) * strength;
+			return v < 0.05f ? 0.05f : v;
+		}
+
+		float ApplyEasing(float t, int easing)
+		{
+			if (t < 0.0f) t = 0.0f;
+			if (t > 1.0f) t = 1.0f;
+			if (easing == 0)
+			{
+				return t;
+			}
+			else if (easing == 1)
+			{
+				return 1.0f - cos(3.14159265f * t * 0.5f);
+			}
+			else if (easing == 2)
+			{
+				return sin(3.14159265f * t * 0.5f);
+			}
+			else if (easing == 3)
+			{
+				return EaseInOutSine(t);
+			}
+			else if (easing == 4)
+			{
+				return t * t;
+			}
+			else if (easing == 5)
+			{
+				return 1.0f - (1.0f - t) * (1.0f - t);
+			}
+			else if (easing == 6)
+			{
+				return t < 0.5f ? 2.0f * t * t : 1.0f - pow(-2.0f * t + 2.0f, 2.0f) * 0.5f;
+			}
+			else if (easing == 7)
+			{
+				return t * t * t;
+			}
+			else if (easing == 8)
+			{
+				float u = 1.0f - t;
+				return 1.0f - u * u * u;
+			}
+			else if (easing == 9)
+			{
+				return t < 0.5f ? 4.0f * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;
+			}
+			return t;
+		}
+#line 90 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 
 
 		inline void AtomicMinInt(volatile __global int* addr, int value)
@@ -10115,7 +10105,7 @@ static __inline__ float saturate(float inX)
 		{
 			atomic_max(addr, value);
 		}
-#line 112 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 102 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 
 
 
@@ -10146,11 +10136,11 @@ static __inline__ float saturate(float inX)
 
 
 
-#line 143 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 133 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 
 
 		static __inline__ void AlphaBoundsKernel_Delegate( __global float4* ioImage, __global int* outBounds  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, int inStride, float inThreshold  , uint2 inXY    ); __kernel void AlphaBoundsKernel( __global float4* ioImage, __global int* outBounds  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, int inStride, float inThreshold  ) {   AlphaBoundsKernel_Delegate( ioImage, outBounds  , inPitch, in16f, inWidth, inHeight, inStride, inThreshold  , KernelXYUnsigned()    ); } static __inline__ void AlphaBoundsKernel_Delegate( __global float4* ioImage, __global int* outBounds  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, int inStride, float inThreshold  , uint2 inXY    )
-#line 155 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 145 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 		{
 			if (inXY.x < inWidth && inXY.y < inHeight)
 			{
@@ -10172,24 +10162,36 @@ static __inline__ float saturate(float inX)
 
 
 
-#line 177 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 167 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 				}
 			}
 		}
 
-		static __inline__ void ProcAmp2Kernel_Delegate( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength  , uint2 inXY    ); __kernel void ProcAmp2Kernel( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength  ) {   ProcAmp2Kernel_Delegate( ioImage, inLineData, inTileOffsets, inTileCounts, inLineIndices  , inPitch, in16f, inWidth, inHeight, inLineCenterX, inLineCenterY, inOriginOffsetX, inOriginOffsetY, inLineCos, inLineSin, inLineLength, inLineThickness, inLineLifetime, inLineTravel, inLineTailFade, inLineDepthStrength, inLineR, inLineG, inLineB, inLineAA, inLineCap, inLineCount, inLineSeed, inLineEasing, inLineInterval, inLineAllowMidPlay, inHideElement, inBlendMode, inFrameIndex, inLineDownsample, inTileCountX, inTileSize, inFocusEnable, inFocusDepth, inFocusRange, inFocusBlurStrength, inShadowEnable, inShadowColorR, inShadowColorG, inShadowColorB, inShadowOffsetX, inShadowOffsetY, inShadowOpacity, inSpawnScaleX, inSpawnScaleY, inSpawnRotationCos, inSpawnRotationSin, inShowSpawnArea, inSpawnAreaColorR, inSpawnAreaColorG, inSpawnAreaColorB, inIsBGRA, inAlphaBoundsMinX, inAlphaBoundsMinY, inAlphaBoundsWidth, inAlphaBoundsHeight, inMotionBlurEnable, inMotionBlurSamples, inMotionBlurStrength  , KernelXYUnsigned()    ); } static __inline__ void ProcAmp2Kernel_Delegate( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength  , uint2 inXY    )
-#line 247 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+		static __inline__ void ProcAmp2Kernel_Delegate( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength, float inMotionBlurVelocity  , uint2 inXY    ); __kernel void ProcAmp2Kernel( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength, float inMotionBlurVelocity  ) {   ProcAmp2Kernel_Delegate( ioImage, inLineData, inTileOffsets, inTileCounts, inLineIndices  , inPitch, in16f, inWidth, inHeight, inLineCenterX, inLineCenterY, inOriginOffsetX, inOriginOffsetY, inLineCos, inLineSin, inLineLength, inLineThickness, inLineLifetime, inLineTravel, inLineTailFade, inLineDepthStrength, inLineR, inLineG, inLineB, inLineAA, inLineCap, inLineCount, inLineSeed, inLineEasing, inLineInterval, inLineAllowMidPlay, inHideElement, inBlendMode, inFrameIndex, inLineDownsample, inTileCountX, inTileSize, inFocusEnable, inFocusDepth, inFocusRange, inFocusBlurStrength, inShadowEnable, inShadowColorR, inShadowColorG, inShadowColorB, inShadowOffsetX, inShadowOffsetY, inShadowOpacity, inSpawnScaleX, inSpawnScaleY, inSpawnRotationCos, inSpawnRotationSin, inShowSpawnArea, inSpawnAreaColorR, inSpawnAreaColorG, inSpawnAreaColorB, inIsBGRA, inAlphaBoundsMinX, inAlphaBoundsMinY, inAlphaBoundsWidth, inAlphaBoundsHeight, inMotionBlurEnable, inMotionBlurSamples, inMotionBlurStrength, inMotionBlurVelocity  , KernelXYUnsigned()    ); } static __inline__ void ProcAmp2Kernel_Delegate( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength, float inMotionBlurVelocity  , uint2 inXY    )
+#line 238 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 		{
 			if (inXY.x < inWidth && inXY.y < inHeight)
 			{
 				float4 pixel = ReadFloat4(ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 				
 				
+				if (inHideElement != 0)
+				{
+					pixel = (float4)(0.0f, 0.0f, 0.0f, 0.0f);
+				}
+				
 				const float originalAlpha = pixel.w;
+				const float originalR = pixel.x;  
+				const float originalG = pixel.y;
+				const float originalB = pixel.z;
 				const float aa = inLineAA > 0.0f ? inLineAA : 1.0f;
 				
 				
 				float frontR = 0.0f, frontG = 0.0f, frontB = 0.0f, frontA = 0.0f;
+				float frontAppearAlpha = 1.0f;
+				
+				
+				float lineOnlyAlpha = 0.0f;
 				
 				
 				int count = 0;
@@ -10208,10 +10210,11 @@ static __inline__ float saturate(float inX)
 				for (int j = 0; j < count; ++j)
 				{
 					int lineIndex = inLineIndices[start + j];
-					int base = lineIndex * 3;
+					int base = lineIndex * 4;  
 					float4 d0 = inLineData[base];
 					float4 d1 = inLineData[base + 1];
 					float4 d2 = inLineData[base + 2];
+					float4 d3 = inLineData[base + 3];  
 					
 					float centerX = d0.x;
 					float centerY = d0.y;
@@ -10221,186 +10224,374 @@ static __inline__ float saturate(float inX)
 					float halfThick = d1.y;
 					float segCenterX = d1.z;
 					float lineDepthValue = d1.w;
+					float appearAlpha = d3.x;  
 					
 					
 					float depthScale = DepthScale(lineDepthValue, inLineDepthStrength);
 					float fadeStart = 0.6f;
 					float fadeEnd = 0.2f;
-					float t = fmin(fmax((depthScale - fadeEnd) / (fadeStart - fadeEnd), 0.0f), 1.0f);
-					float depthAlpha = 0.05f + (1.0f - 0.05f) * t;
+					float tDepth = fmin(fmax((depthScale - fadeEnd) / (fadeStart - fadeEnd), 0.0f), 1.0f);
+					float depthAlpha = 0.05f + (1.0f - 0.05f) * tDepth;
 					
-					
-					if (inShadowEnable != 0)
-					{
-					float scenterX = centerX + inShadowOffsetX;
-					float scenterY = centerY + inShadowOffsetY;
-					float sdx = (float)inXY.x + 0.5f - scenterX;
-					float sdy = (float)inXY.y + 0.5f - scenterY;
-					float spx = sdx * lineCos + sdy * lineSin;
-					float spy = -sdx * lineSin + sdy * lineCos;
-					spx -= segCenterX;
-					
-					float sdist = 0.0f;
-					if (inLineCap == 1) {
-						float ax = fabs(spx) - halfLen;
-						float qx = ax > 0.0f ? ax : 0.0f;
-						sdist = sqrt(qx * qx + spy * spy) - halfThick;
-					} else {
-						float dxBox = fabs(spx) - halfLen;
-						float dyBox = fabs(spy) - halfThick;
-						float ox = dxBox > 0.0f ? dxBox : 0.0f;
-						float oy = dyBox > 0.0f ? dyBox : 0.0f;
-						sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
-					}						float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-						float stailT = fmin(fmax((spx + halfLen) / sdenom, 0.0f), 1.0f);
-						float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
-						float scoverage = 0.0f;
-						if (aa > 0.0f) {
-							float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
-							scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * inShadowOpacity * depthAlpha;
-						}
-						if (scoverage > 0.0f) {
-							float shadowBlend = scoverage;
-							if (inBlendMode == 0) shadowBlend = scoverage * (1.0f - originalAlpha);
-							else if (inBlendMode == 2 && lineDepthValue < 0.5f) shadowBlend = scoverage * (1.0f - originalAlpha);
-							pixel.x = pixel.x + (inShadowColorR - pixel.x) * shadowBlend;
-							pixel.y = pixel.y + (inShadowColorG - pixel.y) * shadowBlend;
-							pixel.z = pixel.z + (inShadowColorB - pixel.z) * shadowBlend;
-							pixel.w = fmax(pixel.w, shadowBlend);
-						}
-					}
 					
 					float lineColorR = d2.x;
 					float lineColorG = d2.y;
 					float lineColorB = d2.z;
+					float lineVelocity = d2.w;  
+					
 					
 					float dx = (float)inXY.x + 0.5f - centerX;
 					float dy = (float)inXY.y + 0.5f - centerY;
 					
+					
+					float sdx = dx - inShadowOffsetX;
+					float sdy = dy - inShadowOffsetY;
+					
 					float coverage = 0.0f;
+					float shadowCoverage = 0.0f;
 					
 					
-					if (inMotionBlurEnable != 0 && inMotionBlurSamples > 1)
+					
+					
+					
+					
+					
+					
+					
+					
+					
+					if (inMotionBlurEnable != 0 && inMotionBlurStrength > 0.0f && inMotionBlurSamples > 1)
 					{
+						float shutterFraction = inMotionBlurStrength / 360.0f;
+						float pixelsPerFrame = inLineTravel / inLineLifetime;
+						float effectiveVelocity = pixelsPerFrame * lineVelocity;
+						float blurLength = effectiveVelocity * shutterFraction;
+						
 						int samples = inMotionBlurSamples;
-						float blurRange = inLineTravel * inMotionBlurStrength / inLineLifetime;
-						float stepSize = blurRange / (float)(samples - 1);
-						float totalWeight = 0.0f;
 						
-					for (int s = 0; s < samples; ++s)
-					{
-						float sampleOffset = (s - (samples - 1) * 0.5f) * stepSize;
-						float pxSample = dx * lineCos + dy * lineSin;
-						float pySample = -dx * lineSin + dy * lineCos;
-						pxSample -= (segCenterX + sampleOffset);
-						
-						float distSample = 0.0f;
-						if (inLineCap == 0) {  
-							float dxBox = fabs(pxSample) - halfLen;
-							float dyBox = fabs(pySample) - halfThick;
-							float ox = dxBox > 0.0f ? dxBox : 0.0f;
-							float oy = dyBox > 0.0f ? dyBox : 0.0f;
-							distSample = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
-						} else {
-							float ax = fabs(pxSample) - halfLen;
-							float qx = ax > 0.0f ? ax : 0.0f;
-							distSample = sqrt(qx * qx + pySample * pySample) - halfThick;
-						}							float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-							float tailT = fmin(fmax((pxSample + halfLen) / denom, 0.0f), 1.0f);
-							float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
-							float sampleCoverage = 0.0f;
-							if (aa > 0.0f) {
-								float tt = fmin(fmax((distSample - aa) / (0.0f - aa), 0.0f), 1.0f);
-								sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
+						if (blurLength > 0.5f)
+						{
+							float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+							
+							
+							float pxBase = dx * lineCos + dy * lineSin - segCenterX;
+							float py = -dx * lineSin + dy * lineCos;
+							
+							
+							float spxBase = sdx * lineCos + sdy * lineSin - segCenterX;
+							float spy = -sdx * lineSin + sdy * lineCos;
+							
+							float accumA = 0.0f;
+							float saccumA = 0.0f;
+							
+							for (int s = 0; s < samples; ++s)
+							{
+								
+								
+								float t = ((float)s / fmax((float)(samples - 1), 1.0f)) - 0.5f;
+								
+								
+								float blurOffset = blurLength * t;
+								
+								
+								float px = pxBase + blurOffset;
+								
+								
+								float dist = 0.0f;
+								if (inLineCap == 0) {
+									float dxBox = fabs(px) - halfLen;
+									float dyBox = fabs(py) - halfThick;
+									float ox = dxBox > 0.0f ? dxBox : 0.0f;
+									float oy = dyBox > 0.0f ? dyBox : 0.0f;
+									dist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
+								} else {
+									float ax = fabs(px) - halfLen;
+									float qx = ax > 0.0f ? ax : 0.0f;
+									dist = sqrt(qx * qx + py * py) - halfThick;
+								}
+								
+								float tailT = fmin(fmax((px + halfLen) / denom, 0.0f), 1.0f);
+								float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
+								
+								float sampleCov = 0.0f;
+								if (aa > 0.0f) {
+									float tt = fmin(fmax((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
+									sampleCov = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
+								}
+								accumA += sampleCov;
+								
+								
+								if (inShadowEnable != 0) {
+									float spx = spxBase + blurOffset;
+									
+									float sdist = 0.0f;
+									if (inLineCap == 0) {
+										float dxBox = fabs(spx) - halfLen;
+										float dyBox = fabs(spy) - halfThick;
+										float ox = dxBox > 0.0f ? dxBox : 0.0f;
+										float oy = dyBox > 0.0f ? dyBox : 0.0f;
+										sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
+									} else {
+										float ax = fabs(spx) - halfLen;
+										float qx = ax > 0.0f ? ax : 0.0f;
+										sdist = sqrt(qx * qx + spy * spy) - halfThick;
+									}
+									
+									float stailT = fmin(fmax((spx + halfLen) / denom, 0.0f), 1.0f);
+									float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
+									
+									float ssampleCov = 0.0f;
+									if (aa > 0.0f) {
+										float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
+										ssampleCov = tt * tt * (3.0f - 2.0f * tt) * stailFade * depthAlpha;
+									}
+									saccumA += ssampleCov;
+								}
 							}
 							
-							float normalizedPos = fabs(s - (samples - 1) * 0.5f) / fmax((samples - 1) * 0.5f, 1.0f);
-							float weight = 1.0f - normalizedPos * 0.5f;
-							coverage += sampleCoverage * weight;
-							totalWeight += weight;
+							
+							float lineAlpha = accumA / (float)samples;
+							float shadowAlphaFinal = saccumA / (float)samples;
+							
+							
+							if (inShadowEnable != 0 && shadowAlphaFinal > 0.0f)
+							{
+								float shadowBlend = shadowAlphaFinal * inShadowOpacity;
+								if (inBlendMode == 0) {
+									shadowBlend = shadowBlend * (1.0f - originalAlpha);
+								} else if (inBlendMode == 2 && lineDepthValue < 0.5f) {
+									shadowBlend = shadowBlend * (1.0f - originalAlpha);
+								}
+								float invShadow = 1.0f - shadowBlend;
+								float outAlpha = shadowBlend + pixel.w * invShadow;
+								if (outAlpha > 0.0f) {
+									pixel.x = (inShadowColorR * shadowBlend + pixel.x * pixel.w * invShadow) / outAlpha;
+									pixel.y = (inShadowColorG * shadowBlend + pixel.y * pixel.w * invShadow) / outAlpha;
+									pixel.z = (inShadowColorB * shadowBlend + pixel.z * pixel.w * invShadow) / outAlpha;
+								}
+								float prevAlphaShadow = pixel.w;
+								pixel.w = prevAlphaShadow + (outAlpha - prevAlphaShadow) * appearAlpha;
+							}
+							
+							
+							if (lineAlpha > 0.0f)
+							{
+								float prevAlphaLine = pixel.w;
+								float srcAlpha = lineAlpha;
+								if (inBlendMode == 0) {
+									srcAlpha = lineAlpha * (1.0f - originalAlpha);
+								} else if (inBlendMode == 2 && lineDepthValue < 0.5f) {
+									srcAlpha = lineAlpha * (1.0f - originalAlpha);
+								}
+								
+								if (inBlendMode == 2 && lineDepthValue >= 0.5f) {
+									float invFront = 1.0f - srcAlpha;
+									float outA = srcAlpha + frontA * invFront;
+									if (outA > 0.0f) {
+										frontR = (lineColorR * srcAlpha + frontR * frontA * invFront) / outA;
+										frontG = (lineColorG * srcAlpha + frontG * frontA * invFront) / outA;
+										frontB = (lineColorB * srcAlpha + frontB * frontA * invFront) / outA;
+									}
+									frontA = outA;
+									frontAppearAlpha = fmin(frontAppearAlpha, appearAlpha);
+								}
+								else if (inBlendMode == 3) {
+									
+									float invAlpha = 1.0f - srcAlpha;
+									float outAlpha = srcAlpha + pixel.w * invAlpha;
+									if (outAlpha > 0.0f) {
+										pixel.x = (lineColorR * srcAlpha + pixel.x * pixel.w * invAlpha) / outAlpha;
+										pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
+										pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
+									}
+									pixel.w = prevAlphaLine + (outAlpha - prevAlphaLine) * appearAlpha;
+									
+									lineOnlyAlpha = fmax(lineOnlyAlpha, srcAlpha * appearAlpha);
+								}
+								else {
+									float invAlpha = 1.0f - srcAlpha;
+									float outAlpha = srcAlpha + pixel.w * invAlpha;
+									if (outAlpha > 0.0f) {
+										pixel.x = (lineColorR * srcAlpha + pixel.x * pixel.w * invAlpha) / outAlpha;
+										pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
+										pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
+									}
+									pixel.w = prevAlphaLine + (outAlpha - prevAlphaLine) * appearAlpha;
+								}
+							}
 						}
-						coverage = (coverage / fmax(totalWeight, 1.0f)) * depthAlpha;
 					}
-					else
-				{
 					
-					float px = dx * lineCos + dy * lineSin;
-					float py = -dx * lineSin + dy * lineCos;
-					px -= segCenterX;
 					
-					float dist = 0.0f;
-					if (inLineCap == 0) {  
-						float dxBox = fabs(px) - halfLen;
-						float dyBox = fabs(py) - halfThick;
-						float ox = dxBox > 0.0f ? dxBox : 0.0f;
-						float oy = dyBox > 0.0f ? dyBox : 0.0f;
-						dist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
-					} else {
-						float ax = fabs(px) - halfLen;
-						float qx = ax > 0.0f ? ax : 0.0f;
-						dist = sqrt(qx * qx + py * py) - halfThick;
-					}						float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+					if (inMotionBlurEnable == 0 || inMotionBlurStrength <= 0.0f || 
+					    (inMotionBlurStrength > 0.0f && ((inLineTravel / inLineLifetime) * lineVelocity * (inMotionBlurStrength / 360.0f)) <= 0.5f))
+					{
+						
+						float px = dx * lineCos + dy * lineSin;
+						float py = -dx * lineSin + dy * lineCos;
+						px -= segCenterX;
+						
+						float dist = 0.0f;
+						if (inLineCap == 0) {
+							float dxBox = fabs(px) - halfLen;
+							float dyBox = fabs(py) - halfThick;
+							float ox = dxBox > 0.0f ? dxBox : 0.0f;
+							float oy = dyBox > 0.0f ? dyBox : 0.0f;
+							float outside = sqrt(ox * ox + oy * oy);
+							float inside = fmin(fmax(dxBox, dyBox), 0.0f);
+							dist = outside + inside;
+						} else {
+							float ax = fabs(px) - halfLen;
+							float qx = ax > 0.0f ? ax : 0.0f;
+							dist = sqrt(qx * qx + py * py) - halfThick;
+						}
+						
+						float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 						float tailT = fmin(fmax((px + halfLen) / denom, 0.0f), 1.0f);
 						float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
 						if (aa > 0.0f) {
 							float tt = fmin(fmax((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
 							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
 						}
-					}
+						
+						
+						if (inShadowEnable != 0) {
+							float spx = sdx * lineCos + sdy * lineSin;
+							float spy = -sdx * lineSin + sdy * lineCos;
+							spx -= segCenterX;
+							
+							float sdist = 0.0f;
+							if (inLineCap == 0) {
+								float dxBox = fabs(spx) - halfLen;
+								float dyBox = fabs(spy) - halfThick;
+								float ox = dxBox > 0.0f ? dxBox : 0.0f;
+								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								float outside = sqrt(ox * ox + oy * oy);
+								float inside = fmin(fmax(dxBox, dyBox), 0.0f);
+								sdist = outside + inside;
+							} else {
+								float ax = fabs(spx) - halfLen;
+								float qx = ax > 0.0f ? ax : 0.0f;
+								sdist = sqrt(qx * qx + spy * spy) - halfThick;
+							}
+							
+							float stailT = fmin(fmax((spx + halfLen) / denom, 0.0f), 1.0f);
+							float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
+							if (aa > 0.0f) {
+								float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
+								shadowCoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * depthAlpha;
+							}
+						}
 					
-					if (coverage > 0.0f)
-					{
-						if (inBlendMode == 0) { 
-							float backBlend = coverage * (1.0f - originalAlpha);
-							pixel.x = pixel.x + (lineColorR - pixel.x) * backBlend;
-							pixel.y = pixel.y + (lineColorG - pixel.y) * backBlend;
-							pixel.z = pixel.z + (lineColorB - pixel.z) * backBlend;
-							pixel.w = fmax(pixel.w, backBlend);
+						
+						if (inShadowEnable != 0 && shadowCoverage > 0.0f)
+						{
+							float scoverage = shadowCoverage * inShadowOpacity;
+							float shadowBlend = scoverage;
+							if (inBlendMode == 0) {
+								shadowBlend = scoverage * (1.0f - originalAlpha);
+							} else if (inBlendMode == 2 && lineDepthValue < 0.5f) {
+								shadowBlend = scoverage * (1.0f - originalAlpha);
+							}
+							pixel.x = pixel.x + (inShadowColorR - pixel.x) * shadowBlend;
+							pixel.y = pixel.y + (inShadowColorG - pixel.y) * shadowBlend;
+							pixel.z = pixel.z + (inShadowColorB - pixel.z) * shadowBlend;
+							pixel.w = fmax(pixel.w, shadowBlend);
 						}
-						else if (inBlendMode == 1) { 
-							pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
-							pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
-							pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
-							pixel.w = fmax(pixel.w, coverage);
-						}
-						else if (inBlendMode == 2) { 
-							if (lineDepthValue < 0.5f) {
+						
+						
+						if (coverage > 0.0f)
+						{
+							
+							float prevAlpha = pixel.w;
+							
+							if (inBlendMode == 0) { 
 								float backBlend = coverage * (1.0f - originalAlpha);
 								pixel.x = pixel.x + (lineColorR - pixel.x) * backBlend;
 								pixel.y = pixel.y + (lineColorG - pixel.y) * backBlend;
 								pixel.z = pixel.z + (lineColorB - pixel.z) * backBlend;
-								pixel.w = fmax(pixel.w, backBlend);
-							} else {
-								float aFront = coverage;
-								float premR = lineColorR * aFront;
-								float premG = lineColorG * aFront;
-								float premB = lineColorB * aFront;
-								frontR = premR + frontR * (1.0f - aFront);
-								frontG = premG + frontG * (1.0f - aFront);
-								frontB = premB + frontB * (1.0f - aFront);
-								frontA = aFront + frontA * (1.0f - aFront);
+								float newAlpha = fmax(prevAlpha, backBlend);
+								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+							}
+							else if (inBlendMode == 1) { 
+								pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
+								pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
+								pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
+								float newAlpha = fmax(prevAlpha, coverage);
+								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+							}
+							else if (inBlendMode == 2) { 
+								if (lineDepthValue < 0.5f) {
+									float backBlend = coverage * (1.0f - originalAlpha);
+									pixel.x = pixel.x + (lineColorR - pixel.x) * backBlend;
+									pixel.y = pixel.y + (lineColorG - pixel.y) * backBlend;
+									pixel.z = pixel.z + (lineColorB - pixel.z) * backBlend;
+									float newAlpha = fmax(prevAlpha, backBlend);
+									pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+								} else {
+									float aFront = coverage;
+									float premR = lineColorR * aFront;
+									float premG = lineColorG * aFront;
+									float premB = lineColorB * aFront;
+									frontR = premR + frontR * (1.0f - aFront);
+									frontG = premG + frontG * (1.0f - aFront);
+									frontB = premB + frontB * (1.0f - aFront);
+									frontA = aFront + frontA * (1.0f - aFront);
+									frontAppearAlpha = fmin(frontAppearAlpha, appearAlpha);
+								}
+							}
+							else if (inBlendMode == 3) { 
+								
+								pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
+								pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
+								pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
+								
+								float newAlpha = fmax(prevAlpha, coverage);
+								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+								
+								lineOnlyAlpha = fmax(lineOnlyAlpha, coverage * appearAlpha);
 							}
 						}
-						else if (inBlendMode == 3) { 
-							pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
-							pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
-							pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
-							if (originalAlpha > 0.0f) {
-								pixel.w = fmin(fmax(originalAlpha + coverage - (originalAlpha * coverage * 2.0f), 0.0f), 1.0f);
-							} else {
-								pixel.w = fmax(pixel.w, coverage);
-							}
-						}
+					}
+				}  
+				
+				
+				if (inBlendMode == 3 && originalAlpha > 0.0f)
+				{
+					
+					
+					
+					
+					if (lineOnlyAlpha > 0.0f)
+					{
+						
+						float xorAlpha = fmin(fmax(originalAlpha + lineOnlyAlpha - (originalAlpha * lineOnlyAlpha * 2.0f), 0.0f), 1.0f);
+						
+						
+						pixel.x = pixel.x * (1.0f - originalAlpha) + originalR * originalAlpha;
+						pixel.y = pixel.y * (1.0f - originalAlpha) + originalG * originalAlpha;
+						pixel.z = pixel.z * (1.0f - originalAlpha) + originalB * originalAlpha;
+						pixel.w = xorAlpha;
+					}
+					else
+					{
+						
+						pixel.x = originalR;
+						pixel.y = originalG;
+						pixel.z = originalB;
+						pixel.w = originalAlpha;
 					}
 				}
 				
 				
 				if (inBlendMode == 2 && frontA > 0.0f)
 				{
+					float prevAlpha = pixel.w;
 					pixel.x = frontR + pixel.x * (1.0f - frontA);
 					pixel.y = frontG + pixel.y * (1.0f - frontA);
 					pixel.z = frontB + pixel.z * (1.0f - frontA);
-					pixel.w = frontA + pixel.w * (1.0f - frontA);
+					float newAlpha = frontA + prevAlpha * (1.0f - frontA);
+					pixel.w = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
 				}
 				
 				
@@ -10429,22 +10620,9 @@ static __inline__ float saturate(float inX)
 					}
 				}
 				
-				
-				if (inHideElement != 0 && pixel.w < originalAlpha)
-				{
-					pixel.w = pixel.w;  
-				}
-				else if (inHideElement != 0)
-				{
-					
-					float lineOnlyAlpha = pixel.w - originalAlpha;
-					if (lineOnlyAlpha < 0.0f) lineOnlyAlpha = 0.0f;
-					pixel.w = lineOnlyAlpha > 0.01f ? pixel.w : 0.0f;
-				}
-				
 				WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 			}
 		}
 
-#line 515 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
-#line 516 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp.cl"
+#line 694 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 695 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
