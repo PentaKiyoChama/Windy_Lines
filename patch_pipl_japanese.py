@@ -15,8 +15,8 @@ import re
 # ===== 設定 =====
 # ここで日本語文字列を設定
 JAPANESE_STRINGS = {
-    'name': 'テストその２流れる線',           # プラグイン名
-    'category': 'testestesおしゃれテロップ',  # カテゴリ名
+    'name': '風を感じる線',           # プラグイン名
+    'category': 'おしゃれテロップ',  # カテゴリ名
     'match_name': 'OST_WindyLines',      # マッチ名（内部識別子、英語推奨だが日本語も可）
 }
 

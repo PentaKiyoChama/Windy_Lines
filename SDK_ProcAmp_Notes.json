@@ -44,8 +44,10 @@
       "blend_mode_2": {
         "mode": "Back and Front",
         "back_lines": "Changed to premultiplied compositing",
-        "front_lines": "Already used premultiplied (frontR = (lineColor * alpha + frontR * frontAlpha * (1-alpha)) / outAlpha)",
-        "benefit": "Back and front now both use correct method"
+        "front_lines_accumulation": "Changed from premultiplied to un-premultiplied accumulation to match OpenCL: frontR = (lineColor * alpha + frontR * frontAlpha * (1-alpha)) / outAlpha",
+        "front_lines_application": "Changed from 'frontR * frontA' to 'frontR' to match OpenCL working implementation",
+        "why_changed": "CUDA had premultiplied accumulation + premultiplied application which caused red/gray edge artifacts in Back and Front mode with anti-aliasing. OpenCL used un-premultiplied accumulation + direct application (frontR without multiply), which worked correctly.",
+        "benefit": "Back and Front mode now shows clean edges without red or gray artifacts, matching OpenCL/Metal behavior"
       },
       "blend_mode_3": {
         "mode": "Alpha XOR",
@@ -66,13 +68,21 @@
     },
     "files_modified": [
       "SDK_ProcAmp.cl (OpenCL/Metal - lines 555-640: all blend modes unified to premultiplied)",
+      "SDK_ProcAmp.cu (CUDA - lines 285-315 Shadow, 470-530 Blend Modes, 512-522 Front line accumulation fix)",
+      "SDK_ProcAmp_CPU.cpp (CPU - lines 1850-1970 Shadow and Blend Modes, 1959-1969 Front line accumulation fix)",
       "SDK_ProcAmp.cl.bak (DELETED - was causing confusion with mismatched braces)"
     ],
     "testing": {
       "test_case": "White lines on white background with anti-aliasing enabled",
       "before": "Visible gray edges around line borders",
       "after": "Clean white edges, no gray artifacts",
-      "confirmed": "2026-02-02 by user"
+      "blend_mode_2_issue": {
+        "problem": "Back and Front mode showed red/gray edge artifacts with anti-aliasing, including motion blur trails",
+        "cause": "CUDA front line accumulation used premultiplied method while OpenCL used un-premultiplied, and application differed",
+        "fix": "Matched CUDA/CPU to OpenCL: un-premultiplied accumulation + direct application (frontR not frontR*frontA)",
+        "result": "Clean edges in Back and Front mode, confirmed working 2026-02-02"
+      },
+      "confirmed": "2026-02-02 by user - all blend modes working correctly"
     },
     "future_note": "If adding any new blend mode or compositing operation, ALWAYS use premultiplied alpha formula from the start. Never use lerp/straight alpha for partial coverage."
   },

@@ -1846,11 +1846,15 @@ static PF_Err Render(
 								shadowBlend = scoverage * (1.0f - originalAlpha);
 							}
 
-							// Shadow: blend toward shadow color
-							outY = outY + (shadowY - outY) * shadowBlend;
-							outU = outU + (shadowU - outU) * shadowBlend;
-							outV = outV + (shadowV - outV) * shadowBlend;
-							a = std::max(a, shadowBlend);
+							// Shadow: premultiplied alpha compositing (v62 fix)
+							float invShadow = 1.0f - shadowBlend;
+							float outAlpha = shadowBlend + a * invShadow;
+							if (outAlpha > 0.0f) {
+								outY = (shadowY * shadowBlend + outY * a * invShadow) / outAlpha;
+								outU = (shadowU * shadowBlend + outU * a * invShadow) / outAlpha;
+								outV = (shadowV * shadowBlend + outV * a * invShadow) / outAlpha;
+							}
+							a = outAlpha;
 						}
 					}
 					
@@ -1912,20 +1916,27 @@ static PF_Err Render(
 						// Apply blend mode
 						if (blendMode == 0)  // Back (behind element)
 						{
-							const float backBlend = coverage * (1.0f - originalAlpha);
-							outV = outV + (paletteV[ci] - outV) * backBlend;
-							outU = outU + (paletteU[ci] - outU) * backBlend;
-							outY = outY + (paletteY[ci] - outY) * backBlend;
-							const float newAlpha = std::max(prevAlpha, backBlend);
-							a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
+							float srcAlpha = coverage * (1.0f - originalAlpha);
+							float invAlpha = 1.0f - srcAlpha;
+							float outAlpha = srcAlpha + a * invAlpha;
+							if (outAlpha > 0.0f) {
+								outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
+								outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
+								outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
+							}
+							a = outAlpha;
 						}
 						else if (blendMode == 1)  // Front (in front of element)
 						{
-							outV = outV + (paletteV[ci] - outV) * coverage;
-							outU = outU + (paletteU[ci] - outU) * coverage;
-							outY = outY + (paletteY[ci] - outY) * coverage;
-							const float newAlpha = std::max(prevAlpha, coverage);
-							a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
+							float srcAlpha = coverage;
+							float invAlpha = 1.0f - srcAlpha;
+							float outAlpha = srcAlpha + a * invAlpha;
+							if (outAlpha > 0.0f) {
+								outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
+								outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
+								outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
+							}
+							a = outAlpha;
 						}
 						else if (blendMode == 2)  // Back and Front (split by per-line depth)
 						{
@@ -1933,12 +1944,15 @@ static PF_Err Render(
 							if (ld.depth < 0.5f)
 							{
 								// Back mode (full)
-								const float backBlend = coverage * (1.0f - originalAlpha);
-								outV = outV + (paletteV[ci] - outV) * backBlend;
-								outU = outU + (paletteU[ci] - outU) * backBlend;
-								outY = outY + (paletteY[ci] - outY) * backBlend;
-								const float newAlpha = std::max(prevAlpha, backBlend);
-								a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
+								float srcAlpha = coverage * (1.0f - originalAlpha);
+								float invAlpha = 1.0f - srcAlpha;
+								float outAlpha = srcAlpha + a * invAlpha;
+								if (outAlpha > 0.0f) {
+									outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
+									outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
+									outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
+								}
+								a = outAlpha;
 							}
 							else
 							{
@@ -1956,13 +1970,16 @@ static PF_Err Render(
 						}
 					else if (blendMode == 3)  // Alpha (XOR with original element only)
 					{
-						// Line-to-line blending: normal Front mode (additive)
-						outV = outV + (paletteV[ci] - outV) * coverage;
-						outU = outU + (paletteU[ci] - outU) * coverage;
-						outY = outY + (paletteY[ci] - outY) * coverage;
-						// Normal alpha blend between lines (like Front mode)
-						const float newAlpha = std::max(prevAlpha, coverage);
-						a = prevAlpha + (newAlpha - prevAlpha) * ld.appearAlpha;
+						// Line-to-line blending: premultiplied compositing
+						float srcAlpha = coverage;
+						float invAlpha = 1.0f - srcAlpha;
+						float outAlpha = srcAlpha + a * invAlpha;
+						if (outAlpha > 0.0f) {
+							outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
+							outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
+							outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
+						}
+						a = outAlpha;
 						// Track line-only alpha
 						lineOnlyAlpha = std::max(lineOnlyAlpha, coverage * ld.appearAlpha);
 					}

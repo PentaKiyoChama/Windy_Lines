@@ -817,6 +817,9 @@ public:
 	virtual prSuiteError Initialize(
 		PrGPUFilterInstance* ioInstanceData)
 	{
+		// FORCE CPU FALLBACK: Return failure to disable GPU and test CPU implementation
+		return suiteError_Fail;
+		
 		PrGPUFilterBase::Initialize(ioInstanceData);
 
 		if (mDeviceIndex > kMaxDevices)
