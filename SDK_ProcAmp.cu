@@ -622,7 +622,9 @@
 		WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 	}
 }
-#endif#if __NVCC__
+#endif
+
+#if __NVCC__
 	void ProcAmp2_CUDA(
 		float* ioBuffer,
 		int pitch,

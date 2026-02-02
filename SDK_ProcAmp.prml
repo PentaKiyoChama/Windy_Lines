@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LocalizationData>
+    <Strings>
+        <!-- Effect name displayed in Effects panel -->
+        <String id="Windy Lines" value="流れる線"/>
+        <!-- Category name -->  
+        <String id="OST" value="おしゃれテロップ"/>
+    </Strings>
+</LocalizationData>

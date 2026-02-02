@@ -11,6 +11,9 @@
 *.log
 *.recipe
 
+# Keep manually maintained .rcp file (not auto-generated)
+!SDK_ProcAmp.rcp
+
 # Visual Studio
 .vs/
 *.vcxproj.user

@@ -48,12 +48,12 @@
   </PropertyGroup>
   <PropertyGroup>
     <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(PREMIERE_PLUGINS_PATH)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\</IntDir>
     <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IgnoreImportLibrary>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     </LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(PREMSDKBUILDPATH)\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\</IntDir>
     <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
@@ -155,16 +155,19 @@ if not defined BOOST_BASE_PATH echo "BOOST_BASE_PATH is not defined! Please make
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\SDK_ProcAmp.r">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Converting PiPL for %(Filename)</Message>
+      <FileType>Document</FileType>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Converting PiPL for %(Filename) with Japanese patch</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cl /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
 "$(AE_SDK_BASE_PATH)\Examples\Resources\PiPLTool" "$(IntDir)%(Filename).rr" "..\%(Filename).rcp"
+python "..\patch_pipl_japanese.py"
       </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).rr;..\%(Filename).rcp;%(Outputs)</Outputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Converting PiPL for %(Filename)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).rr;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Converting PiPL for %(Filename) with Japanese patch</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">cl /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
 "$(AE_SDK_BASE_PATH)\Examples\Resources\PiPLTool" "$(IntDir)%(Filename).rr" "..\%(Filename).rcp"
+python "..\patch_pipl_japanese.py"
       </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).rr;..\%(Filename).rcp;%(Outputs)</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).rr;%(Outputs)</Outputs>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>

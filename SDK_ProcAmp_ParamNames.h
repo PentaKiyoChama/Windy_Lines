@@ -167,7 +167,7 @@ namespace ParamNames
     constexpr const char* SHADOW_OFFSET_X   = "オフセットX";  
     constexpr const char* SHADOW_OFFSET_Y   = "オフセットY";  
     constexpr const char* SHADOW_OPACITY    = "不透明度";       
-    constexpr const char* ADVANCED_HEADER   = "詳細";
+    constexpr const char* ADVANCED_HEADER   = "その他の設定";
     constexpr const char* HIDE_ELEMENT      = "要素を隠す";      
     constexpr const char* BLEND_MODE        = "合成モード";
     constexpr const char* DEPTH_STRENGTH    = "奥行き強度";     
