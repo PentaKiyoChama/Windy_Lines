@@ -559,10 +559,16 @@
 							} else if (inBlendMode == 2 && lineDepthValue < 0.5f) {
 								shadowBlend = scoverage * (1.0f - originalAlpha);
 							}
-							pixel.x = pixel.x + (inShadowColorR - pixel.x) * shadowBlend;
-							pixel.y = pixel.y + (inShadowColorG - pixel.y) * shadowBlend;
-							pixel.z = pixel.z + (inShadowColorB - pixel.z) * shadowBlend;
-							pixel.w = fmax(pixel.w, shadowBlend);
+							
+							// Premultiplied alpha compositing (same as motion blur)
+							float invShadow = 1.0f - shadowBlend;
+							float outAlpha = shadowBlend + pixel.w * invShadow;
+							if (outAlpha > 0.0f) {
+								pixel.x = (inShadowColorR * shadowBlend + pixel.x * pixel.w * invShadow) / outAlpha;
+								pixel.y = (inShadowColorG * shadowBlend + pixel.y * pixel.w * invShadow) / outAlpha;
+								pixel.z = (inShadowColorB * shadowBlend + pixel.z * pixel.w * invShadow) / outAlpha;
+							}
+							pixel.w = outAlpha;
 						}
 						
 						// Apply blend mode
@@ -572,48 +578,62 @@
 							float prevAlpha = pixel.w;
 							
 							if (inBlendMode == 0) { // Back
-								float backBlend = coverage * (1.0f - originalAlpha);
-								pixel.x = pixel.x + (lineColorR - pixel.x) * backBlend;
-								pixel.y = pixel.y + (lineColorG - pixel.y) * backBlend;
-								pixel.z = pixel.z + (lineColorB - pixel.z) * backBlend;
-								float newAlpha = fmax(prevAlpha, backBlend);
-								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+								float srcAlpha = coverage * (1.0f - originalAlpha);
+								float invAlpha = 1.0f - srcAlpha;
+								float outAlpha = srcAlpha + pixel.w * invAlpha;
+								if (outAlpha > 0.0f) {
+									pixel.x = (lineColorR * srcAlpha + pixel.x * pixel.w * invAlpha) / outAlpha;
+									pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
+									pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
+								}
+								pixel.w = outAlpha;
 							}
 							else if (inBlendMode == 1) { // Front
-								pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
-								pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
-								pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
-								float newAlpha = fmax(prevAlpha, coverage);
-								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+								float srcAlpha = coverage;
+								float invAlpha = 1.0f - srcAlpha;
+								float outAlpha = srcAlpha + pixel.w * invAlpha;
+								if (outAlpha > 0.0f) {
+									pixel.x = (lineColorR * srcAlpha + pixel.x * pixel.w * invAlpha) / outAlpha;
+									pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
+									pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
+								}
+								pixel.w = outAlpha;
 							}
 							else if (inBlendMode == 2) { // Back and Front
 								if (lineDepthValue < 0.5f) {
-									float backBlend = coverage * (1.0f - originalAlpha);
-									pixel.x = pixel.x + (lineColorR - pixel.x) * backBlend;
-									pixel.y = pixel.y + (lineColorG - pixel.y) * backBlend;
-									pixel.z = pixel.z + (lineColorB - pixel.z) * backBlend;
-									float newAlpha = fmax(prevAlpha, backBlend);
-									pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+									float srcAlpha = coverage * (1.0f - originalAlpha);
+									float invAlpha = 1.0f - srcAlpha;
+									float outAlpha = srcAlpha + pixel.w * invAlpha;
+									if (outAlpha > 0.0f) {
+										pixel.x = (lineColorR * srcAlpha + pixel.x * pixel.w * invAlpha) / outAlpha;
+										pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
+										pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
+									}
+									pixel.w = outAlpha;
 								} else {
-									float aFront = coverage;
-									float premR = lineColorR * aFront;
-									float premG = lineColorG * aFront;
-									float premB = lineColorB * aFront;
-									frontR = premR + frontR * (1.0f - aFront);
-									frontG = premG + frontG * (1.0f - aFront);
-									frontB = premB + frontB * (1.0f - aFront);
-									frontA = aFront + frontA * (1.0f - aFront);
+									float srcAlpha = coverage;
+									float invFront = 1.0f - srcAlpha;
+									float outA = srcAlpha + frontA * invFront;
+									if (outA > 0.0f) {
+										frontR = (lineColorR * srcAlpha + frontR * frontA * invFront) / outA;
+										frontG = (lineColorG * srcAlpha + frontG * frontA * invFront) / outA;
+										frontB = (lineColorB * srcAlpha + frontB * frontA * invFront) / outA;
+									}
+									frontA = outA;
 									frontAppearAlpha = fmin(frontAppearAlpha, appearAlpha);
 								}
 							}
 							else if (inBlendMode == 3) { // Alpha (XOR with original element only)
-								// Line-to-line blending: normal Front mode (additive)
-								pixel.x = pixel.x + (lineColorR - pixel.x) * coverage;
-								pixel.y = pixel.y + (lineColorG - pixel.y) * coverage;
-								pixel.z = pixel.z + (lineColorB - pixel.z) * coverage;
-								// Normal alpha blend between lines (like Front mode)
-								float newAlpha = fmax(prevAlpha, coverage);
-								pixel.w = prevAlpha + (newAlpha - prevAlpha) * appearAlpha;
+								// Line-to-line blending: premultiplied compositing
+								float srcAlpha = coverage;
+								float invAlpha = 1.0f - srcAlpha;
+								float outAlpha = srcAlpha + pixel.w * invAlpha;
+								if (outAlpha > 0.0f) {
+									pixel.x = (lineColorR * srcAlpha + pixel.x * pixel.w * invAlpha) / outAlpha;
+									pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
+									pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
+								}
+								pixel.w = outAlpha;
 								// Track line-only alpha
 								lineOnlyAlpha = fmax(lineOnlyAlpha, coverage * appearAlpha);
 							}
@@ -703,10 +723,8 @@
 			}
 		}
 		
-		// Premultiply alpha for proper Premiere Pro compositing
-		pixel.x *= pixel.w;
-		pixel.y *= pixel.w;
-		pixel.z *= pixel.w;
+		// Note: Alpha compositing is already done correctly using premultiplied alpha blending above
+		// No additional premultiplication needed
 		
 		WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
 	}

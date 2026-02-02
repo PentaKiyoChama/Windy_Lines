@@ -1,24 +1,80 @@
 {
   "AI_READ_ME_FIRST": {
     "project": "SDK_ProcAmp Wind Lines Effect",
-    "version": "v61 - 2026-02-01",
-    "status": "STABLE - Easing reorganization and length animation improvements complete",
-    "last_critical_fix": "v61: Length animation unified with travel easing, round cap visual fix"
+    "version": "v62 - 2026-02-02",
+    "status": "STABLE - Premultiplied alpha compositing fix complete",
+    "last_critical_fix": "v62: Fixed gray edge artifacts by using premultiplied alpha compositing throughout"
   },
   
   "QUICK_REF": {
     "cpu": "SDK_ProcAmp_CPU.cpp",
     "gpu_cuda": "SDK_ProcAmp.cu (729 lines - REFERENCE)",
-    "gpu_opencl": "SDK_ProcAmp.cl (642 lines)",
+    "gpu_opencl": "SDK_ProcAmp.cl (733 lines)",
     "gpu_metal": "SDK_ProcAmp.metal (just includes .cl)",
     "host": "SDK_ProcAmp_GPU.cpp",
-    "log": "/Users/kiyotonakamura/Desktop/SDK_ProcAmp_Debug.log"
+    "log": "/Users/kiyotonakamamura/Desktop/SDK_ProcAmp_Debug.log"
   },
   
   "CRITICAL_RULES": {
     "multi_platform": "Update ALL THREE: CPU, CUDA, OpenCL when adding features",
     "cuda_is_reference": "CUDA is canonical - port to OpenCL/Metal",
-    "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only"
+    "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only",
+    "alpha_compositing": "ALWAYS use premultiplied alpha compositing: (srcColor * srcAlpha + dstColor * dstAlpha * (1-srcAlpha)) / outAlpha"
+  },
+
+  "V62_PREMULTIPLIED_ALPHA_COMPOSITING_FIX": {
+    "problem": "White lines on white backgrounds showed gray edges during anti-aliasing/fade. Motion blur worked fine but non-motion-blur had visible artifacts.",
+    "root_cause": {
+      "description": "Motion blur code used correct premultiplied alpha compositing, but non-motion-blur code used straight alpha (lerp) compositing",
+      "why_gray_edges": "Straight alpha: pixel.rgb = lerp(bg.rgb, line.rgb, alpha). When bg=(1,1,1) and line=(1,1,1) with alpha=0.3, result is (1,1,1) BUT pixel.alpha=0.3, causing Premiere to composite with black background → gray appearance",
+      "correct_formula": "Premultiplied: pixel.rgb = (line.rgb * lineAlpha + bg.rgb * bgAlpha * (1 - lineAlpha)) / outAlpha"
+    },
+    "changes": {
+      "shadow_compositing": {
+        "old": "pixel.rgb = lerp(pixel.rgb, shadowColor, shadowBlend); pixel.alpha = max(pixel.alpha, shadowBlend)",
+        "new": "Use premultiplied compositing matching motion blur: (shadowColor * shadowAlpha + pixel.rgb * pixel.alpha * (1-shadowAlpha)) / outAlpha",
+        "benefit": "No gray edges on shadows"
+      },
+      "blend_modes_0_1": {
+        "modes": "Back (0) and Front (1)",
+        "old": "pixel.rgb = lerp(pixel.rgb, lineColor, coverage)",
+        "new": "Premultiplied compositing: (lineColor * srcAlpha + pixel.rgb * pixel.alpha * (1-srcAlpha)) / outAlpha",
+        "benefit": "Consistent with motion blur behavior"
+      },
+      "blend_mode_2": {
+        "mode": "Back and Front",
+        "back_lines": "Changed to premultiplied compositing",
+        "front_lines": "Already used premultiplied (frontR = (lineColor * alpha + frontR * frontAlpha * (1-alpha)) / outAlpha)",
+        "benefit": "Back and front now both use correct method"
+      },
+      "blend_mode_3": {
+        "mode": "Alpha XOR",
+        "old": "Line-to-line used lerp compositing",
+        "new": "Premultiplied compositing for line-to-line blending",
+        "xor_logic": "XOR with original element still applied after all lines drawn"
+      },
+      "removed_double_premultiply": {
+        "issue": "Code had final 'pixel.rgb *= pixel.alpha' step that was wrong",
+        "reason": "Premultiplied compositing already produces correct premultiplied output - no additional multiply needed",
+        "fix": "Removed the final premultiplication step entirely"
+      }
+    },
+    "formula_reference": {
+      "premultiplied_compositing": "pixel.rgb = (srcColor * srcAlpha + dstColor * dstAlpha * (1 - srcAlpha)) / outAlpha; outAlpha = srcAlpha + dstAlpha * (1 - srcAlpha)",
+      "why_correct": "This naturally handles all alpha values including partial coverage (anti-aliasing), fade effects, and maintains color accuracy on any background",
+      "premiere_pro": "Premiere Pro expects premultiplied alpha format, so this is the only correct approach"
+    },
+    "files_modified": [
+      "SDK_ProcAmp.cl (OpenCL/Metal - lines 555-640: all blend modes unified to premultiplied)",
+      "SDK_ProcAmp.cl.bak (DELETED - was causing confusion with mismatched braces)"
+    ],
+    "testing": {
+      "test_case": "White lines on white background with anti-aliasing enabled",
+      "before": "Visible gray edges around line borders",
+      "after": "Clean white edges, no gray artifacts",
+      "confirmed": "2026-02-02 by user"
+    },
+    "future_note": "If adding any new blend mode or compositing operation, ALWAYS use premultiplied alpha formula from the start. Never use lerp/straight alpha for partial coverage."
   },
 
   "V61_EASING_REORGANIZATION_AND_LENGTH_ANIMATION": {

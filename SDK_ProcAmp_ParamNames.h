@@ -130,8 +130,8 @@ namespace ParamNames
     constexpr const char* TRAVEL            = "移動距離(px)";
     constexpr const char* SEED              = "ランダムシード";
     constexpr const char* COLOR_MODE        = "カラーモード";
-    constexpr const char* COLOR             = "色:単色";
-    constexpr const char* COLOR_PRESET      = "色:プリセット";
+    constexpr const char* COLOR             = "色：単色";
+    constexpr const char* COLOR_PRESET      = "色：プリセット";
     constexpr const char* CUSTOM_1          = "カスタム1";
     constexpr const char* CUSTOM_2          = "カスタム2";
     constexpr const char* CUSTOM_3          = "カスタム3";
@@ -154,8 +154,8 @@ namespace ParamNames
     constexpr const char* SPAWN_ROTATION    = "範囲の回転";           
     constexpr const char* SHOW_SPAWN        = "目安の表示";            
     constexpr const char* SPAWN_COLOR       = "目安の色";              
-    constexpr const char* OFFSET_X          = "オフセットX(px)";
-    constexpr const char* OFFSET_Y          = "オフセットY(px)";
+    constexpr const char* OFFSET_X          = "範囲オフセットX(px)";
+    constexpr const char* OFFSET_Y          = "範囲オフセットY(px)";
     constexpr const char* ANIM_PATTERN      = "進行方向";        
     constexpr const char* CENTER_GAP        = "中央ギャップ";    
     constexpr const char* EASING            = "イージング";

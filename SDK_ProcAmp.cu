@@ -607,20 +607,22 @@
 				pixel.x = 0.0f;   // R = 0
 				pixel.y = 1.0f;   // G = 1 (Green for CUDA)
 				pixel.z = 0.0f;   // B = 0
-				pixel.w = 1.0f;   // A = 1
-			}
-			
-			// Premultiply alpha for proper Premiere Pro compositing
-			pixel.x *= pixel.w;
-			pixel.y *= pixel.w;
-			pixel.z *= pixel.w;
-
-			WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
+			pixel.w = 1.0f;   // A = 1
 		}
-	}
-#endif
+		
+		// Premultiply alpha for proper Premiere Pro compositing
+		// If original background was already opaque, keep it opaque to avoid gray edges
+		if (originalAlpha >= 0.99f) {
+			pixel.w = 1.0f;
+		}
+		pixel.x *= pixel.w;
+		pixel.y *= pixel.w;
+		pixel.z *= pixel.w;
 
-#if __NVCC__
+		WriteFloat4(pixel, ioImage, inXY.y * inPitch + inXY.x, !!in16f);
+	}
+}
+#endif#if __NVCC__
 	void ProcAmp2_CUDA(
 		float* ioBuffer,
 		int pitch,

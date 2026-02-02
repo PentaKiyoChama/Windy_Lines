@@ -463,6 +463,20 @@ static void ApplyEffectPreset(
 	// Advanced
 	updatePopup(SDK_PROCAMP_BLEND_MODE, preset.blendMode);
 	updateFloat(SDK_PROCAMP_LINE_DEPTH_STRENGTH, preset.depthStrength);
+	
+	// New parameters
+	updatePopup(SDK_PROCAMP_LINE_CAP, preset.lineCap);
+	updatePopup(SDK_PROCAMP_COLOR_MODE, preset.colorMode);
+	updatePopup(SDK_PROCAMP_COLOR_PRESET, preset.colorPreset);
+	updatePopup(SDK_PROCAMP_SPAWN_SOURCE, preset.spawnSource);
+	
+	auto updateCheckbox = [&](int paramId, bool value)
+	{
+		params[paramId]->u.bd.value = value ? 1 : 0;
+		params[paramId]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
+		paramUtils->PF_UpdateParamUI(in_data->effect_ref, paramId, params[paramId]);
+	};
+	updateCheckbox(SDK_PROCAMP_HIDE_ELEMENT, preset.hideElement);
 
 	// Force UI refresh and re-render
 	out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
@@ -532,6 +546,20 @@ static void ApplyDefaultEffectParams(
 	// Advanced
 	updatePopup(SDK_PROCAMP_BLEND_MODE, BLEND_MODE_DFLT);
 	updateFloat(SDK_PROCAMP_LINE_DEPTH_STRENGTH, static_cast<float>(LINE_DEPTH_DFLT));
+	
+	// New parameters (use defaults from .h file)
+	updatePopup(SDK_PROCAMP_LINE_CAP, LINE_CAP_DFLT);
+	updatePopup(SDK_PROCAMP_COLOR_MODE, COLOR_MODE_DFLT);
+	updatePopup(SDK_PROCAMP_COLOR_PRESET, COLOR_PRESET_DFLT);
+	updatePopup(SDK_PROCAMP_SPAWN_SOURCE, SPAWN_SOURCE_DFLT);
+	
+	auto updateCheckbox = [&](int paramId, bool value)
+	{
+		params[paramId]->u.bd.value = value ? 1 : 0;
+		params[paramId]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
+		paramUtils->PF_UpdateParamUI(in_data->effect_ref, paramId, params[paramId]);
+	};
+	updateCheckbox(SDK_PROCAMP_HIDE_ELEMENT, HIDE_ELEMENT_DFLT);
 
 	out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
 	out_data->out_flags |= PF_OutFlag_REFRESH_UI;
@@ -751,7 +779,7 @@ static PF_Err ParamsSetup(
 	PF_ADD_POPUP(
 		P_LINE_CAP,
 		2,
-		1,
+		LINE_CAP_DFLT,
 		PM_LINE_CAP,
 		SDK_PROCAMP_LINE_CAP);
 
@@ -780,7 +808,7 @@ static PF_Err ParamsSetup(
 	PF_ADD_POPUP(
 		P_SPAWN_SOURCE,
 		2,
-		1,  // Default: 画面全体 (menu item 1)
+		SPAWN_SOURCE_DFLT,
 		P_SPAWN_SOURCE_CHOICES,
 		SDK_PROCAMP_SPAWN_SOURCE);
 
@@ -2023,22 +2051,30 @@ static PF_Err Render(
 					const float dy = (y + 0.5f) - cy;
 					if (dx * dx + dy * dy <= radius * radius)
 					{
-						outV = 0.5f;   // V for red in YUV
-						outU = 0.0f;   // U for red in YUV
-						outY = 0.3f;   // Y for red in YUV (low luma)
-						a = 1.0f;      // A = 1
-					}
+					outV = 0.5f;   // V for red in YUV
+					outU = 0.0f;   // U for red in YUV
+					outY = 0.3f;   // Y for red in YUV (low luma)
+					a = 1.0f;      // A = 1
 				}
-
-				((float*)destData)[x * 4 + 0] = outV;
-				((float*)destData)[x * 4 + 1] = outU;
-				((float*)destData)[x * 4 + 2] = outY;
-				((float*)destData)[x * 4 + 3] = a;
 			}
+			
+			// Premultiply alpha for proper Premiere Pro compositing
+			// If original background was already opaque, keep it opaque to avoid gray edges
+			if (originalAlpha >= 0.99f) {
+				a = 1.0f;
+			}
+			// Note: In YUV space, we premultiply the chroma (U,V) channels but not luma (Y)
+			outV *= a;
+			outU *= a;
+			// outY is typically not premultiplied in YUV workflows
+
+			((float*)destData)[x * 4 + 0] = outV;
+			((float*)destData)[x * 4 + 1] = outU;
+			((float*)destData)[x * 4 + 2] = outY;
+			((float*)destData)[x * 4 + 3] = a;
 		}
 	}
-
-	return PF_Err_NONE;
+}	return PF_Err_NONE;
 }
 
 /*

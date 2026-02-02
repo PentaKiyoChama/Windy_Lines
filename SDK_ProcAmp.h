@@ -220,133 +220,143 @@ struct EffectPreset
 	// Advanced
 	int blendMode;      // 1=Back, 2=Front, 3=BackAndFront, 4=Alpha
 	float depthStrength;
+	// New fields
+	int lineCap;          // 0=Flat, 1=Round
+	int colorMode;        // 1=Single, 2=Preset, 3=Custom
+	int colorPreset;      // 1-33
+	int spawnSource;      // 1=Full Frame, 2=Element
+	bool hideElement;     // Hide original element
 };
 
 // Preset data array (add new presets here)
 // Format: name, count, lifetime, travel, thickness, length, angle, tailFade, aa,
 //         originMode, spawnScaleX, spawnScaleY, originOffsetX, originOffsetY, interval,
-//         animPattern, easing, startTime, duration, blendMode, depthStrength
+//         animPattern, centerGap, easing, startTime, duration, blendMode, depthStrength,
+//         lineCap, colorMode, colorPreset, spawnSource, hideElement
 static const EffectPreset kEffectPresets[] =
 {
-	// Gentle Breeze - soft, slow movement
-	{ "そよ風",
-	  50, 60.0f, 300.0f,         // count, lifetime, travel
-	  4.0f, 200.0f, 0.0f, 0.0f, 1.0f,  // thickness, length, angle, tailFade, aa
-	  1, 100.0f, 100.0f, 0.0f, 0.0f, 0.0f,  // originMode, scaleX, scaleY, offsetX, offsetY, interval
-	  1, 0.0f, 2, 0.0f, 0.0f,    // animPattern, centerGap, easing, startTime, duration
-	  2, 0.3f                    // blendMode, depthStrength
-	},
-	// Storm - intense, fast movement
-	{ "嵐",
-	  200, 20.0f, 800.0f,
-	  12.0f, 500.0f, -15.0f, 0.2f, 1.5f,
-	  2, 120.0f, 120.0f, 0.0f, 0.0f, 0.0f,
-	  2, 0.0f, 6, 0.0f, 0.0f,
-	  2, 0.8f
-	},
-	// Rain - vertical, varied depths
+	// そよ風 (Gentle Breeze)
+	{"そよ風", 50, 120.0f, 200.0f, 2.0f, 80.0f, 0.0f, 0.3f, 2.0f, 1, 100.0f, 100.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 3, 0.0f, 0.0f, 1, 3.0f, 
+	 1, 1, 1, 1, false},  // lineCap=Round, colorMode=Single, colorPreset=1, spawnSource=Full, hideElement=false
+	// 嵐 (Storm)
+	{"嵐", 200, 30.0f, 400.0f, 3.0f, 60.0f, 15.0f, 0.7f, 1.5f, 2, 120.0f, 120.0f, 0.0f, 0.0f, 0.0f, 1, 0.0f, 1, 0.0f, 0.0f, 1, 5.0f, 
+	 1, 1, 1, 1, false},
+	// 雨 (Rain) - vertical, varied depths
 	{ "雨",
 	  150, 25.0f, 600.0f,
 	  2.0f, 150.0f, 90.0f, 0.3f, 0.5f,
 	  2, 100.0f, 100.0f, 0.0f, 0.0f, 0.0f,
 	  1, 0.0f, 0, 0.0f, 0.0f,
-	  3, 0.7f
+	  3, 0.7f,
+	  1, 1, 1, 1, false
 	},
-	// Sparkle - short, scattered
+	// スパークル (Sparkle) - short, scattered
 	{ "スパークル",
 	  100, 45.0f, 150.0f,
 	  3.0f, 50.0f, 45.0f, 0.5f, 2.0f,
 	  1, 150.0f, 150.0f, 0.0f, 0.0f, 2.0f,
 	  1, 0.0f, 4, 0.0f, 0.0f,
-	  2, 0.5f
+	  2, 0.5f,
+	  1, 1, 1, 1, false
 	},
-	// Blizzard - diagonal, dense
+	// 吹雪 (Blizzard) - diagonal, dense
 	{ "吹雪",
 	  300, 15.0f, 500.0f,
 	  3.0f, 100.0f, -30.0f, 0.1f, 1.0f,
 	  2, 130.0f, 130.0f, 0.0f, 0.0f, 0.0f,
 	  2, 0.0f, 5, 0.0f, 0.0f,
-	  3, 0.6f
+	  3, 0.6f,
+	  1, 1, 1, 1, false
 	},
-	// Zen Flow - slow, centered
+	// 禅フロー (Zen Flow) - slow, centered
 	{ "禅フロー",
 	  30, 120.0f, 200.0f,
 	  6.0f, 400.0f, 0.0f, 0.4f, 2.0f,
 	  1, 80.0f, 80.0f, 0.0f, 0.0f, 5.0f,
 	  1, 0.0f, 1, 0.0f, 0.0f,
-	  2, 0.2f
+	  2, 0.2f,
+	  1, 1, 1, 1, false
 	},
-	// Speed Lines - anime style, center empty
+	// スピードライン (Speed Lines) - anime style, center empty
 	{ "スピードライン",
 	  80, 10.0f, 1200.0f,
 	  8.0f, 800.0f, 0.0f, 0.0f, 0.5f,
 	  3, 100.0f, 60.0f, 0.0f, 0.0f, 0.0f,
 	  3, 0.2f, 8, 0.0f, 0.0f,    // Split + centerGap
-	  2, 0.4f
+	  2, 0.4f,
+	  1, 1, 1, 1, false
 	},
-	// Confetti - celebration
+	// 紙吹雪 (Confetti) - celebration
 	{ "紙吹雪",
 	  120, 90.0f, 250.0f,
 	  5.0f, 30.0f, 90.0f, 0.0f, 1.5f,
 	  1, 120.0f, 50.0f, 0.0f, -200.0f, 3.0f,
 	  1, 0.0f, 3, 0.0f, 0.0f,
-	  2, 0.6f
+	  2, 0.6f,
+	  1, 1, 1, 1, false
 	},
-	// Warp Speed - hyper fast, split sides
+	// ワープスピード (Warp Speed) - hyper fast, split sides
 	{ "ワープスピード",
 	  150, 5.0f, 2000.0f,
 	  6.0f, 1200.0f, 0.0f, 0.0f, 0.3f,
 	  2, 80.0f, 40.0f, 0.0f, 0.0f, 0.0f,
 	  3, 0.25f, 9, 0.0f, 0.0f,   // Split + large centerGap
-	  2, 0.5f
+	  2, 0.5f,
+	  1, 1, 1, 1, false
 	},
-	// Falling Leaves - gentle diagonal
+	// 落ち葉 (Falling Leaves) - gentle diagonal
 	{ "落ち葉",
 	  40, 90.0f, 400.0f,
 	  4.0f, 80.0f, 120.0f, 0.3f, 1.5f,
 	  1, 100.0f, 100.0f, 0.0f, 0.0f, 3.0f,
 	  2, 0.0f, 2, 0.0f, 0.0f,    // Half Reverse
-	  2, 0.4f
+	  2, 0.4f,
+	  1, 1, 1, 1, false
 	},
-	// Laser Grid - sharp, split
+	// レーザーグリッド (Laser Grid) - sharp, split
 	{ "レーザーグリッド",
 	  60, 15.0f, 600.0f,
 	  2.0f, 600.0f, 45.0f, 0.0f, 0.5f,
 	  1, 100.0f, 100.0f, 0.0f, 0.0f, 1.0f,
 	  3, 0.15f, 0, 0.0f, 0.0f,   // Split + centerGap
-	  2, 0.3f
+	  2, 0.3f,
+	  1, 1, 1, 1, false
 	},
-	// Ocean Waves - horizontal, slow
+	// 海の波 (Ocean Waves) - horizontal, slow
 	{ "海の波",
 	  80, 80.0f, 350.0f,
 	  10.0f, 300.0f, 0.0f, 0.2f, 2.0f,
 	  1, 120.0f, 40.0f, 0.0f, 0.0f, 4.0f,
 	  1, 0.0f, 1, 0.0f, 0.0f,
-	  3, 0.5f
+	  3, 0.5f,
+	  1, 1, 1, 1, false
 	},
-	// Starfield - radial burst
+	// 星空 (Starfield) - radial burst
 	{ "星空",
 	  100, 30.0f, 500.0f,
 	  3.0f, 100.0f, 45.0f, 0.4f, 1.0f,
 	  1, 150.0f, 150.0f, 0.0f, 0.0f, 0.0f,
 	  2, 0.0f, 6, 0.0f, 0.0f,    // Half Reverse
-	  2, 0.6f
+	  2, 0.6f,
+	  1, 1, 1, 1, false
 	},
-	// Cinema Dust - subtle particles
+	// シネマダスト (Cinema Dust) - subtle particles
 	{ "シネマダスト",
 	  25, 150.0f, 80.0f,
 	  2.0f, 20.0f, 90.0f, 0.0f, 1.0f,
 	  1, 100.0f, 100.0f, 0.0f, 0.0f, 8.0f,
 	  1, 0.0f, 0, 0.0f, 0.0f,
-	  2, 0.2f
+	  2, 0.2f,
+	  1, 1, 1, 1, false
 	},
-	// Energy Burst - split sides, intense
+	// エナジーバースト (Energy Burst) - split sides, intense
 	{ "エナジーバースト",
 	  120, 12.0f, 900.0f,
 	  5.0f, 400.0f, 0.0f, 0.1f, 0.8f,
 	  1, 60.0f, 100.0f, 0.0f, 0.0f, 0.0f,
 	  3, 0.3f, 7, 0.0f, 0.0f,    // Split + large centerGap
-	  2, 0.7f
+	  2, 0.7f,
+	  1, 1, 1, 1, false
 	}
 };
 
@@ -369,7 +379,7 @@ static const int kEffectPresetCount = static_cast<int>(sizeof(kEffectPresets) / 
 #define	LINE_LENGTH_MAX_VALUE		2000
 #define	LINE_LENGTH_MIN_SLIDER		0
 #define	LINE_LENGTH_MAX_SLIDER		2000
-#define	LINE_LENGTH_DFLT			300
+#define	LINE_LENGTH_DFLT			200
 
 #define	LINE_AA_MIN_VALUE			0
 #define	LINE_AA_MAX_VALUE			5
@@ -402,7 +412,7 @@ static const int kEffectPresetCount = static_cast<int>(sizeof(kEffectPresets) / 
 #define	LINE_INTERVAL_MAX_VALUE		600
 #define	LINE_INTERVAL_MIN_SLIDER	0
 #define	LINE_INTERVAL_MAX_SLIDER	600
-#define	LINE_INTERVAL_DFLT			0
+#define	LINE_INTERVAL_DFLT			180
 
 #define	LINE_SEED_MIN_VALUE			0
 #define	LINE_SEED_MAX_VALUE			1000000
@@ -442,6 +452,12 @@ static const int kEffectPresetCount = static_cast<int>(sizeof(kEffectPresets) / 
 #define COLOR_MODE_DFLT         1   // Single
 #define COLOR_PRESET_DFLT       1   // Rainbow
 
+// Line Cap default
+#define LINE_CAP_DFLT           1   // Round (1=Flat, 2=Round)
+
+// Spawn Source default
+#define SPAWN_SOURCE_DFLT       1   // Full Frame (1=Full Frame, 2=Element)
+
 // Shadow parameters
 #define SHADOW_ENABLE_DFLT      0       // Off by default
 #define SHADOW_COLOR_R_DFLT     0.0     // Black shadow by default
@@ -461,7 +477,7 @@ static const int kEffectPresetCount = static_cast<int>(sizeof(kEffectPresets) / 
 #define HIDE_ELEMENT_DFLT       0   // Off by default (show element + lines)
 
 // Default value for blend mode
-#define BLEND_MODE_DFLT         2   // Front (draw in front of element)
+#define BLEND_MODE_DFLT         3   // Front&back
 
 // Line spawn area scale (%)
 #define	LINE_SPAWN_SCALE_X_MIN_VALUE	0
@@ -521,12 +537,12 @@ static const int kEffectPresetCount = static_cast<int>(sizeof(kEffectPresets) / 
 #define	CENTER_GAP_MAX_VALUE		0.5
 #define	CENTER_GAP_MIN_SLIDER		0.0
 #define	CENTER_GAP_MAX_SLIDER		0.5
-#define	CENTER_GAP_DFLT				0.15
+#define	CENTER_GAP_DFLT				0
 
 // Motion Blur
 #define	MOTION_BLUR_ENABLE_DFLT			0		// Off by default
 #define	MOTION_BLUR_SAMPLES_MIN_VALUE	1
-#define	MOTION_BLUR_SAMPLES_MAX_VALUE	64
+#define	MOTION_BLUR_SAMPLES_MAX_VALUE	32
 #define	MOTION_BLUR_SAMPLES_MIN_SLIDER	1
 #define	MOTION_BLUR_SAMPLES_MAX_SLIDER	32
 #define	MOTION_BLUR_SAMPLES_DFLT		8		// 8 samples default
