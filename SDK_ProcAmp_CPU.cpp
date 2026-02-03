@@ -173,39 +173,6 @@ struct InstanceState
 static std::unordered_map<const void*, std::shared_ptr<InstanceState>> sInstanceStates;
 static std::mutex sInstanceStatesMutex;
 
-static std::mutex sDebugLogMutex;
-static std::atomic<int> sDebugLogCount{ 0 };
-static const char* GetDebugLogPath()
-{
-#if defined(_WIN32)
-	return "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp_Debug.log";
-#else
-	return "/Users/kiyotonakamura/Desktop/SDK_ProcAmp_Debug.log";
-#endif
-}
-
-static void DebugLog(const char* format, ...)
-{
-	const int current = sDebugLogCount.fetch_add(1);
-	if (current > 400)
-	{
-		return;
-	}
-	char buffer[512];
-	va_list args;
-	va_start(args, format);
-	vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-	std::lock_guard<std::mutex> lock(sDebugLogMutex);
-	FILE* file = fopen(GetDebugLogPath(), "a");
-	if (file)
-	{
-		fputs(buffer, file);
-		fputc('\n', file);
-		fclose(file);
-	}
-}
-
 static const void* GetInstanceKey(const PF_InData* in_data)
 {
 	if (in_data && in_data->effect_ref)
@@ -289,8 +256,6 @@ static void UpdateAlphaThresholdVisibility(PF_InData* in_data, PF_ParamDef* para
 	// Get raw popup value (1-based), convert to 0-based: 1->0, 2->1
 	const int rawValue = params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value;
 	const int spawnSource = (rawValue > 0) ? rawValue - 1 : 0;  // 0=Full, 1=Element
-	
-	DebugLog("[UI UPDATE] raw=%d spawnSource=%d (0=Full, 1=Element)", rawValue, spawnSource);
 }
 
 static float ApplyEasing(float t, int easing)
@@ -1258,15 +1223,12 @@ static PF_Err Render(
 	const float lineThickness = (float)params[SDK_PROCAMP_LINE_THICKNESS]->u.fs_d.value;
 	const float lineLength = (float)params[SDK_PROCAMP_LINE_LENGTH]->u.fs_d.value;
 	const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
-	DebugLog("[CPU LINECAP %s] Raw value=%d, Normalized lineCap=%d (0=Flat, 1=Round)", 
-	         SDK_PROCAMP_VERSION_SHORT, (int)params[SDK_PROCAMP_LINE_CAP]->u.pd.value, lineCap);
-		const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
+	const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
 		const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
 		const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
 		float lineAlphaThreshold = (float)params[SDK_PROCAMP_LINE_ALPHA_THRESH]->u.fs_d.value;
-		DebugLog("[CPU SPAWN] spawnSource=%d (0=Element, 1=Full) thresh=%.3f", spawnSource, lineAlphaThreshold);
 		if (spawnSource == SPAWN_SOURCE_FULL_FRAME) {
 			lineAlphaThreshold = 1.0f;  // Full frame: ignore alpha, spawn everywhere
 		}
@@ -1346,17 +1308,6 @@ static PF_Err Render(
 		if (clipStartFrame > 0)
 		{
 			SharedClipData::SetClipStart(clipStartFrame, clipStartFrame);
-		}
-		
-		if (frameIndex < 5 || (frameIndex % 30) == 0)
-		{
-			DebugLog("[CPU] clipTime=%ld frame=%ld clipStart=%ld trackStart=%ld seed=%d count=%d",
-				clipTime,
-				frameIndex,
-				clipStartFrame,
-				trackItemStart,
-				lineSeed,
-				lineCount);
 		}
 
 		const float angleRadians = (float)(M_PI / 180) * lineAngle;
@@ -1866,14 +1817,6 @@ static PF_Err Render(
 					px -= ld.segCenterX;
 
 					float dist = 0.0f;
-					// DEBUG: Log which branch is executed (only once per render)
-					static bool debugLoggedLineCap = false;
-					if (!debugLoggedLineCap)
-					{
-						DebugLog("[CPU LINECAP BRANCH] lineCap=%d, Executing: %s", 
-							lineCap, (lineCap == 0) ? "FLAT (Box distance)" : "ROUND (Capsule distance)");
-						debugLoggedLineCap = true;
-					}
 					if (lineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
 					{
 						// Box distance (flat caps)
@@ -1884,9 +1827,6 @@ static PF_Err Render(
 						const float outside = sqrtf(ox * ox + oy * oy);
 						const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
 						dist = outside + inside;
-						// DEBUG: Log flat branch execution once
-						static bool flatLogged = false;
-						if (!flatLogged) { DebugLog("[CPU] >>> FLAT branch EXECUTED <<<"); flatLogged = true; }
 					}
 					else
 					{
@@ -1894,9 +1834,6 @@ static PF_Err Render(
 						const float ax = fabsf(px) - ld.halfLen;
 						const float qx = ax > 0.0f ? ax : 0.0f;
 						dist = sqrtf(qx * qx + py * py) - ld.halfThick;
-						// DEBUG: Log round branch execution once
-						static bool roundLogged = false;
-						if (!roundLogged) { DebugLog("[CPU] >>> ROUND branch EXECUTED <<<"); roundLogged = true; }
 					}
 
 					const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;

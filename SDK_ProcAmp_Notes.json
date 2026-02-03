@@ -11,8 +11,7 @@
     "gpu_cuda": "SDK_ProcAmp.cu (729 lines - REFERENCE)",
     "gpu_opencl": "SDK_ProcAmp.cl (733 lines)",
     "gpu_metal": "SDK_ProcAmp.metal (just includes .cl)",
-    "host": "SDK_ProcAmp_GPU.cpp",
-    "log": "/Users/kiyotonakamamura/Desktop/SDK_ProcAmp_Debug.log"
+    "host": "SDK_ProcAmp_GPU.cpp"
   },
   
   "CRITICAL_RULES": {
@@ -71,13 +70,8 @@
       "SDK_ProcAmp.cu (CUDA - lines 285-315 Shadow, 470-530 Blend Modes, 512-522 Front line accumulation fix)",
       "SDK_ProcAmp_CPU.cpp (CPU - lines 1850-1970 Shadow and Blend Modes, 1959-1969 Front line accumulation fix)",
       "SDK_ProcAmp.cl.bak (DELETED - was causing confusion with mismatched braces)"
-    ],
-    "testing": {
-      "test_case": "White lines on white background with anti-aliasing enabled",
-      "before": "Visible gray edges around line borders",
-      "after": "Clean white edges, no gray artifacts",
-      "blend_mode_2_issue": {
-        "problem": "Back and Front mode showed red/gray edge artifacts with anti-aliasing, including motion blur trails",
+    ]
+  },
         "cause": "CUDA front line accumulation used premultiplied method while OpenCL used un-premultiplied, and application differed",
         "fix": "Matched CUDA/CPU to OpenCL: un-premultiplied accumulation + direct application (frontR not frontR*frontA)",
         "result": "Clean edges in Back and Front mode, confirmed working 2026-02-02"
@@ -163,15 +157,7 @@
       "No runtime errors - kernel executed",
       "CUDA version had correct structure - comparing line-by-line missed structural difference",
       "Indentation in .cl file was misleading - code looked correct visually"
-    ],
-    "debug_approach": [
-      "1. Add simple test shape (red rectangle) to verify kernel runs",
-      "2. If test shape appears, kernel pipeline is OK",
-      "3. Problem is in rendering logic, not data passing",
-      "4. Compare CUDA vs OpenCL STRUCTURE, not just syntax",
-      "5. Check every if/else/for block has matching braces"
-    ],
-    "lesson": "When porting CUDA to OpenCL, verify BLOCK STRUCTURE matches exactly, not just line content"
+    ]
   },
   
   "FLAT_ROUND_CAP_FIX": {

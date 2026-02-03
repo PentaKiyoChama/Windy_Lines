@@ -195,41 +195,7 @@ static std::vector<ShaderObjectPtr> sShaderObjectCache;
 static std::vector<ShaderObjectPtr> sShaderObjectAlphaCache;
 #endif //HAS_DIRECTX
 
-static std::mutex sDebugLogMutex;
-static std::atomic<int> sDebugLogCount{ 0 };
-
 // No state tracking needed - using period-based approach for cache consistency
-
-static const char* GetDebugLogPath()
-{
-#if defined(_WIN32)
-	return "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\SDK_ProcAmp\\SDK_ProcAmp_Debug.log";
-#else
-	return "/Users/kiyotonakamura/Desktop/Windy_Lines/SDK_ProcAmp_Debug.log";
-#endif
-}
-
-static void DebugLog(const char* format, ...)
-{
-	const int current = sDebugLogCount.fetch_add(1);
-	if (current > 10000)  // v24: Increased limit for debugging
-	{
-		return;
-	}
-	char buffer[512];
-	va_list args;
-	va_start(args, format);
-	vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-	std::lock_guard<std::mutex> lock(sDebugLogMutex);
-	FILE* file = fopen(GetDebugLogPath(), "a");
-	if (file)
-	{
-		fputs(buffer, file);
-		fputc('\n', file);
-		fclose(file);
-	}
-}
 
 #if HAS_METAL
 
@@ -817,9 +783,6 @@ public:
 	virtual prSuiteError Initialize(
 		PrGPUFilterInstance* ioInstanceData)
 	{
-		// FORCE CPU FALLBACK: Return failure to disable GPU and test CPU implementation
-		return suiteError_Fail;
-		
 		PrGPUFilterBase::Initialize(ioInstanceData);
 
 		if (mDeviceIndex > kMaxDevices)
