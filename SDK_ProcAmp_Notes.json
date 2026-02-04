@@ -29,6 +29,91 @@
       "double_premultiplication": "PRIMARY CAUSE - CPU code applied premultiplication (outV *= a, outU *= a) AFTER premultiplied alpha compositing, causing double multiplication and loss of color saturation",
       "result": "Double premultiplication darkened colors (red 0.5 * 0.3 = 0.15), making motion blur trails appear gray instead of naturally fading to background"
     },
+    "DETAILED_TECHNICAL_EXPLANATION": {
+      "what_is_premultiplied_alpha_compositing": {
+        "purpose": "Correct way to blend two semi-transparent layers, accounting for partial coverage/transparency",
+        "formula": "resultColor = (srcColor * srcAlpha + dstColor * dstAlpha * (1 - srcAlpha)) / outAlpha",
+        "where": {
+          "srcColor": "Color of the new element being drawn (e.g., red line)",
+          "srcAlpha": "Alpha/coverage of the new element (0.0 = fully transparent, 1.0 = fully opaque)",
+          "dstColor": "Color of existing pixel (e.g., white background)",
+          "dstAlpha": "Alpha of existing pixel",
+          "outAlpha": "Resulting alpha = srcAlpha + dstAlpha * (1 - srcAlpha)"
+        },
+        "output_format": "This formula produces STRAIGHT ALPHA (also called unassociated alpha) - color values are NOT multiplied by alpha",
+        "key_point": "The division by outAlpha normalizes the color, producing straight alpha output"
+      },
+      "what_was_wrong_in_cpu_code": {
+        "step1_correct_compositing": {
+          "description": "CPU code correctly used premultiplied alpha compositing formula",
+          "example_code": "outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;",
+          "result": "This produces correct straight alpha color (color NOT multiplied by alpha)"
+        },
+        "step2_incorrect_multiplication": {
+          "description": "THEN CPU code incorrectly multiplied the result by alpha again",
+          "example_code": "outV *= a; outU *= a;",
+          "result": "This converts straight alpha to premultiplied alpha, but Premiere Pro expects straight alpha"
+        },
+        "why_this_is_wrong": "Multiplying by alpha a second time darkens the color. The compositing formula already produced the correct answer - additional multiplication corrupts it."
+      },
+      "concrete_numerical_example": {
+        "scenario": "Red line with motion blur (coverage=0.3) over white background",
+        "input_values": {
+          "background": "White in YUV: Y=1.0, U=0.0, V=0.0, alpha=1.0 (or 0.0 if hideElement=true)",
+          "line_color": "Red in YUV: Y=0.3, U=0.0, V=0.5 (V channel makes it red)",
+          "coverage": "0.3 (motion blur sample at 30% opacity)"
+        },
+        "correct_calculation": {
+          "step1_compositing": "outV = (0.5 * 0.3 + 0.0 * 1.0 * 0.7) / 0.3 = 0.15 / 0.3 = 0.5",
+          "step1_alpha": "outAlpha = 0.3 + 1.0 * 0.7 = 1.0",
+          "step2_output": "outV = 0.5, alpha = 0.3 (if hideElement) or 1.0 (if not)",
+          "visual_result": "Red color (V=0.5) with 30% opacity over background → RED fades naturally to background",
+          "note": "When hideElement=false and background is white (alpha=1.0), final alpha stays 1.0 (opaque), and color blends correctly via compositing"
+        },
+        "wrong_calculation_before_fix": {
+          "step1_compositing": "outV = (0.5 * 0.3 + 0.0 * 1.0 * 0.7) / 0.3 = 0.5 (CORRECT so far)",
+          "step1_alpha": "outAlpha = 0.3",
+          "step2_double_premultiply": "outV *= 0.3 → outV = 0.5 * 0.3 = 0.15 (WRONG!)",
+          "step3_output": "outV = 0.15, alpha = 0.3",
+          "visual_result": "Darkened color (V=0.15 instead of 0.5) → appears GRAY/DESATURATED",
+          "why_gray": "V=0.15 is much less saturated than V=0.5. In YUV, lower V values move toward gray. The color lost its redness."
+        },
+        "comparison": {
+          "correct": "V=0.5 with alpha=0.3 → Red fades naturally",
+          "wrong": "V=0.15 with alpha=0.3 → Gray appearance (lost saturation)",
+          "saturation_loss": "0.5 → 0.15 = 70% saturation loss"
+        }
+      },
+      "why_motion_blur_made_it_obvious": {
+        "motion_blur_creates_partial_coverage": "Motion blur samples have varying coverage (0.1, 0.2, 0.3, etc.), creating many semi-transparent pixels",
+        "straight_alpha_behavior": "With correct straight alpha: Red stays red regardless of alpha value. Background shows through proportionally.",
+        "double_premultiply_behavior": "With double premultiplication: Color darkens proportionally to alpha. Low alpha = very dark/gray color.",
+        "trail_appearance": {
+          "correct": "Red → Red → Red → transparent (color stays consistent, only alpha changes)",
+          "wrong": "Red → Pink → Gray → transparent (color darkens/desaturates as alpha decreases)"
+        },
+        "without_motion_blur": "Fully opaque lines (alpha=1.0) had no visible issue because 1.0 * 1.0 = 1.0 (no change)"
+      },
+      "the_fix": {
+        "what_was_removed": {
+          "line1": "if (originalAlpha >= 0.99f) { a = 1.0f; }",
+          "line2": "outV *= a;",
+          "line3": "outU *= a;",
+          "location": "SDK_ProcAmp_CPU.cpp lines 2143-2154 (before pixel output)"
+        },
+        "why_removal_fixes_it": "Premultiplied alpha compositing already produces correct straight alpha output. No additional multiplication is needed or wanted.",
+        "after_fix": {
+          "code": "((float*)destData)[x * 4 + 0] = outV; // Direct output",
+          "behavior": "Colors maintain full saturation at all alpha values",
+          "result": "Motion blur trails fade naturally via alpha, color stays consistent"
+        }
+      },
+      "difference_from_gpu": {
+        "gpu_never_had_this_bug": "CUDA/OpenCL/Metal implementations output pixel.x, pixel.y, pixel.z, pixel.w directly after compositing - no additional multiplication",
+        "cpu_had_extra_code": "CPU had legacy code that attempted to 'prepare' output for Premiere Pro by premultiplying, but this was incorrect",
+        "why_legacy_code_existed": "Possibly misunderstanding about Premiere Pro's expected format, or copy-paste from older code that used different alpha conventions"
+      }
+    },
     "changes": {
       "removed_double_premultiplication": {
         "old": "outV *= a; outU *= a; after premultiplied compositing calculation",
@@ -48,18 +133,6 @@
         "applied_to": ["Line motion blur samples", "Shadow motion blur samples", "Blur too small fallback", "No motion blur single sample"]
       }
     },
-    "technical_explanation": {
-      "why_gray": "When colors are multiplied by alpha twice: (1) during premultiplied compositing, (2) at output stage, the result is darkened. Example: red line (V=0.5) with coverage=0.3 becomes V=0.5*0.3=0.15 (gray), instead of staying V=0.5 with alpha=0.3 (red fading naturally).",
-      "correct_behavior": "Motion blur trails should show decreasing alpha (becoming more transparent) as they fade to background, NOT decreasing color saturation (becoming gray)",
-      "premultiplied_vs_straight": "Premultiplied alpha compositing produces straight alpha output (colors NOT premultiplied). GPU implementations output straight alpha directly. CPU was incorrectly premultiplying the already-correct straight alpha result.",
-      "formula": "outV = (lineV * srcAlpha + bgV * bgAlpha * (1-srcAlpha)) / outAlpha produces straight alpha - DO NOT multiply by alpha again"
-    },
-    "files_modified": [
-      "SDK_ProcAmp_CPU.cpp (lines 1782-1938: restored shadow motion blur, unified calculation style)",
-      "SDK_ProcAmp_CPU.cpp (lines 1945-2070: unified line motion blur calculation)",
-      "SDK_ProcAmp_CPU.cpp (lines 2143-2154: CRITICAL FIX - removed double premultiplication)",
-      "SDK_ProcAmp_Notes.json (version bump to v63, added this entry)"
-    ],
     "verification": "Test with red lines on white background with motion blur enabled - trails should fade naturally maintaining red color, not turning gray. Shadows should also show smooth motion blur.",
     "future_note": "NEVER multiply colors by alpha after premultiplied alpha compositing - the compositing formula already produces correct straight alpha output. Additional multiplication causes color darkening/desaturation."
   },
