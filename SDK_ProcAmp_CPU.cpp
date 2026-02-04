@@ -139,6 +139,7 @@ struct LineDerived
 	int colorIndex;    // Palette color index (0-7)
 	float focusAlpha;  // Alpha multiplier for focus blur (1.0 = in focus)
 	float appearAlpha; // Alpha multiplier for appear/disappear fade (0-1)
+	float lineVelocity; // Instantaneous velocity from easing (for motion blur)
 };
 
 struct LineInstanceState
@@ -356,6 +357,29 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(SDK_PROCAMP_COLOR_PRESET, true);
 
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
+}
+
+// Derivative of easing function (instantaneous velocity factor)
+// Returns normalized velocity: 1.0 = linear speed, >1.0 = faster, <1.0 = slower
+static float ApplyEasingDerivative(float t, int easingType)
+{
+	// For complex easing types, use numerical approximation
+	const float epsilon = 0.001f;
+	switch (easingType)
+	{
+		case 0: return 1.0f; // Linear: constant velocity
+		// For all other types - use numerical differentiation
+		default:
+		{
+			const float t1 = t > epsilon ? t - epsilon : 0.0f;
+			const float t2 = t < 1.0f - epsilon ? t + epsilon : 1.0f;
+			const float dt = t2 - t1;
+			if (dt > 0.0f) {
+				return (ApplyEasing(t2, easingType) - ApplyEasing(t1, easingType)) / dt;
+			}
+			return 1.0f;
+		}
+	}
 }
 
 static void ApplyEffectPreset(
@@ -1268,6 +1292,11 @@ static PF_Err Render(
 	const float shadowOffsetY = (float)params[SDK_PROCAMP_SHADOW_OFFSET_Y]->u.fs_d.value;
 	const float shadowOpacity = (float)params[SDK_PROCAMP_SHADOW_OPACITY]->u.fs_d.value;
 	
+	// Motion Blur parameters
+	const bool motionBlurEnable = params[SDK_PROCAMP_MOTION_BLUR_ENABLE]->u.bd.value != 0;
+	const int motionBlurSamples = (int)params[SDK_PROCAMP_MOTION_BLUR_SAMPLES]->u.fs_d.value;
+	const float motionBlurStrength = (float)params[SDK_PROCAMP_MOTION_BLUR_STRENGTH]->u.fs_d.value;
+	
 	// Focus (Depth of Field) parameters
 	// Focus parameters removed
 	const float spawnScaleX = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_X]->u.fs_d.value / 100.0f;
@@ -1607,6 +1636,7 @@ static PF_Err Render(
 		ld.halfThick = lp.baseThick * 0.5f * appearScale;
 		ld.focusAlpha = 1.0f;
 		ld.appearAlpha = appearAlpha;  // Appear/disappear fade alpha
+		ld.lineVelocity = ApplyEasingDerivative(t, lineEasing);  // Motion blur velocity
 		
 		// Select color from palette: Single mode uses 0, Preset/Custom uses random based on seed
 		if (colorMode == 0)  // Single mode
@@ -1749,40 +1779,127 @@ static PF_Err Render(
 					const float t = saturate((depthScale - fadeEnd) / (fadeStart - fadeEnd));
 					const float depthAlpha = 0.05f + (1.0f - 0.05f) * t;
 					
-					// Draw shadow first (before the line)
+					// Draw shadow first (before the line) with motion blur
 					if (shadowEnable)
 					{
 						const float sdx = (x + 0.5f) - (ld.centerX + shadowOffsetX);
 						const float sdy = (y + 0.5f) - (ld.centerY + shadowOffsetY);
-						float spx = sdx * ld.cosA + sdy * ld.sinA;
-						float spy = -sdx * ld.sinA + sdy * ld.cosA;
-						spx -= ld.segCenterX;
+						float scoverage = 0.0f;
 
-						float sdist = 0.0f;
-						if (lineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
+						// Motion blur for shadow
+						if (motionBlurEnable && motionBlurSamples > 1)
 						{
-							// Box distance (flat caps)
-							const float dxBox = fabsf(spx) - ld.halfLen;
-							const float dyBox = fabsf(spy) - ld.halfThick;
-							const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-							const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-							const float outside = sqrtf(ox * ox + oy * oy);
-							const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-							sdist = outside + inside;
+							const int samples = motionBlurSamples;
+							const float shutterFraction = motionBlurStrength / 360.0f;
+							const float pixelsPerFrame = lineTravel / lineLifetime;
+							const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
+							const float blurRange = effectiveVelocity * shutterFraction;
+							const float sdenom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
+
+							if (blurRange > 0.5f)
+							{
+								float accumA = 0.0f;
+
+								for (int s = 0; s < samples; ++s)
+								{
+									const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
+									const float sampleOffset = blurRange * t;
+
+									float spxSample = sdx * ld.cosA + sdy * ld.sinA;
+									const float spySample = -sdx * ld.sinA + sdy * ld.cosA;
+									spxSample -= (ld.segCenterX + sampleOffset);
+
+									float sdistSample = 0.0f;
+									if (lineCap == 0)
+									{
+										const float dxBox = fabsf(spxSample) - ld.halfLen;
+										const float dyBox = fabsf(spySample) - ld.halfThick;
+										const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+										const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+										const float outside = sqrtf(ox * ox + oy * oy);
+										const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+										sdistSample = outside + inside;
+									}
+									else
+									{
+										const float ax = fabsf(spxSample) - ld.halfLen;
+										const float qx = ax > 0.0f ? ax : 0.0f;
+										sdistSample = sqrtf(qx * qx + spySample * spySample) - ld.halfThick;
+									}
+
+									const float stailT = saturate((spxSample + ld.halfLen) / sdenom);
+									const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
+									const float saa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+									const float sampleCoverage = smoothstep(saa, 0.0f, sdistSample) * stailFade;
+
+									accumA += sampleCoverage;
+								}
+
+								scoverage = (accumA / (float)samples) * ld.focusAlpha * shadowOpacity * depthAlpha;
+							}
+							else
+							{
+								// Blur too small, use single sample
+								float spx = sdx * ld.cosA + sdy * ld.sinA;
+								const float spy = -sdx * ld.sinA + sdy * ld.cosA;
+								spx -= ld.segCenterX;
+
+								float sdist = 0.0f;
+								if (lineCap == 0)
+								{
+									const float dxBox = fabsf(spx) - ld.halfLen;
+									const float dyBox = fabsf(spy) - ld.halfThick;
+									const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+									const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+									const float outside = sqrtf(ox * ox + oy * oy);
+									const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+									sdist = outside + inside;
+								}
+								else
+								{
+									const float ax = fabsf(spx) - ld.halfLen;
+									const float qx = ax > 0.0f ? ax : 0.0f;
+									sdist = sqrtf(qx * qx + spy * spy) - ld.halfThick;
+								}
+
+								const float saa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+								const float sdenom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
+								const float stailT = saturate((spx + ld.halfLen) / sdenom);
+								const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
+								scoverage = smoothstep(saa, 0.0f, sdist) * stailFade * ld.focusAlpha * shadowOpacity * depthAlpha;
+							}
 						}
 						else
 						{
-							// Capsule distance (rounded caps)
-							const float ax = fabsf(spx) - ld.halfLen;
-							const float qx = ax > 0.0f ? ax : 0.0f;
-							sdist = sqrtf(qx * qx + spy * spy) - ld.halfThick;
-						}
+							// No motion blur
+							float spx = sdx * ld.cosA + sdy * ld.sinA;
+							const float spy = -sdx * ld.sinA + sdy * ld.cosA;
+							spx -= ld.segCenterX;
 
-						const float saa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
-						const float sdenom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-						const float stailT = saturate((spx + ld.halfLen) / sdenom);
-						const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
-						const float scoverage = smoothstep(saa, 0.0f, sdist) * stailFade * ld.focusAlpha * shadowOpacity * depthAlpha;
+							float sdist = 0.0f;
+							if (lineCap == 0)
+							{
+								const float dxBox = fabsf(spx) - ld.halfLen;
+								const float dyBox = fabsf(spy) - ld.halfThick;
+								const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+								const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								const float outside = sqrtf(ox * ox + oy * oy);
+								const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+								sdist = outside + inside;
+							}
+							else
+							{
+								const float ax = fabsf(spx) - ld.halfLen;
+								const float qx = ax > 0.0f ? ax : 0.0f;
+								sdist = sqrtf(qx * qx + spy * spy) - ld.halfThick;
+							}
+
+							const float saa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+							const float sdenom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
+							const float stailT = saturate((spx + ld.halfLen) / sdenom);
+							const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
+							scoverage = smoothstep(saa, 0.0f, sdist) * stailFade * ld.focusAlpha * shadowOpacity * depthAlpha;
+						}
 						if (scoverage > 0.0f)
 						{
 							float shadowBlend = scoverage;
@@ -1809,39 +1926,126 @@ static PF_Err Render(
 						}
 					}
 					
-					// Draw the main line
+					// Draw the main line with motion blur
 					const float dx = (x + 0.5f) - ld.centerX;
 					const float dy = (y + 0.5f) - ld.centerY;
-					float px = dx * ld.cosA + dy * ld.sinA;
-					float py = -dx * ld.sinA + dy * ld.cosA;
-					px -= ld.segCenterX;
+					float coverage = 0.0f;
 
-					float dist = 0.0f;
-					if (lineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
+					// Motion blur sampling
+					if (motionBlurEnable && motionBlurSamples > 1)
 					{
-						// Box distance (flat caps)
-						const float dxBox = fabsf(px) - ld.halfLen;
-						const float dyBox = fabsf(py) - ld.halfThick;
-						const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-						const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-						const float outside = sqrtf(ox * ox + oy * oy);
-						const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-						dist = outside + inside;
+						const int samples = motionBlurSamples;
+						const float shutterFraction = motionBlurStrength / 360.0f;
+						const float pixelsPerFrame = lineTravel / lineLifetime;
+						const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
+						const float blurRange = effectiveVelocity * shutterFraction;
+						const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
+
+						if (blurRange > 0.5f)
+						{
+							// Multi-sample motion blur with uniform averaging
+							float accumA = 0.0f;
+
+							for (int s = 0; s < samples; ++s)
+							{
+								const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
+								const float sampleOffset = blurRange * t;
+
+								float pxSample = dx * ld.cosA + dy * ld.sinA;
+								const float pySample = -dx * ld.sinA + dy * ld.cosA;
+								pxSample -= (ld.segCenterX + sampleOffset);
+
+								float distSample = 0.0f;
+								if (lineCap == 0)
+								{
+									const float dxBox = fabsf(pxSample) - ld.halfLen;
+									const float dyBox = fabsf(pySample) - ld.halfThick;
+									const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+									const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+									const float outside = sqrtf(ox * ox + oy * oy);
+									const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+									distSample = outside + inside;
+								}
+								else
+								{
+									const float ax = fabsf(pxSample) - ld.halfLen;
+									const float qx = ax > 0.0f ? ax : 0.0f;
+									distSample = sqrtf(qx * qx + pySample * pySample) - ld.halfThick;
+								}
+
+								const float tailT = saturate((pxSample + ld.halfLen) / denom);
+								const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
+								const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+								const float sampleCoverage = smoothstep(aa, 0.0f, distSample) * tailFade;
+
+								accumA += sampleCoverage;
+							}
+
+							coverage = (accumA / (float)samples) * ld.focusAlpha * depthAlpha;
+						}
+						else
+						{
+							// Blur too small, use single sample
+							float px = dx * ld.cosA + dy * ld.sinA;
+							const float py = -dx * ld.sinA + dy * ld.cosA;
+							px -= ld.segCenterX;
+
+							float dist = 0.0f;
+							if (lineCap == 0)
+							{
+								const float dxBox = fabsf(px) - ld.halfLen;
+								const float dyBox = fabsf(py) - ld.halfThick;
+								const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+								const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								const float outside = sqrtf(ox * ox + oy * oy);
+								const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+								dist = outside + inside;
+							}
+							else
+							{
+								const float ax = fabsf(px) - ld.halfLen;
+								const float qx = ax > 0.0f ? ax : 0.0f;
+								dist = sqrtf(qx * qx + py * py) - ld.halfThick;
+							}
+
+							const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+							const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
+							const float tailT = saturate((px + ld.halfLen) / denom);
+							const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
+							coverage = smoothstep(aa, 0.0f, dist) * tailFade * ld.focusAlpha * depthAlpha;
+						}
 					}
 					else
 					{
-						// Capsule distance (rounded caps)
-						const float ax = fabsf(px) - ld.halfLen;
-						const float qx = ax > 0.0f ? ax : 0.0f;
-						dist = sqrtf(qx * qx + py * py) - ld.halfThick;
-					}
+						// No motion blur (single sample)
+						float px = dx * ld.cosA + dy * ld.sinA;
+						const float py = -dx * ld.sinA + dy * ld.cosA;
+						px -= ld.segCenterX;
 
-					const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
-					const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-					const float tailT = saturate((px + ld.halfLen) / denom);
-					const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
-					// Apply focus alpha (reduces opacity for out-of-focus lines) and depth alpha
-					const float coverage = smoothstep(aa, 0.0f, dist) * tailFade * ld.focusAlpha * depthAlpha;
+						float dist = 0.0f;
+						if (lineCap == 0)
+						{
+							const float dxBox = fabsf(px) - ld.halfLen;
+							const float dyBox = fabsf(py) - ld.halfThick;
+							const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+							const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+							const float outside = sqrtf(ox * ox + oy * oy);
+							const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+							dist = outside + inside;
+						}
+						else
+						{
+							const float ax = fabsf(px) - ld.halfLen;
+							const float qx = ax > 0.0f ? ax : 0.0f;
+							dist = sqrtf(qx * qx + py * py) - ld.halfThick;
+						}
+
+						const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+						const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
+						const float tailT = saturate((px + ld.halfLen) / denom);
+						const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
+						coverage = smoothstep(aa, 0.0f, dist) * tailFade * ld.focusAlpha * depthAlpha;
+					}
 					if (coverage > 0.0f)
 					{
 						// Get color from palette based on line's color index
