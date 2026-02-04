@@ -245,7 +245,10 @@
 				const float t = fminf(fmaxf((depthScale - fadeEnd) / (fadeStart - fadeEnd), 0.0f), 1.0f);
 				const float depthAlpha = 0.05f + (1.0f - 0.05f) * t;
 				
-				// Draw shadow first (before the line)
+				// Get line velocity for motion blur (needed for both line and shadow)
+				const float lineVelocity = d2.w;
+				
+				// Draw shadow first (before the line) with motion blur
 				if (inShadowEnable != 0)
 				{
 					const float scenterX = centerX + inShadowOffsetX;
@@ -253,37 +256,106 @@
 					
 					const float sdx = (float)inXY.x + 0.5f - scenterX;
 					const float sdy = (float)inXY.y + 0.5f - scenterY;
-					float spx = sdx * lineCos + sdy * lineSin;
-					const float spy = -sdx * lineSin + sdy * lineCos;
-				spx -= segCenterX;
-				
-				float sdist = 0.0f;
-				if (inLineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
-				{
-					// Box distance (flat caps)
-					float dxBox = fabsf(spx) - halfLen;
-					float dyBox = fabsf(spy) - halfThick;
-					float ox = dxBox > 0.0f ? dxBox : 0.0f;
-					float oy = dyBox > 0.0f ? dyBox : 0.0f;
-					float outside = sqrtf(ox * ox + oy * oy);
-					float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-					sdist = outside + inside;
-				}
-				else
-				{
-					// Capsule distance (rounded caps)
-					float ax = fabsf(spx) - halfLen;
-					float qx = ax > 0.0f ? ax : 0.0f;
-					sdist = sqrtf(qx * qx + spy * spy) - halfThick;
-				}					float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-					float stailT = fminf(fmaxf((spx + halfLen) / sdenom, 0.0f), 1.0f);
-					float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
+					
 					float scoverage = 0.0f;
-					if (aa > 0.0f)
+					
+					// Motion blur for shadow (matching OpenCL/CPU implementation)
+					if (inMotionBlurEnable != 0 && inMotionBlurSamples > 1)
 					{
-						float tt = fminf(fmaxf((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
-						scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * inShadowOpacity * depthAlpha;
+						const int samples = inMotionBlurSamples;
+						// Shutter angle based motion blur calculation
+					const float shutterFraction = inMotionBlurStrength / 360.0f;
+					const float pixelsPerFrame = inLineTravel / inLineLifetime;
+					const float effectiveVelocity = pixelsPerFrame * lineVelocity;
+					const float blurRange = effectiveVelocity * shutterFraction;
+					
+					float saccumA = 0.0f;
+					for (int s = 0; s < samples; ++s)
+					{
+							// Trail mode: sample backwards from current position
+							const float t = (float)s / (float)(samples - 1);
+							const float sampleOffset = blurRange * t;
+							
+							// Sample position with temporal offset
+							float spxSample = sdx * lineCos + sdy * lineSin;
+							spxSample -= (segCenterX + sampleOffset);
+							const float spySample = -sdx * lineSin + sdy * lineCos;
+							
+							float sdist = 0.0f;
+							if (inLineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
+							{
+								// Box distance (flat caps)
+								float dxBox = fabsf(spxSample) - halfLen;
+								float dyBox = fabsf(spySample) - halfThick;
+								float ox = dxBox > 0.0f ? dxBox : 0.0f;
+								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								float outside = sqrtf(ox * ox + oy * oy);
+								float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+								sdist = outside + inside;
+							}
+							else
+							{
+								// Capsule distance (rounded caps)
+								float ax = fabsf(spxSample) - halfLen;
+								float qx = ax > 0.0f ? ax : 0.0f;
+								sdist = sqrtf(qx * qx + spySample * spySample) - halfThick;
+							}
+							
+							// Tail fade calculation
+							float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+							float stailT = fminf(fmaxf((spxSample + halfLen) / sdenom, 0.0f), 1.0f);
+							float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
+							
+							// Sample coverage with anti-aliasing
+							float ssampleCov = 0.0f;
+							if (aa > 0.0f)
+							{
+								float tt = fminf(fmaxf((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
+								ssampleCov = tt * tt * (3.0f - 2.0f * tt) * stailFade;
+							}
+							saccumA += ssampleCov;
+						}
+						
+						// Average samples and apply opacity
+						scoverage = (saccumA / (float)samples) * inShadowOpacity * depthAlpha;
 					}
+					else
+					{
+						// No motion blur: single sample
+						float spx = sdx * lineCos + sdy * lineSin;
+						const float spy = -sdx * lineSin + sdy * lineCos;
+					spx -= segCenterX;
+					
+					float sdist = 0.0f;
+					if (inLineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
+					{
+						// Box distance (flat caps)
+						float dxBox = fabsf(spx) - halfLen;
+						float dyBox = fabsf(spy) - halfThick;
+						float ox = dxBox > 0.0f ? dxBox : 0.0f;
+						float oy = dyBox > 0.0f ? dyBox : 0.0f;
+						float outside = sqrtf(ox * ox + oy * oy);
+						float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+						sdist = outside + inside;
+					}
+					else
+					{
+						// Capsule distance (rounded caps)
+						float ax = fabsf(spx) - halfLen;
+						float qx = ax > 0.0f ? ax : 0.0f;
+						sdist = sqrtf(qx * qx + spy * spy) - halfThick;
+					}					float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+						float stailT = fminf(fmaxf((spx + halfLen) / sdenom, 0.0f), 1.0f);
+						float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
+						
+						if (aa > 0.0f)
+						{
+							float tt = fminf(fmaxf((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
+							scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * inShadowOpacity * depthAlpha;
+						}
+					}
+					
+					// Blend shadow with existing pixel
 					if (scoverage > 0.0f)
 					{
 						float shadowBlend = scoverage;
@@ -317,12 +389,10 @@
 				const float lineColorR = d2.x;
 				const float lineColorG = d2.y;
 				const float lineColorB = d2.z;
-				const float lineVelocity = d2.w;  // Instantaneous velocity from easing (0-2 range typically)
-
-				const float dx = (float)inXY.x + 0.5f - centerX;
-				const float dy = (float)inXY.y + 0.5f - centerY;
-				
-				// Motion blur: sample multiple positions along the movement direction
+			// lineVelocity already declared above (d2.w)			
+			const float dx = (float)inXY.x + 0.5f - centerX;
+			const float dy = (float)inXY.y + 0.5f - centerY;
+							// Motion blur: sample multiple positions along the movement direction
 				float coverage = 0.0f;
 				if (inMotionBlurEnable != 0 && inMotionBlurSamples > 1)
 				{
@@ -621,8 +691,8 @@
 				pixel.x = 0.0f;   // R = 0
 				pixel.y = 1.0f;   // G = 1 (Green for CUDA)
 				pixel.z = 0.0f;   // B = 0
-			pixel.w = 1.0f;   // A = 1
-		}
+				pixel.w = 1.0f;   // A = 1
+			}
 		
 		// Note: Alpha compositing is already done correctly using premultiplied alpha blending above
 		// No additional premultiplication needed (v62 fix)

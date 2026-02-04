@@ -250,7 +250,10 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			const float dx = (float)inXY.x + 0.5f - centerX;
 			const float dy = (float)inXY.y + 0.5f - centerY;
 			
-			// Draw shadow first (before the line)
+			// Get line velocity for motion blur (needed for both line and shadow)
+			const float lineVelocity = d2.w;
+			
+			// Draw shadow first (before the line) with motion blur
 			if (mShadowEnable != 0)
 			{
 				const float halfLen = d1.x;
@@ -262,32 +265,94 @@ void main(uint3 inXY : SV_DispatchThreadID)
 				
 				const float sdx = (float)inXY.x + 0.5f - scenterX;
 				const float sdy = (float)inXY.y + 0.5f - scenterY;
-				float spx = sdx * lineCos + sdy * lineSin;
-				float spy = -sdx * lineSin + sdy * lineCos;
-				spx -= segCenterX;
 				
-				float sdist = 0.0f;
-				if (mLineCap == 1)
+				float scoverage = 0.0f;
+				
+				// Motion blur for shadow (matching OpenCL/CPU implementation)
+				if (mMotionBlurEnable != 0 && mMotionBlurSamples > 1)
 				{
-					const float ax = abs(spx) - halfLen;
-					const float qx = ax > 0.0f ? ax : 0.0f;
-					sdist = sqrt(qx * qx + spy * spy) - halfThick;
+					const int samples = mMotionBlurSamples;
+					// Shutter angle based motion blur calculation
+				const float shutterFraction = mMotionBlurStrength / 360.0f;
+				const float pixelsPerFrame = mLineTravel / mLineLifetime;
+				const float effectiveVelocity = pixelsPerFrame * lineVelocity;
+				const float blurRange = effectiveVelocity * shutterFraction;
+				
+				float saccumA = 0.0f;
+				for (int s = 0; s < samples; ++s)
+				{
+						// Trail mode: sample backwards from current position
+						const float t = (float)s / (float)(samples - 1);
+						const float sampleOffset = blurRange * t;
+						
+						// Sample position with temporal offset
+						float spxSample = sdx * lineCos + sdy * lineSin;
+						spxSample -= (segCenterX + sampleOffset);
+						const float spySample = -sdx * lineSin + sdy * lineCos;
+						
+						float sdist = 0.0f;
+						if (mLineCap == 1)
+						{
+							const float ax = abs(spxSample) - halfLen;
+							const float qx = ax > 0.0f ? ax : 0.0f;
+							sdist = sqrt(qx * qx + spySample * spySample) - halfThick;
+						}
+						else
+						{
+							const float dxBox = abs(spxSample) - halfLen;
+							const float dyBox = abs(spySample) - halfThick;
+							const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+							const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+							const float outside = sqrt(ox * ox + oy * oy);
+							const float inside = min(max(dxBox, dyBox), 0.0f);
+							sdist = outside + inside;
+						}
+						
+						// Tail fade calculation
+						const float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+						const float stailT = saturate((spxSample + halfLen) / sdenom);
+						const float stailFade = 1.0f + (stailT - 1.0f) * mLineTailFade;
+						
+						// Sample coverage with anti-aliasing
+						const float ssampleCov = smoothstep(aa, 0.0f, sdist) * stailFade;
+						saccumA += ssampleCov;
+					}
+					
+					// Average samples and apply opacity
+					scoverage = (saccumA / (float)samples) * mShadowOpacity * depthAlpha;
 				}
 				else
 				{
-					const float dxBox = abs(spx) - halfLen;
-					const float dyBox = abs(spy) - halfThick;
-					const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-					const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-					const float outside = sqrt(ox * ox + oy * oy);
-					const float inside = min(max(dxBox, dyBox), 0.0f);
-					sdist = outside + inside;
+					// No motion blur: single sample
+					float spx = sdx * lineCos + sdy * lineSin;
+					const float spy = -sdx * lineSin + sdy * lineCos;
+					spx -= segCenterX;
+					
+					float sdist = 0.0f;
+					if (mLineCap == 1)
+					{
+						const float ax = abs(spx) - halfLen;
+						const float qx = ax > 0.0f ? ax : 0.0f;
+						sdist = sqrt(qx * qx + spy * spy) - halfThick;
+					}
+					else
+					{
+						const float dxBox = abs(spx) - halfLen;
+						const float dyBox = abs(spy) - halfThick;
+						const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+						const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+						const float outside = sqrt(ox * ox + oy * oy);
+						const float inside = min(max(dxBox, dyBox), 0.0f);
+						sdist = outside + inside;
+					}
+					
+					const float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+					const float stailT = saturate((spx + halfLen) / sdenom);
+					const float stailFade = 1.0f + (stailT - 1.0f) * mLineTailFade;
+					scoverage = smoothstep(aa, 0.0f, sdist) * stailFade * mShadowOpacity * depthAlpha;
 				}
 				
-				const float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
-				const float stailT = saturate((spx + halfLen) / sdenom);
-				const float stailFade = 1.0f + (stailT - 1.0f) * mLineTailFade;
-				const float scoverage = smoothstep(aa, 0.0f, sdist) * stailFade * mShadowOpacity * depthAlpha;
+				// Blend shadow with existing pixel
 				if (scoverage > 0.0f)
 				{
 					float shadowBlend = scoverage;
@@ -315,7 +380,7 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			const float segCenterX = d1.z;
 			// d2 contains line color (already in output color space)
 			const float3 lineColor = float3(d2.x, d2.y, d2.z);
-		const float lineVelocity = d2.w;  // Instantaneous velocity from easing (0-2 range typically)
+			// lineVelocity already declared above (d2.w)
 			
 			// Motion blur: sample multiple positions along the movement direction
 			float coverage = 0.0f;

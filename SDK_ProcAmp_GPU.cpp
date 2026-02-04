@@ -41,6 +41,25 @@
 #include <cstdint>
 #include <climits>
 #include <unordered_map>
+
+// ========== DEBUG LOGGING ==========
+static std::mutex sLogMutex;
+static void WriteLog(const char* format, ...)
+{
+	std::lock_guard<std::mutex> lock(sLogMutex);
+	FILE* fp = nullptr;
+	fopen_s(&fp, "C:\\Temp\\SDK_ProcAmp_Log.txt", "a");
+	if (fp)
+	{
+		va_list args;
+		va_start(args, format);
+		vfprintf(fp, format, args);
+		va_end(args);
+		fprintf(fp, "\n");
+		fclose(fp);
+	}
+}
+// ===================================
 #if _WIN32
     #if defined(MAJOR_VERSION)
         #pragma push_macro("MAJOR_VERSION")
@@ -783,8 +802,8 @@ public:
 	virtual prSuiteError Initialize(
 		PrGPUFilterInstance* ioInstanceData)
 	{
-		// FORCE CPU FALLBACK: Return failure to disable GPU and test CPU implementation
-		return suiteError_Fail;
+		// FORCE CPU FALLBACK: Uncomment the line below to test CPU implementation
+		// return suiteError_Fail;
 		
 		PrGPUFilterBase::Initialize(ioInstanceData);
 
@@ -794,13 +813,11 @@ public:
 			return suiteError_Fail;
 		}
 
-		// NOTE: GPU Override parameter is checked in Render() function
-		// because we don't have access to parameters during Initialize()
-
 		if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_CUDA)
 		{
 #if HAS_CUDA
 			// Nothing to do here. CUDA Kernel statically linked
+			WriteLog("[Initialize] CUDA backend initialized");
 			return suiteError_NoError;
 #else
 			return suiteError_Fail;
@@ -810,6 +827,7 @@ public:
 		// Load and compile the kernel - a real plugin would cache binaries to disk
 		if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_OpenCL)
 		{
+			WriteLog("[Initialize] Using OpenCL backend");
 			mKernelOpenCL = sKernelCache[mDeviceIndex];
 			mKernelOpenCLAlpha = sKernelCacheAlpha[mDeviceIndex];
 			if (!mKernelOpenCL)
@@ -889,8 +907,10 @@ public:
 			return suiteError_NoError;
 		}
 #if HAS_DIRECTX
+		// DirectX/HLSL enabled - CUDA disabled
 		else if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_DirectX)
 		{
+			WriteLog("[Initialize] Using DirectX/HLSL backend");
 			if (mDeviceIndex >= sDXContextCache.size())
 			{
 				sDXContextCache.resize(mDeviceIndex + 1);
@@ -1463,6 +1483,11 @@ public:
 		int alphaMaxY = params.mHeight > 0 ? (params.mHeight - 1) : 0;
 		const int alphaStride = 4;
 		const float alphaThreshold = lineAlphaThreshold;
+		
+		// Dynamic processing mode based on Random Seed value
+		// Seed 100 -> Alternative mode, others -> Standard mode
+		const bool useAlternativeMode = (params.mLineSeed == 100);
+		
 #if HAS_CUDA
 		if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_CUDA)
 		{
@@ -1524,9 +1549,11 @@ public:
 				clReleaseMemObject(boundsBuffer);
 			}
 		}
+		// DirectX/HLSL for alpha calculation
 		if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_DirectX)
 		{
 #if HAS_DIRECTX
+			WriteLog("[AlphaBounds] Using DirectX/HLSL for alpha bounds calculation");
 			DXContextPtr dxContext = sDXContextCache[mDeviceIndex];
 			if (dxContext && sShaderObjectAlphaCache[mDeviceIndex])
 			{
@@ -2033,6 +2060,7 @@ public:
 		const size_t tileCountsBytes = tileCounts.size() * sizeof(int);
 		const size_t lineIndicesBytes = lineIndices.size() * sizeof(int);
 
+		// CUDA rendering
 		if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_CUDA)
 		{
 #if HAS_CUDA
@@ -2240,8 +2268,11 @@ public:
 			return result == CL_SUCCESS ? suiteError_NoError : suiteError_Fail;
 		}
 #if HAS_DIRECTX
+		// DirectX/HLSL rendering
 		else if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_DirectX)
 		{
+			WriteLog("[Render] Executing DirectX/HLSL shader");
+			
 			// The kernel expects pitch in bytes
 			params.mPitch = rowBytes;
 

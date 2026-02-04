@@ -33,12 +33,32 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <cstdarg>
 
 #ifdef _WIN32
 #include <windows.h>
 #else
 #include <sys/time.h>
 #endif
+
+// ========== DEBUG LOGGING ==========
+static std::mutex sLogMutex;
+static void WriteLog(const char* format, ...)
+{
+	std::lock_guard<std::mutex> lock(sLogMutex);
+	FILE* fp = nullptr;
+	fopen_s(&fp, "C:\\Temp\\SDK_ProcAmp_Log.txt", "a");
+	if (fp)
+	{
+		va_list args;
+		va_start(args, format);
+		vfprintf(fp, format, args);
+		va_end(args);
+		fprintf(fp, "\n");
+		fclose(fp);
+	}
+}
+// ===================================
 
 // Debounce for preset button double-fire issue
 static std::atomic<uint32_t> sLastPresetClickTime{ 0 };
@@ -1288,9 +1308,17 @@ static PF_Err Render(
 	const float shadowY = shadowColorR * 0.299f + shadowColorG * 0.587f + shadowColorB * 0.114f;
 	const float shadowU = shadowColorR * -0.168736f + shadowColorG * -0.331264f + shadowColorB * 0.5f;
 	const float shadowV = shadowColorR * 0.5f + shadowColorG * -0.418688f + shadowColorB * -0.081312f;
-	const float shadowOffsetX = (float)params[SDK_PROCAMP_SHADOW_OFFSET_X]->u.fs_d.value;
-	const float shadowOffsetY = (float)params[SDK_PROCAMP_SHADOW_OFFSET_Y]->u.fs_d.value;
+	const float shadowOffsetX = (float)params[SDK_PROCAMP_SHADOW_OFFSET_X]->u.fs_d.value * dsScale;
+	const float shadowOffsetY = (float)params[SDK_PROCAMP_SHADOW_OFFSET_Y]->u.fs_d.value * dsScale;
 	const float shadowOpacity = (float)params[SDK_PROCAMP_SHADOW_OPACITY]->u.fs_d.value;
+	
+	// Log CPU rendering
+	static bool sFirstLog = true;
+	if (sFirstLog)
+	{
+		WriteLog("[Render] Using CPU fallback (GPU failed or disabled)");
+		sFirstLog = false;
+	}
 	
 	// Motion Blur parameters
 	const bool motionBlurEnable = params[SDK_PROCAMP_MOTION_BLUR_ENABLE]->u.bd.value != 0;
