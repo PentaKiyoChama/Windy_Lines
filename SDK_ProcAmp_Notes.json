@@ -1,9 +1,9 @@
 {
   "AI_READ_ME_FIRST": {
     "project": "SDK_ProcAmp Wind Lines Effect",
-    "version": "v62 - 2026-02-02",
-    "status": "STABLE - Premultiplied alpha compositing fix complete",
-    "last_critical_fix": "v62: Fixed gray edge artifacts by using premultiplied alpha compositing throughout"
+    "version": "v63 - 2026-02-04",
+    "status": "STABLE - CPU motion blur gray artifacts fixed",
+    "last_critical_fix": "v63: Fixed CPU motion blur rendering gray trail artifacts by matching CUDA implementation exactly"
   },
   
   "QUICK_REF": {
@@ -18,7 +18,50 @@
     "multi_platform": "Update ALL THREE: CPU, CUDA, OpenCL when adding features",
     "cuda_is_reference": "CUDA is canonical - port to OpenCL/Metal",
     "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only",
-    "alpha_compositing": "ALWAYS use premultiplied alpha compositing: (srcColor * srcAlpha + dstColor * dstAlpha * (1-srcAlpha)) / outAlpha"
+    "alpha_compositing": "ALWAYS use premultiplied alpha compositing: (srcColor * srcAlpha + dstColor * dstAlpha * (1-srcAlpha)) / outAlpha",
+    "motion_blur_cpu_gpu_sync": "CPU motion blur implementation must exactly match CUDA reference implementation"
+  },
+
+  "V63_CPU_MOTION_BLUR_FIX": {
+    "date": "2026-02-04",
+    "problem": "CPU motion blur rendering showed gray trail artifacts on motion-blurred samples, while GPU (CUDA/OpenCL/Metal) rendered correctly with proper alpha falloff",
+    "root_cause": {
+      "double_premultiplication": "PRIMARY CAUSE - CPU code applied premultiplication (outV *= a, outU *= a) AFTER premultiplied alpha compositing, causing double multiplication and loss of color saturation",
+      "result": "Double premultiplication darkened colors (red 0.5 * 0.3 = 0.15), making motion blur trails appear gray instead of naturally fading to background"
+    },
+    "changes": {
+      "removed_double_premultiplication": {
+        "old": "outV *= a; outU *= a; after premultiplied compositing calculation",
+        "new": "Direct output without additional multiplication - premultiplied compositing already produces correct straight alpha result",
+        "benefit": "FIXES GRAY ARTIFACTS - colors maintain saturation, motion blur trails fade naturally via alpha only",
+        "explanation": "Premultiplied alpha compositing formula (lineColor * srcAlpha + bgColor * bgAlpha * (1-srcAlpha)) / outAlpha already produces correct straight alpha color. Additional *= a was multiplying colors a second time, reducing saturation.",
+        "location": "SDK_ProcAmp_CPU.cpp lines 2143-2154"
+      },
+      "shadow_motion_blur_restored": {
+        "note": "Initially removed shadow motion blur thinking it was related to the issue, but restored after identifying true cause was double premultiplication",
+        "implementation": "Shadows now use motion blur sampling matching OpenCL/Metal implementation",
+        "benefit": "Consistent motion blur appearance across both lines and shadows"
+      },
+      "motion_blur_calculation_unified": {
+        "change": "Replaced smoothstep() helper with explicit CUDA-style calculation",
+        "formula": "if (aa > 0.0f) { tt = saturate((distSample - aa) / (0.0f - aa)); sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade; }",
+        "applied_to": ["Line motion blur samples", "Shadow motion blur samples", "Blur too small fallback", "No motion blur single sample"]
+      }
+    },
+    "technical_explanation": {
+      "why_gray": "When colors are multiplied by alpha twice: (1) during premultiplied compositing, (2) at output stage, the result is darkened. Example: red line (V=0.5) with coverage=0.3 becomes V=0.5*0.3=0.15 (gray), instead of staying V=0.5 with alpha=0.3 (red fading naturally).",
+      "correct_behavior": "Motion blur trails should show decreasing alpha (becoming more transparent) as they fade to background, NOT decreasing color saturation (becoming gray)",
+      "premultiplied_vs_straight": "Premultiplied alpha compositing produces straight alpha output (colors NOT premultiplied). GPU implementations output straight alpha directly. CPU was incorrectly premultiplying the already-correct straight alpha result.",
+      "formula": "outV = (lineV * srcAlpha + bgV * bgAlpha * (1-srcAlpha)) / outAlpha produces straight alpha - DO NOT multiply by alpha again"
+    },
+    "files_modified": [
+      "SDK_ProcAmp_CPU.cpp (lines 1782-1938: restored shadow motion blur, unified calculation style)",
+      "SDK_ProcAmp_CPU.cpp (lines 1945-2070: unified line motion blur calculation)",
+      "SDK_ProcAmp_CPU.cpp (lines 2143-2154: CRITICAL FIX - removed double premultiplication)",
+      "SDK_ProcAmp_Notes.json (version bump to v63, added this entry)"
+    ],
+    "verification": "Test with red lines on white background with motion blur enabled - trails should fade naturally maintaining red color, not turning gray. Shadows should also show smooth motion blur.",
+    "future_note": "NEVER multiply colors by alpha after premultiplied alpha compositing - the compositing formula already produces correct straight alpha output. Additional multiplication causes color darkening/desaturation."
   },
 
   "V62_PREMULTIPLIED_ALPHA_COMPOSITING_FIX": {
