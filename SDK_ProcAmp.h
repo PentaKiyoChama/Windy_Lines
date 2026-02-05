@@ -474,6 +474,14 @@ struct EffectPreset
 #define	MOTION_BLUR_ANGLE_MAX_SLIDER	360.0
 #define	MOTION_BLUR_ANGLE_DFLT			180.0	// 180° = film standard shutter angle
 
+// Linkage Parameters
+#define	LINKAGE_MODE_DFLT				0		// 0=Off
+#define	LINKAGE_RATE_MIN_VALUE			0.0
+#define	LINKAGE_RATE_MAX_VALUE			500.0
+#define	LINKAGE_RATE_MIN_SLIDER			0.0
+#define	LINKAGE_RATE_MAX_SLIDER			200.0
+#define	LINKAGE_RATE_DFLT				100.0	// 100% = 1:1 ratio
+
 // Preset colors count (8 colors per preset)
 #define PRESET_COLORS_COUNT     8
 
