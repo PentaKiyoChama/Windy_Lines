@@ -1967,6 +1967,7 @@ static PF_Err Render(
 							scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * shadowOpacity * depthAlpha;
 						}
 					}
+						if (scoverage > 0.001f)
 						{
 							float shadowBlend = scoverage;
 							if (blendMode == 0)
@@ -2122,9 +2123,8 @@ static PF_Err Render(
 							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * ld.focusAlpha * depthAlpha;
 						}
 					}
-					if (coverage > 0.0f)
+					if (coverage > 0.001f)
 					{
-						// Get color from palette based on line's color index
 						const int ci = ld.colorIndex >= 0 && ld.colorIndex < 8 ? ld.colorIndex : 0;
 						
 						// Save alpha before this line's contribution
@@ -2187,21 +2187,21 @@ static PF_Err Render(
 								frontAppearAlpha = std::min(frontAppearAlpha, ld.appearAlpha);
 							}
 						}
-					else if (blendMode == 3)  // Alpha (XOR with original element only)
-					{
-						// Line-to-line blending: premultiplied compositing
-						float srcAlpha = coverage;
-						float invAlpha = 1.0f - srcAlpha;
-						float outAlpha = srcAlpha + a * invAlpha;
-						if (outAlpha > 0.0f) {
-							outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
-							outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
-							outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
+						else if (blendMode == 3)  // Alpha (XOR with original element only)
+						{
+							// Line-to-line blending: premultiplied compositing
+							float srcAlpha = coverage;
+							float invAlpha = 1.0f - srcAlpha;
+							float outAlpha = srcAlpha + a * invAlpha;
+							if (outAlpha > 0.0f) {
+								outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
+								outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
+								outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
+							}
+							a = outAlpha;
+							// Track line-only alpha
+							lineOnlyAlpha = std::max(lineOnlyAlpha, coverage * ld.appearAlpha);
 						}
-						a = outAlpha;
-						// Track line-only alpha
-						lineOnlyAlpha = std::max(lineOnlyAlpha, coverage * ld.appearAlpha);
-					}
 					}
 				}
 
