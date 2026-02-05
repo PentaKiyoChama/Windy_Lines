@@ -133,6 +133,60 @@ static inline float SDFCapsule(float px, float py, float halfLen, float halfThic
 }
 
 
+// ========================================================================
+// Phase 2-2: Shared Blending Functions
+// ========================================================================
+
+/**
+ * Premultiplied alpha compositing (over operation)
+ * @param srcR Source color R
+ * @param srcG Source color G
+ * @param srcB Source color B
+ * @param srcA Source alpha
+ * @param dstR Destination color R (in/out)
+ * @param dstG Destination color G (in/out)
+ * @param dstB Destination color B (in/out)
+ * @param dstA Destination alpha (in/out)
+ */
+static inline void BlendPremultiplied(
+	float srcR, float srcG, float srcB, float srcA,
+	float& dstR, float& dstG, float& dstB, float& dstA)
+{
+	const float invSrcA = 1.0f - srcA;
+	const float outA = srcA + dstA * invSrcA;
+	if (outA > 0.0f) {
+		dstR = (srcR * srcA + dstR * dstA * invSrcA) / outA;
+		dstG = (srcG * srcA + dstG * dstA * invSrcA) / outA;
+		dstB = (srcB * srcA + dstB * dstA * invSrcA) / outA;
+	}
+	dstA = outA;
+}
+
+/**
+ * Un-premultiplied alpha accumulation (for front line accumulation)
+ * @param srcR Source color R
+ * @param srcG Source color G
+ * @param srcB Source color B
+ * @param srcA Source alpha
+ * @param dstR Destination color R (in/out)
+ * @param dstG Destination color G (in/out)
+ * @param dstB Destination color B (in/out)
+ * @param dstA Destination alpha (in/out)
+ */
+static inline void BlendUnpremultiplied(
+	float srcR, float srcG, float srcB, float srcA,
+	float& dstR, float& dstG, float& dstB, float& dstA)
+{
+	const float invSrcA = 1.0f - srcA;
+	const float outA = srcA + dstA * invSrcA;
+	if (outA > 0.0f) {
+		dstR = (srcR * srcA + dstR * dstA * invSrcA) / outA;
+		dstG = (srcG * srcA + dstG * dstA * invSrcA) / outA;
+		dstB = (srcB * srcA + dstB * dstA * invSrcA) / outA;
+	}
+	dstA = outA;
+}
+
 
 /*
 **
@@ -2094,26 +2148,14 @@ static PF_Err Render(
 						if (blendMode == 0)  // Back (behind element)
 						{
 							float srcAlpha = coverage * (1.0f - originalAlpha);
-							float invAlpha = 1.0f - srcAlpha;
-							float outAlpha = srcAlpha + a * invAlpha;
-							if (outAlpha > 0.0f) {
-								outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
-								outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
-								outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
-							}
-							a = outAlpha;
+							BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
+							                   outY, outU, outV, a);
 						}
 						else if (blendMode == 1)  // Front (in front of element)
 						{
 							float srcAlpha = coverage;
-							float invAlpha = 1.0f - srcAlpha;
-							float outAlpha = srcAlpha + a * invAlpha;
-							if (outAlpha > 0.0f) {
-								outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
-								outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
-								outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
-							}
-							a = outAlpha;
+							BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
+							                   outY, outU, outV, a);
 						}
 						else if (blendMode == 2)  // Back and Front (split by per-line depth)
 						{
@@ -2122,28 +2164,16 @@ static PF_Err Render(
 							{
 								// Back mode (full)
 								float srcAlpha = coverage * (1.0f - originalAlpha);
-								float invAlpha = 1.0f - srcAlpha;
-								float outAlpha = srcAlpha + a * invAlpha;
-								if (outAlpha > 0.0f) {
-									outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
-									outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
-									outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
-								}
-								a = outAlpha;
+								BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
+								                   outY, outU, outV, a);
 							}
 							else
 							{
 								// Front mode (full) -> accumulate separately, apply after loop
 								// Use un-premultiplied accumulation (same as CUDA/OpenCL)
 								float srcAlpha = coverage;
-								float invFront = 1.0f - srcAlpha;
-								float outA = srcAlpha + frontA * invFront;
-								if (outA > 0.0f) {
-									frontV = (paletteV[ci] * srcAlpha + frontV * frontA * invFront) / outA;
-									frontU = (paletteU[ci] * srcAlpha + frontU * frontA * invFront) / outA;
-									frontY = (paletteY[ci] * srcAlpha + frontY * frontA * invFront) / outA;
-								}
-								frontA = outA;
+								BlendUnpremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
+								                     frontY, frontU, frontV, frontA);
 								frontAppearAlpha = std::min(frontAppearAlpha, ld.appearAlpha);
 							}
 						}
@@ -2151,14 +2181,8 @@ static PF_Err Render(
 						{
 							// Line-to-line blending: premultiplied compositing
 							float srcAlpha = coverage;
-							float invAlpha = 1.0f - srcAlpha;
-							float outAlpha = srcAlpha + a * invAlpha;
-							if (outAlpha > 0.0f) {
-								outV = (paletteV[ci] * srcAlpha + outV * a * invAlpha) / outAlpha;
-								outU = (paletteU[ci] * srcAlpha + outU * a * invAlpha) / outAlpha;
-								outY = (paletteY[ci] * srcAlpha + outY * a * invAlpha) / outAlpha;
-							}
-							a = outAlpha;
+							BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
+							                   outY, outU, outV, a);
 							// Track line-only alpha
 							lineOnlyAlpha = std::max(lineOnlyAlpha, coverage * ld.appearAlpha);
 						}
