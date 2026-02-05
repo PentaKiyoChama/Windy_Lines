@@ -180,6 +180,13 @@ namespace ParamNames
     constexpr const char* BLUR_VELOCITY     = "速度連動";
     constexpr const char* EFFECT_PRESET     = "エフェクトプリセット";
     constexpr const char* DEFAULT           = "デフォルト";
+    constexpr const char* LINKAGE_HEADER    = "連動設定";
+    constexpr const char* LENGTH_LINKAGE    = "長さの連動";
+    constexpr const char* LENGTH_LINKAGE_RATE = "長さ連動率(%)";
+    constexpr const char* THICKNESS_LINKAGE = "太さの連動";
+    constexpr const char* THICKNESS_LINKAGE_RATE = "太さ連動率(%)";
+    constexpr const char* TRAVEL_LINKAGE    = "移動距離の連動";
+    constexpr const char* TRAVEL_LINKAGE_RATE = "移動距離連動率(%)";
     constexpr const char* COLOR_MODE_MENU   = "単色|プリセット|カスタム";
     constexpr const char* LINE_CAP_MENU     = "フラット|ラウンド";
     constexpr const char* COLOR_PRESET_MENU = 
@@ -202,6 +209,7 @@ namespace ParamNames
         "エラスティックイン|エラスティックアウト|エラスティックインアウト|"
         "バウンスイン|バウンスアウト|バウンスインアウト"; 
     constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ";
+    constexpr const char* LINKAGE_MODE_MENU = "オフ|要素の幅|要素の高さ";
 }
 
 // ========================================
@@ -264,6 +272,13 @@ namespace ParamNames
 #define P_BLUR_VELOCITY     PARAM(ParamNames::BLUR_VELOCITY)
 #define P_EFFECT_PRESET     PARAM(ParamNames::EFFECT_PRESET)
 #define P_DEFAULT           PARAM(ParamNames::DEFAULT)
+#define P_LINKAGE_HEADER    PARAM(ParamNames::LINKAGE_HEADER)
+#define P_LENGTH_LINKAGE    PARAM(ParamNames::LENGTH_LINKAGE)
+#define P_LENGTH_LINKAGE_RATE PARAM(ParamNames::LENGTH_LINKAGE_RATE)
+#define P_THICKNESS_LINKAGE PARAM(ParamNames::THICKNESS_LINKAGE)
+#define P_THICKNESS_LINKAGE_RATE PARAM(ParamNames::THICKNESS_LINKAGE_RATE)
+#define P_TRAVEL_LINKAGE    PARAM(ParamNames::TRAVEL_LINKAGE)
+#define P_TRAVEL_LINKAGE_RATE PARAM(ParamNames::TRAVEL_LINKAGE_RATE)
 
 // メニュー項目取得（自動変換付き）
 #define PM_COLOR_MODE       PARAM_MENU(ParamNames::COLOR_MODE_MENU)
@@ -273,5 +288,6 @@ namespace ParamNames
 #define PM_ANIM_PATTERN     PARAM_MENU(ParamNames::ANIM_PATTERN_MENU)
 #define PM_EASING           PARAM_MENU(ParamNames::EASING_MENU)
 #define PM_BLEND_MODE       PARAM_MENU(ParamNames::BLEND_MODE_MENU)
+#define PM_LINKAGE_MODE     PARAM_MENU(ParamNames::LINKAGE_MODE_MENU)
 
 #endif // SDK_PROCAMP_PARAM_NAMES_H

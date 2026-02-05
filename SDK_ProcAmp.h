@@ -144,11 +144,21 @@ enum
 	SDK_PROCAMP_BLEND_MODE,                   // 56. Blend mode with element
 	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 57. Advanced topic end
 	
+	// ▼ Linkage - Topic group
+	SDK_PROCAMP_LINKAGE_HEADER,               // 58. Linkage topic start
+	SDK_PROCAMP_LENGTH_LINKAGE,               // 59. Length linkage (Off/Width/Height)
+	SDK_PROCAMP_LENGTH_LINKAGE_RATE,          // 60. Length linkage rate (%)
+	SDK_PROCAMP_THICKNESS_LINKAGE,            // 61. Thickness linkage (Off/Width/Height)
+	SDK_PROCAMP_THICKNESS_LINKAGE_RATE,       // 62. Thickness linkage rate (%)
+	SDK_PROCAMP_TRAVEL_LINKAGE,               // 63. Travel distance linkage (Off/Width/Height)
+	SDK_PROCAMP_TRAVEL_LINKAGE_RATE,          // 64. Travel distance linkage rate (%)
+	SDK_PROCAMP_LINKAGE_TOPIC_END,            // 65. Linkage topic end
+	
 	// Hidden params (for backwards compatibility)
-	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 59. (hidden)
-	SDK_PROCAMP_LINE_COLOR_R,                 // 60. (hidden)
-	SDK_PROCAMP_LINE_COLOR_G,                 // 61. (hidden)
-	SDK_PROCAMP_LINE_COLOR_B,                 // 62. (hidden)
+	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 66. (hidden)
+	SDK_PROCAMP_LINE_COLOR_R,                 // 67. (hidden)
+	SDK_PROCAMP_LINE_COLOR_G,                 // 68. (hidden)
+	SDK_PROCAMP_LINE_COLOR_B,                 // 69. (hidden)
 	
 	SDK_PROCAMP_NUM_PARAMS
 };
@@ -209,6 +219,14 @@ enum BlendMode
 	BLEND_MODE_ALPHA = 4         // Alpha transparency where overlapping
 };
 
+// Linkage Mode enum
+enum LinkageMode
+{
+	LINKAGE_MODE_OFF = 0,        // No linkage
+	LINKAGE_MODE_WIDTH = 1,      // Link to element width
+	LINKAGE_MODE_HEIGHT = 2      // Link to element height
+};
+
 // Spawn Source enum (0-based, matches NormalizePopupParam output)
 // Menu: "画面全体|要素範囲"
 enum SpawnSource
@@ -253,6 +271,13 @@ struct EffectPreset
 	int colorPreset;      // 1-33
 	int spawnSource;      // 1=Full Frame, 2=Element
 	bool hideElement;     // Hide original element
+	// Linkage fields
+	int lengthLinkage;    // 0=Off, 1=Width, 2=Height
+	float lengthLinkageRate;    // %
+	int thicknessLinkage;  // 0=Off, 1=Width, 2=Height
+	float thicknessLinkageRate; // %
+	int travelLinkage;     // 0=Off, 1=Width, 2=Height
+	float travelLinkageRate;    // %
 };
 
 // Preset data array - auto-generated from presets.tsv
