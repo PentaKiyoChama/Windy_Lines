@@ -94,6 +94,44 @@ static int NormalizePopupValue(int value, int maxValue)
 std::unordered_map<csSDK_int64, csSDK_int64> SharedClipData::clipStartMap;
 std::mutex SharedClipData::mapMutex;
 
+// ========================================================================
+// Phase 2-1: Shared SDF (Signed Distance Field) Functions
+// ========================================================================
+
+/**
+ * Box SDF: Distance from point to rounded rectangle
+ * @param px Local X coordinate (along line axis)
+ * @param py Local Y coordinate (perpendicular to line)
+ * @param halfLen Half of line length
+ * @param halfThick Half of line thickness
+ * @return Signed distance (negative = inside, positive = outside)
+ */
+static inline float SDFBox(float px, float py, float halfLen, float halfThick)
+{
+	const float dxBox = fabsf(px) - halfLen;
+	const float dyBox = fabsf(py) - halfThick;
+	const float ox = dxBox > 0.0f ? dxBox : 0.0f;
+	const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+	const float outside = sqrtf(ox * ox + oy * oy);
+	const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
+	return outside + inside;
+}
+
+/**
+ * Capsule SDF: Distance from point to rounded line (capsule)
+ * @param px Local X coordinate (along line axis)
+ * @param py Local Y coordinate (perpendicular to line)
+ * @param halfLen Half of line length
+ * @param halfThick Half of line thickness (radius)
+ * @return Signed distance (negative = inside, positive = outside)
+ */
+static inline float SDFCapsule(float px, float py, float halfLen, float halfThick)
+{
+	const float ax = fabsf(px) - halfLen;
+	const float qx = ax > 0.0f ? ax : 0.0f;
+	return sqrtf(qx * qx + py * py) - halfThick;
+}
+
 
 
 /*
@@ -1871,23 +1909,9 @@ static PF_Err Render(
 								const float spySample = -sdx * ld.sinA + sdy * ld.cosA;
 								spxSample -= (ld.segCenterX + sampleOffset);
 
-								float sdistSample = 0.0f;
-								if (lineCap == 0)
-								{
-									const float dxBox = fabsf(spxSample) - ld.halfLen;
-									const float dyBox = fabsf(spySample) - ld.halfThick;
-									const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-									const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-									const float outside = sqrtf(ox * ox + oy * oy);
-									const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-									sdistSample = outside + inside;
-								}
-								else
-								{
-									const float ax = fabsf(spxSample) - ld.halfLen;
-									const float qx = ax > 0.0f ? ax : 0.0f;
-									sdistSample = sqrtf(qx * qx + spySample * spySample) - ld.halfThick;
-								}
+								float sdistSample = (lineCap == 0)
+									? SDFBox(spxSample, spySample, ld.halfLen, ld.halfThick)
+									: SDFCapsule(spxSample, spySample, ld.halfLen, ld.halfThick);
 
 								const float stailT = saturate((spxSample + ld.halfLen) * ld.invDenom);  // Use pre-computed
 								const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
@@ -1911,23 +1935,9 @@ static PF_Err Render(
 							const float spy = -sdx * ld.sinA + sdy * ld.cosA;
 							spx -= ld.segCenterX;
 
-							float sdist = 0.0f;
-							if (lineCap == 0)
-							{
-								const float dxBox = fabsf(spx) - ld.halfLen;
-								const float dyBox = fabsf(spy) - ld.halfThick;
-								const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-								const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-								const float outside = sqrtf(ox * ox + oy * oy);
-								const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-								sdist = outside + inside;
-							}
-							else
-							{
-								const float ax = fabsf(spx) - ld.halfLen;
-								const float qx = ax > 0.0f ? ax : 0.0f;
-								sdist = sqrtf(qx * qx + spy * spy) - ld.halfThick;
-							}
+							float sdist = (lineCap == 0)
+								? SDFBox(spx, spy, ld.halfLen, ld.halfThick)
+								: SDFCapsule(spx, spy, ld.halfLen, ld.halfThick);
 
 							const float stailT = saturate((spx + ld.halfLen) * ld.invDenom);  // Use pre-computed
 							const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
@@ -1946,23 +1956,9 @@ static PF_Err Render(
 						const float spy = -sdx * ld.sinA + sdy * ld.cosA;
 						spx -= ld.segCenterX;
 
-						float sdist = 0.0f;
-						if (lineCap == 0)
-						{
-							const float dxBox = fabsf(spx) - ld.halfLen;
-							const float dyBox = fabsf(spy) - ld.halfThick;
-							const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-							const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-							const float outside = sqrtf(ox * ox + oy * oy);
-							const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-							sdist = outside + inside;
-						}
-						else
-						{
-							const float ax = fabsf(spx) - ld.halfLen;
-							const float qx = ax > 0.0f ? ax : 0.0f;
-							sdist = sqrtf(qx * qx + spy * spy) - ld.halfThick;
-						}
+						float sdist = (lineCap == 0)
+							? SDFBox(spx, spy, ld.halfLen, ld.halfThick)
+							: SDFCapsule(spx, spy, ld.halfLen, ld.halfThick);
 
 						const float stailT = saturate((spx + ld.halfLen) * ld.invDenom);  // Use pre-computed
 						const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
@@ -2027,23 +2023,9 @@ static PF_Err Render(
 								const float pySample = -dx * ld.sinA + dy * ld.cosA;
 								pxSample -= (ld.segCenterX + sampleOffset);
 
-								float distSample = 0.0f;
-								if (lineCap == 0)
-								{
-									const float dxBox = fabsf(pxSample) - ld.halfLen;
-									const float dyBox = fabsf(pySample) - ld.halfThick;
-									const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-									const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-									const float outside = sqrtf(ox * ox + oy * oy);
-									const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-									distSample = outside + inside;
-								}
-								else
-								{
-									const float ax = fabsf(pxSample) - ld.halfLen;
-									const float qx = ax > 0.0f ? ax : 0.0f;
-									distSample = sqrtf(qx * qx + pySample * pySample) - ld.halfThick;
-								}
+								float distSample = (lineCap == 0)
+									? SDFBox(pxSample, pySample, ld.halfLen, ld.halfThick)
+									: SDFCapsule(pxSample, pySample, ld.halfLen, ld.halfThick);
 
 								const float tailT = saturate((pxSample + ld.halfLen) * ld.invDenom);  // Use pre-computed
 								const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
@@ -2067,23 +2049,9 @@ static PF_Err Render(
 							const float py = -dx * ld.sinA + dy * ld.cosA;
 							px -= ld.segCenterX;
 
-							float dist = 0.0f;
-							if (lineCap == 0)
-							{
-								const float dxBox = fabsf(px) - ld.halfLen;
-								const float dyBox = fabsf(py) - ld.halfThick;
-								const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-								const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-								const float outside = sqrtf(ox * ox + oy * oy);
-								const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-								dist = outside + inside;
-							}
-							else
-							{
-								const float ax = fabsf(px) - ld.halfLen;
-								const float qx = ax > 0.0f ? ax : 0.0f;
-								dist = sqrtf(qx * qx + py * py) - ld.halfThick;
-							}
+							float dist = (lineCap == 0)
+								? SDFBox(px, py, ld.halfLen, ld.halfThick)
+								: SDFCapsule(px, py, ld.halfLen, ld.halfThick);
 
 							const float aa = effectiveAA;
 									const float tailT = saturate((px + ld.halfLen) * ld.invDenom);  // Use pre-computed
@@ -2102,23 +2070,9 @@ static PF_Err Render(
 						const float py = -dx * ld.sinA + dy * ld.cosA;
 						px -= ld.segCenterX;
 
-						float dist = 0.0f;
-						if (lineCap == 0)
-						{
-							const float dxBox = fabsf(px) - ld.halfLen;
-							const float dyBox = fabsf(py) - ld.halfThick;
-							const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-							const float oy = dyBox > 0.0f ? dyBox : 0.0f;
-							const float outside = sqrtf(ox * ox + oy * oy);
-							const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-							dist = outside + inside;
-						}
-						else
-						{
-							const float ax = fabsf(px) - ld.halfLen;
-							const float qx = ax > 0.0f ? ax : 0.0f;
-							dist = sqrtf(qx * qx + py * py) - ld.halfThick;
-						}
+						float dist = (lineCap == 0)
+							? SDFBox(px, py, ld.halfLen, ld.halfThick)
+							: SDFCapsule(px, py, ld.halfLen, ld.halfThick);
 
 						const float aa = effectiveAA;
 							const float tailT = saturate((px + ld.halfLen) * ld.invDenom);  // Use pre-computed
