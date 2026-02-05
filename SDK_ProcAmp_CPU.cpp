@@ -1012,7 +1012,7 @@ static PF_Err ParamsSetup(
 	// Effect Preset (top-level, no group)
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
-	std::string presetLabels = "チE��ォルチE";
+	std::string presetLabels = "デフォルト|";
 	for (int i = 0; i < kEffectPresetCount; ++i)
 	{
 		presetLabels += kEffectPresets[i].name;
@@ -1878,7 +1878,7 @@ static PF_Err Render(
 	// Use frameIndex directly for sequence-time based rendering.
 	const float timeFramesBase = (float)frameIndex;
 	
-	// Origin Offset X/Y (px) - 線�E起点のオフセチE��
+	// Origin Offset X/Y (px) - 線の起点のオフセット
 	// Apply downsample scale to origin offsets (user inputs in full-resolution pixels)
 	const float userOriginOffsetX = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_X]->u.fs_d.value * dsScale;
 	const float userOriginOffsetY = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_Y]->u.fs_d.value * dsScale;
@@ -2579,7 +2579,6 @@ static PF_Err Render(
 					}
 				}
 
-				#if ENABLE_DEBUG_RENDER_MARKERS
 				// DEBUG: Draw RED CIRCLE in top-left corner to indicate CPU is being used
 				// Shape: Circle (CPU = fallback)
 				{
@@ -2596,8 +2595,7 @@ static PF_Err Render(
 					a = 1.0f;      // A = 1
 				}
 			}
-#endif
-		
+			
 			// Note: Premultiplied alpha compositing already produces correctly weighted colors
 			// No additional premultiplication needed - output is straight alpha format
 			// Premiere Pro handles the compositing correctly with straight alpha
