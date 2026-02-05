@@ -68,7 +68,12 @@
 			}
 			else if (easing == 6)
 			{
-				return t < 0.5f ? 2.0f * t * t : 1.0f - pow(-2.0f * t + 2.0f, 2.0f) * 0.5f;
+				if (t < 0.5f) {
+					return 2.0f * t * t;
+				} else {
+					float u = -2.0f * t + 2.0f;
+					return 1.0f - u * u * 0.5f;
+				}
 			}
 			else if (easing == 7)
 			{
@@ -81,7 +86,12 @@
 			}
 			else if (easing == 9)
 			{
-				return t < 0.5f ? 4.0f * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;
+				if (t < 0.5f) {
+					return 4.0f * t * t * t;
+				} else {
+					float u = -2.0f * t + 2.0f;
+					return 1.0f - u * u * u * 0.5f;
+				}
 			}
 			return t;
 		}

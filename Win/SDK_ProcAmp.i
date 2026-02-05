@@ -10075,7 +10075,12 @@ static __inline__ float saturate(float inX)
 			}
 			else if (easing == 6)
 			{
-				return t < 0.5f ? 2.0f * t * t : 1.0f - pow(-2.0f * t + 2.0f, 2.0f) * 0.5f;
+				if (t < 0.5f) {
+					return 2.0f * t * t;
+				} else {
+					float u = -2.0f * t + 2.0f;
+					return 1.0f - u * u * 0.5f;
+				}
 			}
 			else if (easing == 7)
 			{
@@ -10088,11 +10093,16 @@ static __inline__ float saturate(float inX)
 			}
 			else if (easing == 9)
 			{
-				return t < 0.5f ? 4.0f * t * t * t : 1.0f - pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;
+				if (t < 0.5f) {
+					return 4.0f * t * t * t;
+				} else {
+					float u = -2.0f * t + 2.0f;
+					return 1.0f - u * u * u * 0.5f;
+				}
 			}
 			return t;
 		}
-#line 89 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 99 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 
 
 		inline void AtomicMinInt(volatile __global int* addr, int value)
@@ -10104,7 +10114,7 @@ static __inline__ float saturate(float inX)
 		{
 			atomic_max(addr, value);
 		}
-#line 101 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 111 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 
 
 
@@ -10135,11 +10145,11 @@ static __inline__ float saturate(float inX)
 
 
 
-#line 132 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 142 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 
 
 		static __inline__ void AlphaBoundsKernel_Delegate( __global float4* ioImage, __global int* outBounds  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, int inStride, float inThreshold  , uint2 inXY    ); __kernel void AlphaBoundsKernel( __global float4* ioImage, __global int* outBounds  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, int inStride, float inThreshold  ) {   AlphaBoundsKernel_Delegate( ioImage, outBounds  , inPitch, in16f, inWidth, inHeight, inStride, inThreshold  , KernelXYUnsigned()    ); } static __inline__ void AlphaBoundsKernel_Delegate( __global float4* ioImage, __global int* outBounds  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, int inStride, float inThreshold  , uint2 inXY    )
-#line 144 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 154 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 		{
 			if (inXY.x < inWidth && inXY.y < inHeight)
 			{
@@ -10161,13 +10171,13 @@ static __inline__ float saturate(float inX)
 
 
 
-#line 166 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 176 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 				}
 			}
 		}
 
 		static __inline__ void ProcAmp2Kernel_Delegate( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength, float inMotionBlurVelocity  , uint2 inXY    ); __kernel void ProcAmp2Kernel( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength, float inMotionBlurVelocity  ) {   ProcAmp2Kernel_Delegate( ioImage, inLineData, inTileOffsets, inTileCounts, inLineIndices  , inPitch, in16f, inWidth, inHeight, inLineCenterX, inLineCenterY, inOriginOffsetX, inOriginOffsetY, inLineCos, inLineSin, inLineLength, inLineThickness, inLineLifetime, inLineTravel, inLineTailFade, inLineDepthStrength, inLineR, inLineG, inLineB, inLineAA, inLineCap, inLineCount, inLineSeed, inLineEasing, inLineInterval, inLineAllowMidPlay, inHideElement, inBlendMode, inFrameIndex, inLineDownsample, inTileCountX, inTileSize, inFocusEnable, inFocusDepth, inFocusRange, inFocusBlurStrength, inShadowEnable, inShadowColorR, inShadowColorG, inShadowColorB, inShadowOffsetX, inShadowOffsetY, inShadowOpacity, inSpawnScaleX, inSpawnScaleY, inSpawnRotationCos, inSpawnRotationSin, inShowSpawnArea, inSpawnAreaColorR, inSpawnAreaColorG, inSpawnAreaColorB, inIsBGRA, inAlphaBoundsMinX, inAlphaBoundsMinY, inAlphaBoundsWidth, inAlphaBoundsHeight, inMotionBlurEnable, inMotionBlurSamples, inMotionBlurStrength, inMotionBlurVelocity  , KernelXYUnsigned()    ); } static __inline__ void ProcAmp2Kernel_Delegate( __global float4* ioImage, __global float4* inLineData, __global int* inTileOffsets, __global int* inTileCounts, __global int* inLineIndices  , int inPitch, int in16f, unsigned int inWidth, unsigned int inHeight, float inLineCenterX, float inLineCenterY, float inOriginOffsetX, float inOriginOffsetY, float inLineCos, float inLineSin, float inLineLength, float inLineThickness, float inLineLifetime, float inLineTravel, float inLineTailFade, float inLineDepthStrength, float inLineR, float inLineG, float inLineB, float inLineAA, int inLineCap, int inLineCount, int inLineSeed, int inLineEasing, int inLineInterval, int inLineAllowMidPlay, int inHideElement, int inBlendMode, float inFrameIndex, int inLineDownsample, int inTileCountX, int inTileSize, int inFocusEnable, float inFocusDepth, float inFocusRange, float inFocusBlurStrength, int inShadowEnable, float inShadowColorR, float inShadowColorG, float inShadowColorB, float inShadowOffsetX, float inShadowOffsetY, float inShadowOpacity, float inSpawnScaleX, float inSpawnScaleY, float inSpawnRotationCos, float inSpawnRotationSin, int inShowSpawnArea, float inSpawnAreaColorR, float inSpawnAreaColorG, float inSpawnAreaColorB, int inIsBGRA, float inAlphaBoundsMinX, float inAlphaBoundsMinY, float inAlphaBoundsWidth, float inAlphaBoundsHeight, int inMotionBlurEnable, int inMotionBlurSamples, float inMotionBlurStrength, float inMotionBlurVelocity  , uint2 inXY    )
-#line 237 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 247 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 		{
 			if (inXY.x < inWidth && inXY.y < inHeight)
 			{
@@ -10663,5 +10673,5 @@ static __inline__ float saturate(float inX)
 	}
 }
 
-#line 733 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
-#line 734 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 743 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 744 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
