@@ -383,32 +383,212 @@ static float ApplyEasing(float t, int easing)
 	{
 		case 0: // Linear
 			return t;
-		case 1: // InSine
+		// SmoothStep (1-2)
+		case 1: // SmoothStep (3rd order Hermite)
+			return t * t * (3.0f - 2.0f * t);
+		case 2: // SmootherStep (5th order, Ken Perlin)
+			return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+		// Sine (3-6)
+		case 3: // InSine (slow→fast)
 			return 1.0f - cosf((float)M_PI * t * 0.5f);
-		case 2: // OutSine
+		case 4: // OutSine (fast→slow)
 			return sinf((float)M_PI * t * 0.5f);
-		case 3: // InOutSine
+		case 5: // InOutSine
 			return EaseInOutSine(t);
-		case 4: // InQuad
-			return t * t;
-		case 5: // OutQuad
-			return 1.0f - (1.0f - t) * (1.0f - t);
-		case 6: // InOutQuad
+		case 6: // OutInSine
 		{
-			const float u = 2.0f - 2.0f * t;
-			return t < 0.5f ? 2.0f * t * t : 1.0f - u * u * 0.5f;
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 4);  // OutSine
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 3);  // InSine
+			}
 		}
-		case 7: // InCubic
+		// Quad (7-10)
+		case 7: // InQuad
+			return t * t;
+		case 8: // OutQuad
+			return 1.0f - (1.0f - t) * (1.0f - t);
+		case 9: // InOutQuad
+		{
+			const float u = t * 2.0f;
+			if (u < 1.0f) { return 0.5f * u * u; }
+			const float v = u - 1.0f;
+			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v));
+		}
+		case 10: // OutInQuad
+		{
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 8);  // OutQuad
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 7);  // InQuad
+			}
+		}
+		// Cubic (11-14)
+		case 11: // InCubic
 			return t * t * t;
-		case 8: // OutCubic
+		case 12: // OutCubic
 		{
 			const float u = 1.0f - t;
 			return 1.0f - u * u * u;
 		}
-		case 9: // InOutCubic
+		case 13: // InOutCubic
 		{
-			const float u = 2.0f - 2.0f * t;
-			return t < 0.5f ? 4.0f * t * t * t : 1.0f - u * u * u * 0.5f;
+			const float u = t * 2.0f;
+			if (u < 1.0f) { return 0.5f * u * u * u; }
+			const float v = u - 1.0f;
+			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v) * (1.0f - v));
+		}
+		case 14: // OutInCubic
+		{
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 12);  // OutCubic
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 11);  // InCubic
+			}
+		}
+		// Circular (15-18)
+		case 15: // InCirc
+			return 1.0f - sqrtf(1.0f - t * t);
+		case 16: // OutCirc
+		{
+			const float u = t - 1.0f;
+			return sqrtf(1.0f - u * u);
+		}
+		case 17: // InOutCirc
+		{
+			const float u = t * 2.0f;
+			if (u < 1.0f) {
+				return 0.5f * (1.0f - sqrtf(1.0f - u * u));
+			}
+			const float v = u - 2.0f;
+			return 0.5f * (sqrtf(1.0f - v * v) + 1.0f);
+		}
+		case 18: // OutInCirc
+		{
+			if (t < 0.5f) {
+				return 0.5f * ApplyEasing(t * 2.0f, 16);  // OutCirc
+			} else {
+				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 15);  // InCirc
+			}
+		}
+		// Back easing (overshoots) (19-21)
+		case 19: // InBack
+		{
+			const float s = 1.70158f;
+			return t * t * ((s + 1.0f) * t - s);
+		}
+		case 20: // OutBack
+		{
+			const float s = 1.70158f;
+			const float u = t - 1.0f;
+			return u * u * ((s + 1.0f) * u + s) + 1.0f;
+		}
+		case 21: // InOutBack
+		{
+			const float s = 1.70158f * 1.525f;
+			const float u = t * 2.0f;
+			if (u < 1.0f) {
+				return 0.5f * u * u * ((s + 1.0f) * u - s);
+			}
+			const float v = u - 2.0f;
+			return 0.5f * (v * v * ((s + 1.0f) * v + s) + 2.0f);
+		}
+		// Elastic easing (22-24)
+		case 22: // InElastic
+		{
+			if (t == 0.0f) return 0.0f;
+			if (t == 1.0f) return 1.0f;
+			const float p = 0.3f;
+			return -powf(2.0f, 10.0f * (t - 1.0f)) * sinf((t - 1.0f - p / 4.0f) * (2.0f * (float)M_PI) / p);
+		}
+		case 23: // OutElastic
+		{
+			if (t == 0.0f) return 0.0f;
+			if (t == 1.0f) return 1.0f;
+			const float p = 0.3f;
+			return powf(2.0f, -10.0f * t) * sinf((t - p / 4.0f) * (2.0f * (float)M_PI) / p) + 1.0f;
+		}
+		case 24: // InOutElastic
+		{
+			if (t == 0.0f) return 0.0f;
+			if (t == 1.0f) return 1.0f;
+			const float p = 0.45f;
+			const float s = p / 4.0f;
+			const float u = t * 2.0f;
+			if (u < 1.0f) {
+				return -0.5f * powf(2.0f, 10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p);
+			}
+			return powf(2.0f, -10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p) * 0.5f + 1.0f;
+		}
+		// Bounce easing (25-27)
+		case 25: // InBounce
+		{
+			const float u = 1.0f - t;
+			float b;
+			if (u < 1.0f / 2.75f) {
+				b = 7.5625f * u * u;
+			} else if (u < 2.0f / 2.75f) {
+				const float v = u - 1.5f / 2.75f;
+				b = 7.5625f * v * v + 0.75f;
+			} else if (u < 2.5f / 2.75f) {
+				const float v = u - 2.25f / 2.75f;
+				b = 7.5625f * v * v + 0.9375f;
+			} else {
+				const float v = u - 2.625f / 2.75f;
+				b = 7.5625f * v * v + 0.984375f;
+			}
+			return 1.0f - b;
+		}
+		case 26: // OutBounce
+		{
+			if (t < 1.0f / 2.75f) {
+				return 7.5625f * t * t;
+			} else if (t < 2.0f / 2.75f) {
+				const float u = t - 1.5f / 2.75f;
+				return 7.5625f * u * u + 0.75f;
+			} else if (t < 2.5f / 2.75f) {
+				const float u = t - 2.25f / 2.75f;
+				return 7.5625f * u * u + 0.9375f;
+			} else {
+				const float u = t - 2.625f / 2.75f;
+				return 7.5625f * u * u + 0.984375f;
+			}
+		}
+		case 27: // InOutBounce
+		{
+			if (t < 0.5f) {
+				const float u = 1.0f - t * 2.0f;
+				float b;
+				if (u < 1.0f / 2.75f) {
+					b = 7.5625f * u * u;
+				} else if (u < 2.0f / 2.75f) {
+					const float v = u - 1.5f / 2.75f;
+					b = 7.5625f * v * v + 0.75f;
+				} else if (u < 2.5f / 2.75f) {
+					const float v = u - 2.25f / 2.75f;
+					b = 7.5625f * v * v + 0.9375f;
+				} else {
+					const float v = u - 2.625f / 2.75f;
+					b = 7.5625f * v * v + 0.984375f;
+				}
+				return (1.0f - b) * 0.5f;
+			} else {
+				const float u = t * 2.0f - 1.0f;
+				float b;
+				if (u < 1.0f / 2.75f) {
+					b = 7.5625f * u * u;
+				} else if (u < 2.0f / 2.75f) {
+					const float v = u - 1.5f / 2.75f;
+					b = 7.5625f * v * v + 0.75f;
+				} else if (u < 2.5f / 2.75f) {
+					const float v = u - 2.25f / 2.75f;
+					b = 7.5625f * v * v + 0.9375f;
+				} else {
+					const float v = u - 2.625f / 2.75f;
+					b = 7.5625f * v * v + 0.984375f;
+				}
+				return b * 0.5f + 0.5f;
+			}
 		}
 		default:
 			return t;
