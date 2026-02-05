@@ -47,7 +47,7 @@ static void WriteLog(const char* format, ...)
 {
 	std::lock_guard<std::mutex> lock(sLogMutex);
 	FILE* fp = nullptr;
-	fopen_s(&fp, "C:\\Temp\\SDK_ProcAmp_Log.txt", "a");
+	//fopen_s(&fp, "C:\\Temp\\SDK_ProcAmp_Log.txt", "a");
 	if (fp)
 	{
 		va_list args;
