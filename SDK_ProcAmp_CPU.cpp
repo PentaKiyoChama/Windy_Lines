@@ -2174,14 +2174,16 @@ static PF_Err Render(
 							else
 							{
 								// Front mode (full) -> accumulate separately, apply after loop
-								const float aFront = coverage;
-								const float premV = paletteV[ci] * aFront;
-								const float premU = paletteU[ci] * aFront;
-								const float premY = paletteY[ci] * aFront;
-								frontV = premV + frontV * (1.0f - aFront);
-								frontU = premU + frontU * (1.0f - aFront);
-								frontY = premY + frontY * (1.0f - aFront);
-								frontA = aFront + frontA * (1.0f - aFront);
+								// Use un-premultiplied accumulation (same as CUDA/OpenCL)
+								float srcAlpha = coverage;
+								float invFront = 1.0f - srcAlpha;
+								float outA = srcAlpha + frontA * invFront;
+								if (outA > 0.0f) {
+									frontV = (paletteV[ci] * srcAlpha + frontV * frontA * invFront) / outA;
+									frontU = (paletteU[ci] * srcAlpha + frontU * frontA * invFront) / outA;
+									frontY = (paletteY[ci] * srcAlpha + frontY * frontA * invFront) / outA;
+								}
+								frontA = outA;
 								frontAppearAlpha = std::min(frontAppearAlpha, ld.appearAlpha);
 							}
 						}
@@ -2234,16 +2236,19 @@ static PF_Err Render(
 				// Apply front lines after back lines (blend mode 2)
 				if (blendMode == 2 && frontA > 0.0f)
 				{
-					const float prevAlpha = a;
-					outV = frontV + outV * (1.0f - frontA);
-					outU = frontU + outU * (1.0f - frontA);
-					outY = frontY + outY * (1.0f - frontA);
-					const float newAlpha = frontA + prevAlpha * (1.0f - frontA);
-					a = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
+				float prevAlpha = a;
+				float invFrontA = 1.0f - frontA;
+				float newAlpha = frontA + a * invFrontA;
+				if (newAlpha > 0.0f) {
+					outV = (frontV * frontA + outV * a * invFrontA) / newAlpha;
+					outU = (frontU * frontA + outU * a * invFrontA) / newAlpha;
+					outY = (frontY * frontA + outY * a * invFrontA) / newAlpha;
 				}
+				a = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
+			}
 
-				// Draw spawn area preview (filled with inverted colors)
-				if (showSpawnArea)
+			// Draw spawn area preview (filled with inverted colors)
+			if (showSpawnArea)
 				{
 					const float alphaCenterX = alphaBoundsMinX + alphaBoundsWidth * 0.5f;
 					const float alphaCenterY = alphaBoundsMinY + alphaBoundsHeight * 0.5f;
