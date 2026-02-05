@@ -601,7 +601,7 @@ static PF_Err ParamsSetup(
 	// Effect Preset (top-level, no group)
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
-	std::string presetLabels = "チE��ォルチE";
+	std::string presetLabels = "デフォルト|";
 	for (int i = 0; i < kEffectPresetCount; ++i)
 	{
 		presetLabels += kEffectPresets[i].name;
