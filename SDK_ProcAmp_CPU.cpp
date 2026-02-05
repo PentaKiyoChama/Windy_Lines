@@ -1776,6 +1776,7 @@ static PF_Err Render(
 	const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
 	const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
 		const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
+		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
 		const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
@@ -1833,7 +1834,6 @@ static PF_Err Render(
 		const float lineInterval = (float)params[SDK_PROCAMP_LINE_INTERVAL]->u.fs_d.value;
 		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
 		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
-		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
 		const float lineTravelScaled = finalLineTravel * dsScale;
 		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
 		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
