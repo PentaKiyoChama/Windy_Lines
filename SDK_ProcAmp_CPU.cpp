@@ -1822,6 +1822,12 @@ static PF_Err Render(
 					const LineDerived& ld = lineState->lineDerived[lineState->tileIndices[start + i]];
 					const float depthAlpha = ld.depthAlpha;  // Use pre-computed
 
+					// === STEP 1-4: Skip extremely tiny lines (< 1 pixel thick) ===
+					if (ld.halfThick < 0.5f)
+					{
+						continue;  // Invisible line - skip all processing
+					}
+
 					// === STEP 2: Early skip optimization ===
 					// Check if pixel is outside line bounding box (with shadow offset margin)
 					const float skipDx = (x + 0.5f) - ld.centerX;
