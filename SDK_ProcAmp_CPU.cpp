@@ -144,6 +144,71 @@ static inline float ApplyEasingLUT(float t, int easingType)
 }
 
 // ========================================================================
+// Phase 3-2: Trigonometric Function Look-Up Table (LUT)
+// ========================================================================
+
+#define TRIG_LUT_SIZE 256
+
+// LUT for sine: covers [0, 2π]
+static float sSinLUT[TRIG_LUT_SIZE];
+static bool sTrigLUTInitialized = false;
+
+/**
+ * Initialize trigonometric LUT
+ * Pre-computes sin values for [0, 2π] range
+ */
+static void InitializeTrigLUT()
+{
+	if (sTrigLUTInitialized) return;
+	
+	for (int i = 0; i < TRIG_LUT_SIZE; ++i)
+	{
+		const float angle = (2.0f * static_cast<float>(M_PI) * static_cast<float>(i)) / static_cast<float>(TRIG_LUT_SIZE);
+		sSinLUT[i] = sinf(angle);
+	}
+	
+	sTrigLUTInitialized = true;
+}
+
+/**
+ * Fast sine lookup using pre-computed LUT
+ * @param angle Angle in radians
+ * @return sin(angle)
+ */
+static inline float FastSin(float angle)
+{
+	// Normalize angle to [0, 2π]
+	const float twoPi = 2.0f * static_cast<float>(M_PI);
+	float normalized = fmodf(angle, twoPi);
+	if (normalized < 0.0f) normalized += twoPi;
+	
+	// Map to LUT index with linear interpolation
+	const float fidx = (normalized / twoPi) * static_cast<float>(TRIG_LUT_SIZE - 1);
+	const int idx = static_cast<int>(fidx);
+	const float frac = fidx - static_cast<float>(idx);
+	
+	if (idx >= TRIG_LUT_SIZE - 1) {
+		return sSinLUT[0];  // Wrap around
+	}
+	
+	// Linear interpolation
+	const float v0 = sSinLUT[idx];
+	const float v1 = sSinLUT[idx + 1];
+	return v0 + (v1 - v0) * frac;
+}
+
+/**
+ * Fast cosine lookup using pre-computed LUT
+ * Uses identity: cos(x) = sin(x + π/2)
+ * @param angle Angle in radians
+ * @return cos(angle)
+ */
+static inline float FastCos(float angle)
+{
+	return FastSin(angle + static_cast<float>(M_PI) * 0.5f);
+}
+
+// ========================================================================
 // Phase 2-1: Shared SDF (Signed Distance Field) Functions
 // ========================================================================
 
@@ -263,8 +328,9 @@ static PF_Err GlobalSetup(
 	// Tell Premiere this effect uses timecode/sequence position to help with cache invalidation.
 	out_data->out_flags2 |= PF_OutFlag2_I_USE_TIMECODE;
 
-	// Initialize easing LUT
+	// Initialize LUTs
 	InitializeEasingLUT();
+	InitializeTrigLUT();
 
 	return PF_Err_NONE;
 }
@@ -1658,8 +1724,8 @@ static PF_Err Render(
 	const float spawnScaleY = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_Y]->u.fs_d.value / 100.0f;
 	const float spawnRotationDeg = (float)params[SDK_PROCAMP_LINE_SPAWN_ROTATION]->u.fs_d.value;
 	const float spawnRotationRad = spawnRotationDeg * 3.14159265f / 180.0f;
-	const float spawnCos = cosf(spawnRotationRad);
-	const float spawnSin = sinf(spawnRotationRad);
+	const float spawnCos = FastCos(spawnRotationRad);
+	const float spawnSin = FastSin(spawnRotationRad);
 	const bool showSpawnArea = params[SDK_PROCAMP_LINE_SHOW_SPAWN_AREA]->u.bd.value != 0;
 	const PF_Pixel spawnAreaColorPx = params[SDK_PROCAMP_LINE_SPAWN_AREA_COLOR]->u.cd.value;
 	const float spawnAreaColorR = spawnAreaColorPx.red / 255.0f;
@@ -1968,8 +2034,8 @@ static PF_Err Render(
 			// animPattern == 1 (Simple): no direction adjustment
 		}
 		
-		const float adjustedCos = cosf(adjustedAngle * 3.14159265f / 180.0f);
-		const float adjustedSin = sinf(adjustedAngle * 3.14159265f / 180.0f);
+		const float adjustedCos = FastCos(adjustedAngle * 3.14159265f / 180.0f);
+		const float adjustedSin = FastSin(adjustedAngle * 3.14159265f / 180.0f);
 
 		LineDerived ld;
 		const float alphaCenterX = alphaBoundsMinX + alphaBoundsWidth * 0.5f;
