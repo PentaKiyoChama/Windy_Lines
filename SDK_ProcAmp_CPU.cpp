@@ -364,22 +364,37 @@ struct LineParams
 	float depthValue;  // Depth value (0-1) for blend mode
 };
 
-struct LineDerived
+// LineDerived: Pre-computed values for each line
+// Layout optimized for cache efficiency - frequently accessed fields first
+// Total size: 60 bytes (fits in one 64-byte cache line)
+struct alignas(64) LineDerived
 {
+	// Hot path: Early skip check (offset 0-7)
+	float halfThick;   // Used for tiny line skip and bounding box
+	float halfLen;     // Used for bounding box check
+	
+	// Hot path: Coordinate transform (offset 8-27)
 	float centerX;
 	float centerY;
 	float cosA;
 	float sinA;
-	float halfLen;
-	float halfThick;
 	float segCenterX;
-	float depth;       // Depth value for blend mode
-	int colorIndex;    // Palette color index (0-7)
-	float focusAlpha;  // Alpha multiplier for focus blur (1.0 = in focus)
-	float appearAlpha; // Alpha multiplier for appear/disappear fade (0-1)
-	float lineVelocity; // Instantaneous velocity from easing (for motion blur)
+	
+	// Hot path: Rendering (offset 28-35)
 	float depthAlpha;      // Pre-computed depth fade alpha
 	float invDenom;        // Pre-computed 1 / (2.0f * halfLen) for tail fade
+	
+	// Medium frequency: Color and effects (offset 36-47)
+	float depth;           // Depth value for blend mode
+	float focusAlpha;      // Alpha multiplier for focus blur
+	float appearAlpha;     // Alpha multiplier for appear/disappear fade
+	
+	// Lower frequency (offset 48-55)
+	float lineVelocity;    // Instantaneous velocity for motion blur
+	int colorIndex;        // Palette color index (0-7)
+	
+	// Padding to align to cache line boundary (offset 56-63)
+	int _padding;
 };
 
 struct LineInstanceState
@@ -2082,6 +2097,7 @@ static PF_Err Render(
 		ld.depthAlpha = 0.05f + 0.95f * depthFadeT;
 		const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
 		ld.invDenom = 1.0f / denom;
+		ld._padding = 0;  // Initialize padding for clean memory
 		
 		lineState->lineDerived[i] = ld;
 	}
