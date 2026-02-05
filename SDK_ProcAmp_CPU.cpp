@@ -1764,10 +1764,6 @@ static PF_Err Render(
 		const float lineCos = cos(angleRadians);
 		const float lineSin = sin(angleRadians);
 		auto saturate = [](float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); };
-		auto smoothstep = [&](float edge0, float edge1, float x) {
-			const float t = saturate((x - edge0) / (edge1 - edge0));
-			return t * t * (3.0f - 2.0f * t);
-		};
 
 		// Use local state for stateless rendering (no global caching)
 		LineInstanceState localLineState;
