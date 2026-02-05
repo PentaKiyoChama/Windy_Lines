@@ -370,16 +370,17 @@
 							shadowBlend = scoverage * (1.0f - originalAlpha);
 						}
 
-						// Shadow: premultiplied alpha compositing (v62 fix)
-						// inShadowColorR/G/B are already in output format (VUYA or BGRA)
-						float invShadow = 1.0f - shadowBlend;
-						float outAlpha = shadowBlend + pixel.w * invShadow;
-						if (outAlpha > 0.0f) {
-							pixel.x = (inShadowColorR * shadowBlend + pixel.x * pixel.w * invShadow) / outAlpha;
-							pixel.y = (inShadowColorG * shadowBlend + pixel.y * pixel.w * invShadow) / outAlpha;
-							pixel.z = (inShadowColorB * shadowBlend + pixel.z * pixel.w * invShadow) / outAlpha;
-						}
-						pixel.w = outAlpha;
+					// Shadow: premultiplied alpha compositing (matched to OpenCL)
+					// inShadowColorR/G/B are already in output format (VUYA or BGRA)
+					float invShadow = 1.0f - shadowBlend;
+					float outAlpha = shadowBlend + pixel.w * invShadow;
+					if (outAlpha > 0.0f) {
+						pixel.x = (inShadowColorR * shadowBlend + pixel.x * pixel.w * invShadow) / outAlpha;
+						pixel.y = (inShadowColorG * shadowBlend + pixel.y * pixel.w * invShadow) / outAlpha;
+						pixel.z = (inShadowColorB * shadowBlend + pixel.z * pixel.w * invShadow) / outAlpha;
+					}
+					float prevAlphaShadow = pixel.w;
+					pixel.w = prevAlphaShadow + (outAlpha - prevAlphaShadow) * appearAlpha;
 					}
 				}
 				
@@ -548,7 +549,7 @@
 						pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
 						pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
 					}
-					pixel.w = outAlpha;
+					pixel.w = prevAlpha + (outAlpha - prevAlpha) * appearAlpha;
 					}
 					else if (inBlendMode == 1)  // Front (in front of element)
 					{
@@ -560,7 +561,7 @@
 							pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
 							pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
 						}
-						pixel.w = outAlpha;
+					pixel.w = prevAlpha + (outAlpha - prevAlpha) * appearAlpha;
 					}
 					else if (inBlendMode == 2)  // Back and Front (split by per-line depth)
 					{
@@ -576,7 +577,7 @@
 							pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
 							pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
 						}
-						pixel.w = outAlpha;
+					pixel.w = prevAlpha + (outAlpha - prevAlpha) * appearAlpha;
 						}
 						else
 						{
@@ -596,7 +597,7 @@
 					}
 				else if (inBlendMode == 3)  // Alpha (XOR with original element only)
 				{
-				// Line-to-line blending: premultiplied compositing
+				// Alpha XOR: line-to-line uses normal blend (XOR applied after loop)
 				float srcAlpha = coverage;
 				float invAlpha = 1.0f - srcAlpha;
 				float outAlpha = srcAlpha + pixel.w * invAlpha;
@@ -605,9 +606,9 @@
 					pixel.y = (lineColorG * srcAlpha + pixel.y * pixel.w * invAlpha) / outAlpha;
 					pixel.z = (lineColorB * srcAlpha + pixel.z * pixel.w * invAlpha) / outAlpha;
 				}
-				pixel.w = outAlpha;
+				pixel.w = prevAlpha + (outAlpha - prevAlpha) * appearAlpha;
 					// Track line-only alpha
-					lineOnlyAlpha = fmaxf(lineOnlyAlpha, coverage * appearAlpha);
+					lineOnlyAlpha = fmaxf(lineOnlyAlpha, srcAlpha * appearAlpha);
 				}
 				}
 			}
@@ -644,14 +645,17 @@
 			if (inBlendMode == 2 && frontA > 0.0f)
 			{
 				float prevAlpha = pixel.w;
-				pixel.x = frontR + pixel.x * (1.0f - frontA);
-				pixel.y = frontG + pixel.y * (1.0f - frontA);
-				pixel.z = frontB + pixel.z * (1.0f - frontA);
-				float newAlpha = frontA + prevAlpha * (1.0f - frontA);
-				pixel.w = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
+			float invFrontA = 1.0f - frontA;
+			float newAlpha = frontA + pixel.w * invFrontA;
+			if (newAlpha > 0.0f) {
+				pixel.x = (frontR * frontA + pixel.x * pixel.w * invFrontA) / newAlpha;
+				pixel.y = (frontG * frontA + pixel.y * pixel.w * invFrontA) / newAlpha;
+				pixel.z = (frontB * frontA + pixel.z * pixel.w * invFrontA) / newAlpha;
 			}
+			pixel.w = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
+		}
 
-			// Draw spawn area preview (filled with inverted colors)
+		// Draw spawn area preview (filled with inverted colors)
 			if (inShowSpawnArea != 0)
 			{
 				const float alphaCenterX = inAlphaBoundsMinX + inAlphaBoundsWidth * 0.5f;

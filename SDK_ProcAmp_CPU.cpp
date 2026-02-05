@@ -77,13 +77,15 @@ static uint32_t GetCurrentTimeMs()
 
 static int NormalizePopupValue(int value, int maxValue)
 {
-	if (value >= 0 && value < maxValue)
-	{
-		return value;
-	}
+	// Premiere Pro popup values are 1-based, convert to 0-based
 	if (value >= 1 && value <= maxValue)
 	{
 		return value - 1;
+	}
+	// Already 0-based or out of range
+	if (value >= 0 && value < maxValue)
+	{
+		return value;
 	}
 	return 0;
 }
@@ -160,6 +162,8 @@ struct LineDerived
 	float focusAlpha;  // Alpha multiplier for focus blur (1.0 = in focus)
 	float appearAlpha; // Alpha multiplier for appear/disappear fade (0-1)
 	float lineVelocity; // Instantaneous velocity from easing (for motion blur)
+	float depthAlpha;      // Pre-computed depth fade alpha
+	float invDenom;        // Pre-computed 1 / (2.0f * halfLen) for tail fade
 };
 
 struct LineInstanceState
@@ -298,7 +302,10 @@ static float ApplyEasing(float t, int easing)
 		case 5: // OutQuad
 			return 1.0f - (1.0f - t) * (1.0f - t);
 		case 6: // InOutQuad
-			return t < 0.5f ? 2.0f * t * t : 1.0f - powf(-2.0f * t + 2.0f, 2.0f) * 0.5f;
+		{
+			const float u = 2.0f - 2.0f * t;
+			return t < 0.5f ? 2.0f * t * t : 1.0f - u * u * 0.5f;
+		}
 		case 7: // InCubic
 			return t * t * t;
 		case 8: // OutCubic
@@ -307,7 +314,10 @@ static float ApplyEasing(float t, int easing)
 			return 1.0f - u * u * u;
 		}
 		case 9: // InOutCubic
-			return t < 0.5f ? 4.0f * t * t * t : 1.0f - powf(-2.0f * t + 2.0f, 3.0f) * 0.5f;
+		{
+			const float u = 2.0f - 2.0f * t;
+			return t < 0.5f ? 4.0f * t * t * t : 1.0f - u * u * u * 0.5f;
+		}
 		default:
 			return t;
 	}
@@ -807,7 +817,7 @@ static PF_Err ParamsSetup(
 		SDK_PROCAMP_LINE_TAIL_FADE);
 
 	// ============================================================
-	// Line Origin (線の起点)
+	// Line Origin (線�E起点)
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_TOPIC(P_POSITION_HEADER, SDK_PROCAMP_POSITION_HEADER);
@@ -1284,6 +1294,7 @@ static PF_Err Render(
 		const float lineThicknessScaled = lineThickness * dsScale;
 		const float lineLengthScaled = lineLength * dsScale;
 		const float lineAAScaled = lineAA * dsScale;
+		const float effectiveAA = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
 		// Center is now controlled by Origin Offset X/Y only
 		const int lineCount = (int)params[SDK_PROCAMP_LINE_COUNT]->u.fs_d.value;
 		const float lineLifetime = (float)params[SDK_PROCAMP_LINE_LIFETIME]->u.fs_d.value;
@@ -1678,6 +1689,14 @@ static PF_Err Render(
 			ld.colorIndex = (int)(Rand01(colorBase) * 8.0f);
 			if (ld.colorIndex > 7) ld.colorIndex = 7;
 		}
+		
+		// Pre-compute expensive per-pixel calculations once per line
+		const float depthScale = DepthScale(ld.depth, lineDepthStrength);
+		const float depthFadeT = saturate((depthScale - 0.2f) / (0.6f - 0.2f));
+		ld.depthAlpha = 0.05f + 0.95f * depthFadeT;
+		const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
+		ld.invDenom = 1.0f / denom;
+		
 		lineState->lineDerived[i] = ld;
 	}
 
@@ -1801,11 +1820,22 @@ static PF_Err Render(
 				for (int i = 0; i < count; ++i)
 				{
 					const LineDerived& ld = lineState->lineDerived[lineState->tileIndices[start + i]];
-					const float depthScale = DepthScale(ld.depth, lineDepthStrength);
-					const float fadeStart = 0.6f;
-					const float fadeEnd = 0.2f;
-					const float t = saturate((depthScale - fadeEnd) / (fadeStart - fadeEnd));
-					const float depthAlpha = 0.05f + (1.0f - 0.05f) * t;
+					const float depthAlpha = ld.depthAlpha;  // Use pre-computed
+
+					// === STEP 2: Early skip optimization ===
+					// Check if pixel is outside line bounding box (with shadow offset margin)
+					const float skipDx = (x + 0.5f) - ld.centerX;
+					const float skipDy = (y + 0.5f) - ld.centerY;
+					const float shadowMargin = shadowEnable ? fmaxf(fabsf(shadowOffsetX), fabsf(shadowOffsetY)) : 0.0f;
+					const float margin = ld.halfThick + lineAAScaled + shadowMargin;
+					const float skipPx = skipDx * ld.cosA + skipDy * ld.sinA - ld.segCenterX;
+					const float skipPy = -skipDx * ld.sinA + skipDy * ld.cosA;
+					
+					if (fabsf(skipPx) > ld.halfLen + margin && fabsf(skipPy) > margin)
+					{
+						continue;  // Skip this line - pixel is too far away
+					}
+					// === END STEP 2 ===
 					
 				// Draw shadow first (before the line) with motion blur
 				if (shadowEnable)
@@ -1822,8 +1852,6 @@ static PF_Err Render(
 						const float pixelsPerFrame = lineTravel / lineLifetime;
 						const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
 						const float blurRange = effectiveVelocity * shutterFraction;
-						const float sdenom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-
 						if (blurRange > 0.5f)
 						{
 							float saccumA = 0.0f;
@@ -1855,9 +1883,9 @@ static PF_Err Render(
 									sdistSample = sqrtf(qx * qx + spySample * spySample) - ld.halfThick;
 								}
 
-								const float stailT = saturate((spxSample + ld.halfLen) / sdenom);
+								const float stailT = saturate((spxSample + ld.halfLen) * ld.invDenom);  // Use pre-computed
 								const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
-								const float saa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+								const float saa = effectiveAA;
 								float sampleCoverage = 0.0f;
 								if (saa > 0.0f)
 								{
@@ -1895,10 +1923,9 @@ static PF_Err Render(
 								sdist = sqrtf(qx * qx + spy * spy) - ld.halfThick;
 							}
 
-							const float sdenom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-							const float stailT = saturate((spx + ld.halfLen) / sdenom);
+							const float stailT = saturate((spx + ld.halfLen) * ld.invDenom);  // Use pre-computed
 							const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
-							const float saa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+							const float saa = effectiveAA;
 							if (saa > 0.0f)
 							{
 								const float tt = saturate((sdist - saa) / (0.0f - saa));
@@ -1931,10 +1958,9 @@ static PF_Err Render(
 							sdist = sqrtf(qx * qx + spy * spy) - ld.halfThick;
 						}
 
-						const float sdenom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-						const float stailT = saturate((spx + ld.halfLen) / sdenom);
+						const float stailT = saturate((spx + ld.halfLen) * ld.invDenom);  // Use pre-computed
 						const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
-						const float saa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+						const float saa = effectiveAA;
 						if (saa > 0.0f)
 						{
 							const float tt = saturate((sdist - saa) / (0.0f - saa));
@@ -1979,8 +2005,7 @@ static PF_Err Render(
 						const float pixelsPerFrame = lineTravel / lineLifetime;
 						const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
 						const float blurRange = effectiveVelocity * shutterFraction;
-						const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-
+	
 						if (blurRange > 0.5f)
 						{
 							// Multi-sample motion blur with uniform averaging
@@ -2013,9 +2038,9 @@ static PF_Err Render(
 									distSample = sqrtf(qx * qx + pySample * pySample) - ld.halfThick;
 								}
 
-								const float tailT = saturate((pxSample + ld.halfLen) / denom);
+								const float tailT = saturate((pxSample + ld.halfLen) * ld.invDenom);  // Use pre-computed
 								const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
-								const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
+								const float aa = effectiveAA;
 								float sampleCoverage = 0.0f;
 								if (aa > 0.0f)
 								{
@@ -2053,9 +2078,8 @@ static PF_Err Render(
 								dist = sqrtf(qx * qx + py * py) - ld.halfThick;
 							}
 
-							const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
-							const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-							const float tailT = saturate((px + ld.halfLen) / denom);
+							const float aa = effectiveAA;
+									const float tailT = saturate((px + ld.halfLen) * ld.invDenom);  // Use pre-computed
 							const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
 							if (aa > 0.0f)
 							{
@@ -2089,9 +2113,8 @@ static PF_Err Render(
 							dist = sqrtf(qx * qx + py * py) - ld.halfThick;
 						}
 
-						const float aa = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
-						const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-						const float tailT = saturate((px + ld.halfLen) / denom);
+						const float aa = effectiveAA;
+							const float tailT = saturate((px + ld.halfLen) * ld.invDenom);  // Use pre-computed
 						const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
 						if (aa > 0.0f)
 						{
