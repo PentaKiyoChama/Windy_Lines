@@ -35,6 +35,28 @@
 #include "PrSDKAESupport.h"
 
 #include <math.h>
+#include <mutex>
+#include <cstdarg>
+#include <cstdio>
+
+// ========== DEBUG LOGGING (Common) ==========
+static std::mutex sLogMutex;
+static void WriteLog(const char* format, ...)
+{
+	std::lock_guard<std::mutex> lock(sLogMutex);
+	FILE* fp = nullptr;
+	//fopen_s(&fp, "C:\\Temp\\SDK_ProcAmp_Log.txt", "a");
+	if (fp)
+	{
+		va_list args;
+		va_start(args, format);
+		vfprintf(fp, format, args);
+		va_end(args);
+		fprintf(fp, "\n");
+		fclose(fp);
+	}
+}
+// ===========================================
 
 
 /*
