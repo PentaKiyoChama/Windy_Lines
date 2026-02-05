@@ -214,6 +214,7 @@ static inline float FastCos(float angle)
 
 /**
  * Box SDF: Distance from point to rounded rectangle
+ * Optimized for compiler auto-vectorization (branchless)
  * @param px Local X coordinate (along line axis)
  * @param py Local Y coordinate (perpendicular to line)
  * @param halfLen Half of line length
@@ -224,8 +225,9 @@ static inline float SDFBox(float px, float py, float halfLen, float halfThick)
 {
 	const float dxBox = fabsf(px) - halfLen;
 	const float dyBox = fabsf(py) - halfThick;
-	const float ox = dxBox > 0.0f ? dxBox : 0.0f;
-	const float oy = dyBox > 0.0f ? dyBox : 0.0f;
+	// Branchless max(0, x) using fmaxf for SIMD-friendly code
+	const float ox = fmaxf(dxBox, 0.0f);
+	const float oy = fmaxf(dyBox, 0.0f);
 	const float outside = sqrtf(ox * ox + oy * oy);
 	const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
 	return outside + inside;
@@ -233,6 +235,7 @@ static inline float SDFBox(float px, float py, float halfLen, float halfThick)
 
 /**
  * Capsule SDF: Distance from point to rounded line (capsule)
+ * Optimized for compiler auto-vectorization (branchless)
  * @param px Local X coordinate (along line axis)
  * @param py Local Y coordinate (perpendicular to line)
  * @param halfLen Half of line length
@@ -242,7 +245,8 @@ static inline float SDFBox(float px, float py, float halfLen, float halfThick)
 static inline float SDFCapsule(float px, float py, float halfLen, float halfThick)
 {
 	const float ax = fabsf(px) - halfLen;
-	const float qx = ax > 0.0f ? ax : 0.0f;
+	// Branchless max(0, x) using fmaxf for SIMD-friendly code
+	const float qx = fmaxf(ax, 0.0f);
 	return sqrtf(qx * qx + py * py) - halfThick;
 }
 
@@ -253,6 +257,7 @@ static inline float SDFCapsule(float px, float py, float halfLen, float halfThic
 
 /**
  * Premultiplied alpha compositing (over operation)
+ * Optimized: branchless division handling
  * @param srcR Source color R
  * @param srcG Source color G
  * @param srcB Source color B
@@ -268,16 +273,17 @@ static inline void BlendPremultiplied(
 {
 	const float invSrcA = 1.0f - srcA;
 	const float outA = srcA + dstA * invSrcA;
-	if (outA > 0.0f) {
-		dstR = (srcR * srcA + dstR * dstA * invSrcA) / outA;
-		dstG = (srcG * srcA + dstG * dstA * invSrcA) / outA;
-		dstB = (srcB * srcA + dstB * dstA * invSrcA) / outA;
-	}
+	// Branchless: use fmaxf to avoid division by zero
+	const float invOutA = 1.0f / fmaxf(outA, 1e-6f);
+	dstR = (srcR * srcA + dstR * dstA * invSrcA) * invOutA;
+	dstG = (srcG * srcA + dstG * dstA * invSrcA) * invOutA;
+	dstB = (srcB * srcA + dstB * dstA * invSrcA) * invOutA;
 	dstA = outA;
 }
 
 /**
  * Un-premultiplied alpha accumulation (for front line accumulation)
+ * Optimized: branchless division handling
  * @param srcR Source color R
  * @param srcG Source color G
  * @param srcB Source color B
@@ -293,11 +299,11 @@ static inline void BlendUnpremultiplied(
 {
 	const float invSrcA = 1.0f - srcA;
 	const float outA = srcA + dstA * invSrcA;
-	if (outA > 0.0f) {
-		dstR = (srcR * srcA + dstR * dstA * invSrcA) / outA;
-		dstG = (srcG * srcA + dstG * dstA * invSrcA) / outA;
-		dstB = (srcB * srcA + dstB * dstA * invSrcA) / outA;
-	}
+	// Branchless: use fmaxf to avoid division by zero
+	const float invOutA = 1.0f / fmaxf(outA, 1e-6f);
+	dstR = (srcR * srcA + dstR * dstA * invSrcA) * invOutA;
+	dstG = (srcG * srcA + dstG * dstA * invSrcA) * invOutA;
+	dstB = (srcB * srcA + dstB * dstA * invSrcA) * invOutA;
 	dstA = outA;
 }
 
@@ -1763,13 +1769,15 @@ static PF_Err Render(
 		const float angleRadians = (float)(M_PI / 180) * lineAngle;
 		const float lineCos = cos(angleRadians);
 		const float lineSin = sin(angleRadians);
-		auto saturate = [](float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); };
+		// Optimized branchless saturate using fminf/fmaxf
+		auto saturate = [](float v) { return fminf(fmaxf(v, 0.0f), 1.0f); };
 
 		// Use local state for stateless rendering (no global caching)
 		LineInstanceState localLineState;
 		LineInstanceState* lineState = &localLineState;
 
-		const int clampedLineCount = lineCount < 1 ? 1 : (lineCount > 5000 ? 5000 : lineCount);
+		// Branchless clamp for line count
+		const int clampedLineCount = (int)fminf(fmaxf((float)lineCount, 1.0f), 5000.0f);
 		const int intervalFrames = lineInterval < 0.5f ? 0 : (int)(lineInterval + 0.5f);
 		
 		// Generate line params locally each frame for stateless rendering
@@ -2151,6 +2159,10 @@ static PF_Err Render(
 			}
 		}
 
+		// Main render loop - compiler optimization hints
+#if defined(__clang__)
+#pragma clang loop unroll_count(4)
+#endif
 		for (int y = 0; y < output->height; ++y, srcData += src->rowbytes, destData += dest->rowbytes)
 		{
 			for (int x = 0; x < output->width; ++x)
