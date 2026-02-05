@@ -33,13 +33,12 @@
 	{
 		// Shrink lines based on depth: depth=1 (front) keeps scale=1.0, depth=0 (back) shrinks
 		float v = 1.0f - (1.0f - depth) * strength;
-		return v < 0.05f ? 0.05f : v;
+		return fmaxf(v, 0.05f);
 	}
 
 	__device__ __forceinline__ float ApplyEasing(float t, int easing)
 	{
-		if (t < 0.0f) t = 0.0f;
-		if (t > 1.0f) t = 1.0f;
+		t = fminf(fmaxf(t, 0.0f), 1.0f);
 		if (easing == 0)
 		{
 			return t;
