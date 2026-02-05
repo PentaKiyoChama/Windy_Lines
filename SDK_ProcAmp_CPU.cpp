@@ -1723,9 +1723,9 @@ static PF_Err Render(
 	
 	// Shadow parameters
 	const bool shadowEnable = params[SDK_PROCAMP_SHADOW_ENABLE]->u.bd.value != 0;
-	const float shadowColorR = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.red / 65535.0f;
-	const float shadowColorG = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.green / 65535.0f;
-	const float shadowColorB = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.blue / 65535.0f;
+	const float shadowColorR = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.red / 255.0f;
+	const float shadowColorG = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.green / 255.0f;
+	const float shadowColorB = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.blue / 255.0f;
 	// Convert shadow color to YUV
 	const float shadowY = shadowColorR * 0.299f + shadowColorG * 0.587f + shadowColorB * 0.114f;
 	const float shadowU = shadowColorR * -0.168736f + shadowColorG * -0.331264f + shadowColorB * 0.5f;
@@ -1878,9 +1878,10 @@ static PF_Err Render(
 	// Use frameIndex directly for sequence-time based rendering.
 	const float timeFramesBase = (float)frameIndex;
 	
-	// Origin Offset X/Y (px) - ???S???s?????????I?t?Z?b?g
-	const float userOriginOffsetX = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_X]->u.fs_d.value;
-	const float userOriginOffsetY = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_Y]->u.fs_d.value;
+	// Origin Offset X/Y (px) - 線の起点のオフセット
+	// Apply downsample scale to origin offsets (user inputs in full-resolution pixels)
+	const float userOriginOffsetX = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_X]->u.fs_d.value * dsScale;
+	const float userOriginOffsetY = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_Y]->u.fs_d.value * dsScale;
 	
 	// Animation Pattern (1=Simple, 2=Half Reverse, 3=Split)
 	const int animPattern = params[SDK_PROCAMP_ANIM_PATTERN]->u.pd.value;
