@@ -39,6 +39,11 @@
 #include <cstdarg>
 #include <cstdio>
 
+// ========== DEBUG RENDER MARKERS ==========
+// Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
+// Set to 0 to disable completely (zero performance impact)
+#define ENABLE_DEBUG_RENDER_MARKERS 0
+
 // ========== DEBUG LOGGING (Common) ==========
 static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)

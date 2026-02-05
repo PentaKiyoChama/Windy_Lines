@@ -296,8 +296,8 @@
 								// Box distance (flat caps)
 								float dxBox = fabsf(spxSample) - halfLen;
 								float dyBox = fabsf(spySample) - halfThick;
-								float ox = dxBox > 0.0f ? dxBox : 0.0f;
-								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+							float ox = fmaxf(dxBox, 0.0f);
+							float oy = fmaxf(dyBox, 0.0f);
 								float outside = sqrtf(ox * ox + oy * oy);
 								float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
 								sdist = outside + inside;
@@ -306,12 +306,8 @@
 							{
 								// Capsule distance (rounded caps)
 								float ax = fabsf(spxSample) - halfLen;
-								float qx = ax > 0.0f ? ax : 0.0f;
-								sdist = sqrtf(qx * qx + spySample * spySample) - halfThick;
-							}
-							
-							// Tail fade calculation
-							float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+							float qx = fmaxf(ax, 0.0f);
+							float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 							float stailT = fminf(fmaxf((spxSample + halfLen) / sdenom, 0.0f), 1.0f);
 							float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
 							
@@ -341,8 +337,8 @@
 						// Box distance (flat caps)
 						float dxBox = fabsf(spx) - halfLen;
 						float dyBox = fabsf(spy) - halfThick;
-						float ox = dxBox > 0.0f ? dxBox : 0.0f;
-						float oy = dyBox > 0.0f ? dyBox : 0.0f;
+						float ox = fmaxf(dxBox, 0.0f);
+						float oy = fmaxf(dyBox, 0.0f);
 						float outside = sqrtf(ox * ox + oy * oy);
 						float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
 						sdist = outside + inside;
@@ -351,9 +347,11 @@
 					{
 						// Capsule distance (rounded caps)
 						float ax = fabsf(spx) - halfLen;
-						float qx = ax > 0.0f ? ax : 0.0f;
+						float qx = fmaxf(ax, 0.0f);
 						sdist = sqrtf(qx * qx + spy * spy) - halfThick;
-					}					float sdenom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+				}
+				
+				float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 						float stailT = fminf(fmaxf((spx + halfLen) / sdenom, 0.0f), 1.0f);
 						float stailFade = 1.0f + (stailT - 1.0f) * inLineTailFade;
 						
@@ -445,8 +443,8 @@
 							{
 								float dxBox = fabsf(pxSample) - halfLen;
 								float dyBox = fabsf(pySample) - halfThick;
-								float ox = dxBox > 0.0f ? dxBox : 0.0f;
-								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+						float ox = fmaxf(dxBox, 0.0f);
+						float oy = fmaxf(dyBox, 0.0f);
 								float outside = sqrtf(ox * ox + oy * oy);
 								float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
 								distSample = outside + inside;
@@ -454,7 +452,7 @@
 							else
 							{
 								float ax = fabsf(pxSample) - halfLen;
-								float qx = ax > 0.0f ? ax : 0.0f;
+								float qx = fmaxf(ax, 0.0f);
 								distSample = sqrtf(qx * qx + pySample * pySample) - halfThick;
 							}
 							
@@ -486,8 +484,8 @@
 						{
 							float dxBox = fabsf(px) - halfLen;
 							float dyBox = fabsf(py) - halfThick;
-							float ox = dxBox > 0.0f ? dxBox : 0.0f;
-							float oy = dyBox > 0.0f ? dyBox : 0.0f;
+						float ox = fmaxf(dxBox, 0.0f);
+						float oy = fmaxf(dyBox, 0.0f);
 							float outside = sqrtf(ox * ox + oy * oy);
 							float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
 							dist = outside + inside;
@@ -495,7 +493,7 @@
 						else
 						{
 							float ax = fabsf(px) - halfLen;
-							float qx = ax > 0.0f ? ax : 0.0f;
+							float qx = fmaxf(ax, 0.0f);
 							dist = sqrtf(qx * qx + py * py) - halfThick;
 						}
 						
@@ -521,8 +519,8 @@
 					// Box distance (flat caps)
 					float dxBox = fabsf(px) - halfLen;
 					float dyBox = fabsf(py) - halfThick;
-					float ox = dxBox > 0.0f ? dxBox : 0.0f;
-					float oy = dyBox > 0.0f ? dyBox : 0.0f;
+					float ox = fmaxf(dxBox, 0.0f);
+					float oy = fmaxf(dyBox, 0.0f);
 					float outside = sqrtf(ox * ox + oy * oy);
 					float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
 					dist = outside + inside;
@@ -531,9 +529,11 @@
 				{
 					// Capsule distance (rounded caps)
 					float ax = fabsf(px) - halfLen;
-					float qx = ax > 0.0f ? ax : 0.0f;
+					float qx = fmaxf(ax, 0.0f);
 					dist = sqrtf(qx * qx + py * py) - halfThick;
-				}					float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
+				}
+				
+				float denom = (2.0f * halfLen) > 0.0001f ? (2.0f * halfLen) : 0.0001f;
 					float tailT = fminf(fmaxf((px + halfLen) / denom, 0.0f), 1.0f);
 					float tailFade = 1.0f + (tailT - 1.0f) * inLineTailFade;
 					if (aa > 0.0f)
@@ -697,7 +697,6 @@
 				}
 			}
 
-#if ENABLE_DEBUG_RENDER_MARKERS
 			// DEBUG: Draw GREEN SQUARE in top-left corner to indicate CUDA is being used
 			// Shape: Square (CUDA = NVIDIA)
 			if (inXY.x >= 5 && inXY.x < 35 && inXY.y >= 5 && inXY.y < 35)
@@ -707,7 +706,6 @@
 				pixel.z = 0.0f;   // B = 0
 				pixel.w = 1.0f;   // A = 1
 			}
-#endif
 		
 		// Note: Alpha compositing is already done correctly using premultiplied alpha blending above
 		// No additional premultiplication needed (v62 fix)

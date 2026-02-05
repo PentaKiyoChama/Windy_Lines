@@ -376,12 +376,12 @@
 								if (inLineCap == 0) {
 									float dxBox = fabs(px) - halfLen;
 									float dyBox = fabs(py) - halfThick;
-									float ox = dxBox > 0.0f ? dxBox : 0.0f;
-									float oy = dyBox > 0.0f ? dyBox : 0.0f;
+									float ox = fmax(dxBox, 0.0f);
+									float oy = fmax(dyBox, 0.0f);
 									dist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
 								} else {
 									float ax = fabs(px) - halfLen;
-									float qx = ax > 0.0f ? ax : 0.0f;
+									float qx = fmax(ax, 0.0f);
 									dist = sqrt(qx * qx + py * py) - halfThick;
 								}
 								
@@ -403,12 +403,12 @@
 									if (inLineCap == 0) {
 										float dxBox = fabs(spx) - halfLen;
 										float dyBox = fabs(spy) - halfThick;
-										float ox = dxBox > 0.0f ? dxBox : 0.0f;
-										float oy = dyBox > 0.0f ? dyBox : 0.0f;
-										sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
-									} else {
-										float ax = fabs(spx) - halfLen;
-										float qx = ax > 0.0f ? ax : 0.0f;
+									float ox = fmax(dxBox, 0.0f);
+									float oy = fmax(dyBox, 0.0f);
+									sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
+								} else {
+									float ax = fabs(spx) - halfLen;
+									float qx = fmax(ax, 0.0f);
 										sdist = sqrt(qx * qx + spy * spy) - halfThick;
 									}
 									
@@ -510,14 +510,14 @@
 						if (inLineCap == 0) {
 							float dxBox = fabs(px) - halfLen;
 							float dyBox = fabs(py) - halfThick;
-							float ox = dxBox > 0.0f ? dxBox : 0.0f;
-							float oy = dyBox > 0.0f ? dyBox : 0.0f;
+						float ox = fmax(dxBox, 0.0f);
+						float oy = fmax(dyBox, 0.0f);
 							float outside = sqrt(ox * ox + oy * oy);
 							float inside = fmin(fmax(dxBox, dyBox), 0.0f);
 							dist = outside + inside;
 						} else {
 							float ax = fabs(px) - halfLen;
-							float qx = ax > 0.0f ? ax : 0.0f;
+							float qx = fmax(ax, 0.0f);
 							dist = sqrt(qx * qx + py * py) - halfThick;
 						}
 						
@@ -539,14 +539,14 @@
 							if (inLineCap == 0) {
 								float dxBox = fabs(spx) - halfLen;
 								float dyBox = fabs(spy) - halfThick;
-								float ox = dxBox > 0.0f ? dxBox : 0.0f;
-								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								float ox = fmax(dxBox, 0.0f);
+								float oy = fmax(dyBox, 0.0f);
 								float outside = sqrt(ox * ox + oy * oy);
 								float inside = fmin(fmax(dxBox, dyBox), 0.0f);
 								sdist = outside + inside;
 							} else {
 								float ax = fabs(spx) - halfLen;
-								float qx = ax > 0.0f ? ax : 0.0f;
+								float qx = fmax(ax, 0.0f);
 								sdist = sqrt(qx * qx + spy * spy) - halfThick;
 							}
 							
@@ -715,6 +715,7 @@
 					}
 				}
 				
+#if ENABLE_DEBUG_RENDER_MARKERS
 				// DEBUG: Draw ORANGE DIAMOND in top-left corner to indicate OpenCL is being used
 				// Shape: Diamond (OpenCL = cross-platform)
 				{
@@ -731,6 +732,7 @@
 						pixel.w = 1.0f;   // A = 1
 			}
 		}
+#endif
 		
 		// Note: Alpha compositing is already done correctly using premultiplied alpha blending above
 		// No additional premultiplication needed

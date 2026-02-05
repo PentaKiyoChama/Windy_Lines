@@ -10310,12 +10310,12 @@ static __inline__ float saturate(float inX)
 								if (inLineCap == 0) {
 									float dxBox = fabs(px) - halfLen;
 									float dyBox = fabs(py) - halfThick;
-									float ox = dxBox > 0.0f ? dxBox : 0.0f;
-									float oy = dyBox > 0.0f ? dyBox : 0.0f;
+									float ox = fmax(dxBox, 0.0f);
+									float oy = fmax(dyBox, 0.0f);
 									dist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
 								} else {
 									float ax = fabs(px) - halfLen;
-									float qx = ax > 0.0f ? ax : 0.0f;
+									float qx = fmax(ax, 0.0f);
 									dist = sqrt(qx * qx + py * py) - halfThick;
 								}
 								
@@ -10337,12 +10337,12 @@ static __inline__ float saturate(float inX)
 									if (inLineCap == 0) {
 										float dxBox = fabs(spx) - halfLen;
 										float dyBox = fabs(spy) - halfThick;
-										float ox = dxBox > 0.0f ? dxBox : 0.0f;
-										float oy = dyBox > 0.0f ? dyBox : 0.0f;
-										sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
-									} else {
-										float ax = fabs(spx) - halfLen;
-										float qx = ax > 0.0f ? ax : 0.0f;
+									float ox = fmax(dxBox, 0.0f);
+									float oy = fmax(dyBox, 0.0f);
+									sdist = sqrt(ox * ox + oy * oy) + fmin(fmax(dxBox, dyBox), 0.0f);
+								} else {
+									float ax = fabs(spx) - halfLen;
+									float qx = fmax(ax, 0.0f);
 										sdist = sqrt(qx * qx + spy * spy) - halfThick;
 									}
 									
@@ -10444,14 +10444,14 @@ static __inline__ float saturate(float inX)
 						if (inLineCap == 0) {
 							float dxBox = fabs(px) - halfLen;
 							float dyBox = fabs(py) - halfThick;
-							float ox = dxBox > 0.0f ? dxBox : 0.0f;
-							float oy = dyBox > 0.0f ? dyBox : 0.0f;
+						float ox = fmax(dxBox, 0.0f);
+						float oy = fmax(dyBox, 0.0f);
 							float outside = sqrt(ox * ox + oy * oy);
 							float inside = fmin(fmax(dxBox, dyBox), 0.0f);
 							dist = outside + inside;
 						} else {
 							float ax = fabs(px) - halfLen;
-							float qx = ax > 0.0f ? ax : 0.0f;
+							float qx = fmax(ax, 0.0f);
 							dist = sqrt(qx * qx + py * py) - halfThick;
 						}
 						
@@ -10473,14 +10473,14 @@ static __inline__ float saturate(float inX)
 							if (inLineCap == 0) {
 								float dxBox = fabs(spx) - halfLen;
 								float dyBox = fabs(spy) - halfThick;
-								float ox = dxBox > 0.0f ? dxBox : 0.0f;
-								float oy = dyBox > 0.0f ? dyBox : 0.0f;
+								float ox = fmax(dxBox, 0.0f);
+								float oy = fmax(dyBox, 0.0f);
 								float outside = sqrt(ox * ox + oy * oy);
 								float inside = fmin(fmax(dxBox, dyBox), 0.0f);
 								sdist = outside + inside;
 							} else {
 								float ax = fabs(spx) - halfLen;
-								float qx = ax > 0.0f ? ax : 0.0f;
+								float qx = fmax(ax, 0.0f);
 								sdist = sqrt(qx * qx + spy * spy) - halfThick;
 							}
 							
@@ -10649,22 +10649,24 @@ static __inline__ float saturate(float inX)
 					}
 				}
 				
-				
-				
-				{
-					int dx = (int)inXY.x - 20;
-					int dy = (int)inXY.y - 20;
-					
-					int absDx = dx < 0 ? -dx : dx;
-					int absDy = dy < 0 ? -dy : dy;
-					if (absDx + absDy <= 15)
-					{
-						pixel.x = 1.0f;   
-						pixel.y = 0.5f;   
-						pixel.z = 0.0f;   
-						pixel.w = 1.0f;   
-			}
-		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#line 736 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 		
 		
 		
@@ -10673,5 +10675,5 @@ static __inline__ float saturate(float inX)
 	}
 }
 
-#line 743 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
-#line 744 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 745 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 746 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"

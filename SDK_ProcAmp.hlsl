@@ -577,6 +577,7 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			pixel.w = saturate(pixel.w + cacheBuster);
 		}
 
+		#if ENABLE_DEBUG_RENDER_MARKERS
 		// DEBUG: Draw BLUE TRIANGLE in top-left corner to indicate HLSL/DirectX is being used
 		// Shape: Triangle (HLSL = DirectX/Windows)
 		{
@@ -591,6 +592,7 @@ void main(uint3 inXY : SV_DispatchThreadID)
 				pixel.w = 1.0f;   // A = 1
 			}
 		}
+#endif
 		
 		if (mIs16f)
 		{
