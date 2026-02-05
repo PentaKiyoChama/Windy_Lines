@@ -48,6 +48,12 @@ def format_preset_cpp(preset):
     colorPreset = int(float(preset['colorPreset']))
     spawnSource = int(float(preset['spawnSource']))
     hideElement = int(float(preset['hideElement'])) != 0
+    lengthLinkage = int(float(preset['lengthLinkage']))
+    lengthLinkageRate = float(preset['lengthLinkageRate'])
+    thicknessLinkage = int(float(preset['thicknessLinkage']))
+    thicknessLinkageRate = float(preset['thicknessLinkageRate'])
+    travelLinkage = int(float(preset['travelLinkage']))
+    travelLinkageRate = float(preset['travelLinkageRate'])
     
     # Format as C++ struct initializer
     cpp = f'\t// {name}\n'
@@ -57,7 +63,8 @@ def format_preset_cpp(preset):
     cpp += f'\t  {originMode}, {spawnScaleX}f, {spawnScaleY}f, {originOffsetX}f, {originOffsetY}f, {interval}f,\n'
     cpp += f'\t  {animPattern}, {centerGap}f, {easing}, {startTime}f, {duration}f,\n'
     cpp += f'\t  {blendMode}, {depthStrength}f,\n'
-    cpp += f'\t  {lineCap}, {colorMode}, {colorPreset}, {spawnSource}, {"true" if hideElement else "false"}\n'
+    cpp += f'\t  {lineCap}, {colorMode}, {colorPreset}, {spawnSource}, {"true" if hideElement else "false"},\n'
+    cpp += f'\t  {lengthLinkage}, {lengthLinkageRate}f, {thicknessLinkage}, {thicknessLinkageRate}f, {travelLinkage}, {travelLinkageRate}f\n'
     cpp += '\t}'
     
     return cpp

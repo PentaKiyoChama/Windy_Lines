@@ -900,6 +900,14 @@ static void ApplyEffectPreset(
 	updatePopup(SDK_PROCAMP_COLOR_PRESET, preset.colorPreset);
 	updatePopup(SDK_PROCAMP_SPAWN_SOURCE, preset.spawnSource);
 	
+	// Linkage parameters
+	updatePopup(SDK_PROCAMP_LENGTH_LINKAGE, preset.lengthLinkage);
+	updateFloat(SDK_PROCAMP_LENGTH_LINKAGE_RATE, preset.lengthLinkageRate);
+	updatePopup(SDK_PROCAMP_THICKNESS_LINKAGE, preset.thicknessLinkage);
+	updateFloat(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, preset.thicknessLinkageRate);
+	updatePopup(SDK_PROCAMP_TRAVEL_LINKAGE, preset.travelLinkage);
+	updateFloat(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, preset.travelLinkageRate);
+	
 	auto updateCheckbox = [&](int paramId, bool value)
 	{
 		params[paramId]->u.bd.value = value ? 1 : 0;
@@ -1553,6 +1561,84 @@ static PF_Err ParamsSetup(
 	PF_END_TOPIC(SDK_PROCAMP_ADVANCED_TOPIC_END);
 
 	// ============================================================
+	// ▼ Linkage Settings
+	// ============================================================
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_TOPIC(P_LINKAGE_HEADER, SDK_PROCAMP_LINKAGE_HEADER);
+
+	// Length Linkage
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POPUP(
+		P_LENGTH_LINKAGE,
+		3,
+		LINKAGE_MODE_DFLT,
+		PM_LINKAGE_MODE,
+		SDK_PROCAMP_LENGTH_LINKAGE);
+
+	// Length Linkage Rate
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_LENGTH_LINKAGE_RATE,
+		LINKAGE_RATE_MIN_VALUE,
+		LINKAGE_RATE_MAX_VALUE,
+		LINKAGE_RATE_MIN_SLIDER,
+		LINKAGE_RATE_MAX_SLIDER,
+		LINKAGE_RATE_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		SDK_PROCAMP_LENGTH_LINKAGE_RATE);
+
+	// Thickness Linkage
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POPUP(
+		P_THICKNESS_LINKAGE,
+		3,
+		LINKAGE_MODE_DFLT,
+		PM_LINKAGE_MODE,
+		SDK_PROCAMP_THICKNESS_LINKAGE);
+
+	// Thickness Linkage Rate
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_THICKNESS_LINKAGE_RATE,
+		LINKAGE_RATE_MIN_VALUE,
+		LINKAGE_RATE_MAX_VALUE,
+		LINKAGE_RATE_MIN_SLIDER,
+		LINKAGE_RATE_MAX_SLIDER,
+		LINKAGE_RATE_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		SDK_PROCAMP_THICKNESS_LINKAGE_RATE);
+
+	// Travel Distance Linkage
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POPUP(
+		P_TRAVEL_LINKAGE,
+		3,
+		LINKAGE_MODE_DFLT,
+		PM_LINKAGE_MODE,
+		SDK_PROCAMP_TRAVEL_LINKAGE);
+
+	// Travel Distance Linkage Rate
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_TRAVEL_LINKAGE_RATE,
+		LINKAGE_RATE_MIN_VALUE,
+		LINKAGE_RATE_MAX_VALUE,
+		LINKAGE_RATE_MIN_SLIDER,
+		LINKAGE_RATE_MAX_SLIDER,
+		LINKAGE_RATE_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		SDK_PROCAMP_TRAVEL_LINKAGE_RATE);
+
+	AEFX_CLR_STRUCT(def);
+	PF_END_TOPIC(SDK_PROCAMP_LINKAGE_TOPIC_END);
+
+	// ============================================================
 	// Hidden Parameters (for backwards compatibility)
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
@@ -1690,6 +1776,7 @@ static PF_Err Render(
 	const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
 	const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
 		const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
+		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
 		const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
@@ -1702,8 +1789,43 @@ static PF_Err Render(
 		const float dsy = (in_data->downsample_y.den != 0) ? ((float)in_data->downsample_y.num / (float)in_data->downsample_y.den) : 1.0f;
 		const float dsMax = dsx > dsy ? dsx : dsy;
 		const float dsScale = dsMax >= 1.0f ? (1.0f / dsMax) : (dsMax > 0.0f ? dsMax : 1.0f);
-		const float lineThicknessScaled = lineThickness * dsScale;
-		const float lineLengthScaled = lineLength * dsScale;
+		
+		// Linkage parameters
+		const int lengthLinkage = normalizePopup(params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value, 3);
+		const float lengthLinkageRate = (float)params[SDK_PROCAMP_LENGTH_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		const int thicknessLinkage = normalizePopup(params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value, 3);
+		const float thicknessLinkageRate = (float)params[SDK_PROCAMP_THICKNESS_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		const int travelLinkage = normalizePopup(params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value, 3);
+		const float travelLinkageRate = (float)params[SDK_PROCAMP_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		
+		// Apply linkage to parameters
+		float finalLineLength = lineLength;
+		float finalLineThickness = lineThickness;
+		float finalLineTravel = lineTravel;
+		
+		// Length linkage
+		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineLength = width * lengthLinkageRate;
+		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineLength = height * lengthLinkageRate;
+		}
+		
+		// Thickness linkage
+		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineThickness = width * thicknessLinkageRate;
+		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineThickness = height * thicknessLinkageRate;
+		}
+		
+		// Travel linkage
+		if (travelLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineTravel = width * travelLinkageRate;
+		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineTravel = height * travelLinkageRate;
+		}
+		
+		const float lineThicknessScaled = finalLineThickness * dsScale;
+		const float lineLengthScaled = finalLineLength * dsScale;
 		const float lineAAScaled = lineAA * dsScale;
 		const float effectiveAA = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
 		// Center is now controlled by Origin Offset X/Y only
@@ -1712,8 +1834,7 @@ static PF_Err Render(
 		const float lineInterval = (float)params[SDK_PROCAMP_LINE_INTERVAL]->u.fs_d.value;
 		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
 		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
-		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
-		const float lineTravelScaled = lineTravel * dsScale;
+		const float lineTravelScaled = finalLineTravel * dsScale;
 		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
 		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
 	// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored

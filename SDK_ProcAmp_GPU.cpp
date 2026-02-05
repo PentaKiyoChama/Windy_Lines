@@ -1314,6 +1314,41 @@ public:
 		const float lineTravel = static_cast<float>(GetParam(SDK_PROCAMP_LINE_TRAVEL, inRenderParams->inClipTime).mFloat64);
 		const float lineTailFade = static_cast<float>(GetParam(SDK_PROCAMP_LINE_TAIL_FADE, inRenderParams->inClipTime).mFloat64);
 		const float lineDepthStrength = static_cast<float>(GetParam(SDK_PROCAMP_LINE_DEPTH_STRENGTH, inRenderParams->inClipTime).mFloat64) / 10.0f; // Normalize 0-10 to 0-1
+		
+		// Linkage parameters
+		const int lengthLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_LENGTH_LINKAGE, inRenderParams->inClipTime), 3);
+		const float lengthLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_LENGTH_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		const int thicknessLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_THICKNESS_LINKAGE, inRenderParams->inClipTime), 3);
+		const float thicknessLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		const int travelLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_TRAVEL_LINKAGE, inRenderParams->inClipTime), 3);
+		const float travelLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		
+		// Apply linkage to parameters
+		float finalLineLength = lineLength;
+		float finalLineThickness = lineThickness;
+		float finalLineTravel = lineTravel;
+		
+		// Length linkage
+		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineLength = params.mWidth * lengthLinkageRate;
+		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineLength = params.mHeight * lengthLinkageRate;
+		}
+		
+		// Thickness linkage
+		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineThickness = params.mWidth * thicknessLinkageRate;
+		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineThickness = params.mHeight * thicknessLinkageRate;
+		}
+		
+		// Travel linkage
+		if (travelLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineTravel = params.mWidth * travelLinkageRate;
+		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineTravel = params.mHeight * travelLinkageRate;
+		}
+		
 		const int allowMidPlayInt = allowMidPlay ? 1 : 0;
 		// Center is now controlled by Origin Offset X/Y only
 		const float lineCenterX = params.mWidth * 0.5f;
@@ -1327,10 +1362,10 @@ public:
 		params.mLineCenterY = lineCenterY;
 		params.mLineCos = lineCos;
 		params.mLineSin = lineSin;
-		const float lineLengthScaled = lineLength * dsScale;
+		const float lineLengthScaled = finalLineLength * dsScale;
 		// Ensure minimum thickness of 1.0px even at low preview resolutions
-		const float lineThicknessScaled = (lineThickness * dsScale) < 1.0f ? 1.0f : (lineThickness * dsScale);
-		const float lineTravelScaled = lineTravel * dsScale;
+		const float lineThicknessScaled = (finalLineThickness * dsScale) < 1.0f ? 1.0f : (finalLineThickness * dsScale);
+		const float lineTravelScaled = finalLineTravel * dsScale;
 		const float lineAAScaled = lineAA * dsScale;
 		const float shadowOffsetXScaled = shadowOffsetX * dsScale;
 		const float shadowOffsetYScaled = shadowOffsetY * dsScale;
