@@ -803,7 +803,7 @@ public:
 		PrGPUFilterInstance* ioInstanceData)
 	{
 		// FORCE CPU FALLBACK: Uncomment the line below to test CPU implementation
-		// return suiteError_Fail;
+		return suiteError_Fail;
 		
 		PrGPUFilterBase::Initialize(ioInstanceData);
 
