@@ -78,6 +78,72 @@ std::unordered_map<csSDK_int64, csSDK_int64> SharedClipData::clipStartMap;
 std::mutex SharedClipData::mapMutex;
 
 // ========================================================================
+// Phase 3-1: Easing Look-Up Table (LUT)
+// ========================================================================
+
+#define EASING_LUT_SIZE 256
+#define EASING_COUNT 28
+
+// LUT storage: [easing_type][sample_index]
+static float sEasingLUT[EASING_COUNT][EASING_LUT_SIZE];
+static bool sEasingLUTInitialized = false;
+
+// Forward declaration
+static float ApplyEasing(float t, int easing);
+
+/**
+ * Initialize easing LUT by pre-computing all 28 easing functions
+ * at 256 sample points (0.0 to 1.0)
+ */
+static void InitializeEasingLUT()
+{
+	if (sEasingLUTInitialized) return;
+	
+	for (int easingType = 0; easingType < EASING_COUNT; ++easingType)
+	{
+		for (int i = 0; i < EASING_LUT_SIZE; ++i)
+		{
+			const float t = static_cast<float>(i) / static_cast<float>(EASING_LUT_SIZE - 1);
+			sEasingLUT[easingType][i] = ApplyEasing(t, easingType);
+		}
+	}
+	
+	sEasingLUTInitialized = true;
+}
+
+/**
+ * Fast easing lookup using pre-computed LUT
+ * @param t Input value [0.0, 1.0]
+ * @param easingType Easing type [0-27]
+ * @return Eased value
+ */
+static inline float ApplyEasingLUT(float t, int easingType)
+{
+	// Clamp input
+	if (t <= 0.0f) return 0.0f;
+	if (t >= 1.0f) return 1.0f;
+	
+	// Bounds check
+	if (easingType < 0 || easingType >= EASING_COUNT) {
+		return t; // Fallback to linear
+	}
+	
+	// Map t to LUT index with linear interpolation
+	const float fidx = t * static_cast<float>(EASING_LUT_SIZE - 1);
+	const int idx = static_cast<int>(fidx);
+	const float frac = fidx - static_cast<float>(idx);
+	
+	if (idx >= EASING_LUT_SIZE - 1) {
+		return sEasingLUT[easingType][EASING_LUT_SIZE - 1];
+	}
+	
+	// Linear interpolation between samples
+	const float v0 = sEasingLUT[easingType][idx];
+	const float v1 = sEasingLUT[easingType][idx + 1];
+	return v0 + (v1 - v0) * frac;
+}
+
+// ========================================================================
 // Phase 2-1: Shared SDF (Signed Distance Field) Functions
 // ========================================================================
 
@@ -196,6 +262,9 @@ static PF_Err GlobalSetup(
 	out_data->out_flags2 |= PF_OutFlag2_PRESERVES_FULLY_OPAQUE_PIXELS;
 	// Tell Premiere this effect uses timecode/sequence position to help with cache invalidation.
 	out_data->out_flags2 |= PF_OutFlag2_I_USE_TIMECODE;
+
+	// Initialize easing LUT
+	InitializeEasingLUT();
 
 	return PF_Err_NONE;
 }
@@ -1765,7 +1834,7 @@ static PF_Err Render(
 				continue;
 			}
 		const float t = age / life;
-		const float tMove = ApplyEasing(t, lineEasing);
+		const float tMove = ApplyEasingLUT(t, lineEasing);
 		const float maxLen = lp.baseLen;
 		const float travelRange = lineTravelScaled * lp.depthScale;
 		
@@ -1774,7 +1843,7 @@ static PF_Err Render(
 		const float totalTravelDist = travelRange + maxLen;  // Total distance for full animation
 		const float tailStartPos = -0.5f * travelRange - maxLen;  // Start hidden on left
 		
-		const float travelT = ApplyEasing(t, lineEasing);
+		const float travelT = ApplyEasingLUT(t, lineEasing);
 		const float currentTravelPos = tailStartPos + totalTravelDist * travelT;
 		
 		float headPosX, tailPosX, currentLength;
@@ -1782,7 +1851,7 @@ static PF_Err Render(
 		if (t <= 0.5f)
 		{
 			// First half: tail at current travel position, head extends from it
-			const float extendT = ApplyEasing(t * 2.0f, lineEasing);
+			const float extendT = ApplyEasingLUT(t * 2.0f, lineEasing);
 			tailPosX = currentTravelPos;
 			headPosX = tailPosX + maxLen * extendT;
 			currentLength = maxLen * extendT;
@@ -1790,7 +1859,7 @@ static PF_Err Render(
 		else
 		{
 			// Second half: head at current travel position + maxLen, tail retracts toward it
-			const float retractT = ApplyEasing((t - 0.5f) * 2.0f, lineEasing);
+			const float retractT = ApplyEasingLUT((t - 0.5f) * 2.0f, lineEasing);
 			headPosX = currentTravelPos + maxLen;
 			tailPosX = headPosX - maxLen * (1.0f - retractT);
 			currentLength = maxLen * (1.0f - retractT);
