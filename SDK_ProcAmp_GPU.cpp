@@ -1009,8 +1009,6 @@ public:
 		csSDK_size_t inFrameCount,
 		PPixHand* outFrame)
 	{
-		DebugLog("[GPU RENDER START] GPU rendering active");
-		
 		auto normalizePopup = [](int value, int maxValue) {
 			if (value >= 1 && value <= maxValue)
 			{
@@ -1695,39 +1693,25 @@ public:
 		float finalLineThickness = lineThickness;
 		float finalLineTravel = lineTravel;
 		
-		if (lengthLinkage != LINKAGE_MODE_OFF || thicknessLinkage != LINKAGE_MODE_OFF || travelLinkage != LINKAGE_MODE_OFF)
-		{
-			DebugLog("[LINKAGE DEBUG GPU] Spawn bounds: (%d,%d)-(%d,%d), size: %.1f x %.1f", 
-				alphaMinX, alphaMinY, alphaMaxX, alphaMaxY, alphaBoundsWidth, alphaBoundsHeight);
-			
-			// Length linkage
-			if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-				finalLineLength = alphaBoundsWidthSafe * lengthLinkageRate;
-				DebugLog("[LINKAGE DEBUG GPU] Length linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidthSafe, lengthLinkageRate, finalLineLength);
-			} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-				finalLineLength = alphaBoundsHeightSafe * lengthLinkageRate;
-				DebugLog("[LINKAGE DEBUG GPU] Length linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeightSafe, lengthLinkageRate, finalLineLength);
-			}
-			
-			// Thickness linkage
-			if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-				finalLineThickness = alphaBoundsWidthSafe * thicknessLinkageRate;
-				DebugLog("[LINKAGE DEBUG GPU] Thickness linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidthSafe, thicknessLinkageRate, finalLineThickness);
-			} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-				finalLineThickness = alphaBoundsHeightSafe * thicknessLinkageRate;
-				DebugLog("[LINKAGE DEBUG GPU] Thickness linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeightSafe, thicknessLinkageRate, finalLineThickness);
-			}
-			
-			// Travel linkage
-			if (travelLinkage == LINKAGE_MODE_WIDTH) {
-				finalLineTravel = alphaBoundsWidthSafe * travelLinkageRate;
-				DebugLog("[LINKAGE DEBUG GPU] Travel linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidthSafe, travelLinkageRate, finalLineTravel);
-			} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-				finalLineTravel = alphaBoundsHeightSafe * travelLinkageRate;
-				DebugLog("[LINKAGE DEBUG GPU] Travel linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeightSafe, travelLinkageRate, finalLineTravel);
-			}
-			
-			DebugLog("[LINKAGE DEBUG GPU] Final params: length=%.1f, thickness=%.1f, travel=%.1f", finalLineLength, finalLineThickness, finalLineTravel);
+		// Length linkage
+		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineLength = alphaBoundsWidthSafe * lengthLinkageRate;
+		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineLength = alphaBoundsHeightSafe * lengthLinkageRate;
+		}
+		
+		// Thickness linkage
+		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineThickness = alphaBoundsWidthSafe * thicknessLinkageRate;
+		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineThickness = alphaBoundsHeightSafe * thicknessLinkageRate;
+		}
+		
+		// Travel linkage
+		if (travelLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineTravel = alphaBoundsWidthSafe * travelLinkageRate;
+		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineTravel = alphaBoundsHeightSafe * travelLinkageRate;
 		}
 		
 		// Apply downsampling scale and set params

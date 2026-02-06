@@ -1015,8 +1015,6 @@ static PF_Err ParamsSetup(
 	PF_ParamDef* params[],
 	PF_LayerDef* output)
 {
-	DebugLog("========== SDK_ProcAmp ParamsSetup START ==========");
-	DebugLog("Plugin loaded successfully");
 	PF_ParamDef	def;
 
 	// ============================================================
@@ -1697,7 +1695,6 @@ static PF_Err Render(
 
 	if (in_data->appl_id == 'PrMr')
 	{
-		DebugLog("[RENDER START] Premiere Pro CPU rendering");
 		PF_LayerDef* src = &params[0]->u.ld;
 		PF_LayerDef* dest = output;
 
@@ -1938,17 +1935,11 @@ static PF_Err Render(
 		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
 		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
 		
-		// Debug log: bounding boxes
-		DebugLog("[LINKAGE DEBUG] Frame size: %dx%d", output->width, output->height);
-		DebugLog("[LINKAGE DEBUG] Spawn bounds (used for linkage): (%d,%d) to (%d,%d), size: %.1f x %.1f", 
-			alphaMinX, alphaMinY, alphaMaxX, alphaMaxY, alphaBoundsWidth, alphaBoundsHeight);
-		
 		// Cache element bounds for GPU renderer using clipStartFrame as key
 		if (clipStartFrame > 0)
 		{
 			ElementBounds bounds(alphaMinX, alphaMinY, alphaMaxX, alphaMaxY);
 			SharedClipData::SetElementBounds(clipStartFrame, bounds);
-			DebugLog("[LINKAGE DEBUG] Element bounds cached with key=%lld", clipStartFrame);
 		}
 		
 		// Apply linkage to parameters using spawn bounds (範囲ソース)
@@ -1956,41 +1947,26 @@ static PF_Err Render(
 		float finalLineThickness = lineThickness;
 		float finalLineTravel = lineTravel;
 		
-		DebugLog("[LINKAGE DEBUG] Original params: length=%.1f, thickness=%.1f, travel=%.1f", lineLength, lineThickness, lineTravel);
-		DebugLog("[LINKAGE DEBUG] Linkage modes: length=%d, thickness=%d, travel=%d", lengthLinkage, thicknessLinkage, travelLinkage);
-		DebugLog("[LINKAGE DEBUG] Linkage rates: length=%.3f, thickness=%.3f, travel=%.3f", lengthLinkageRate, thicknessLinkageRate, travelLinkageRate);
-		
-		if (lengthLinkage != LINKAGE_MODE_OFF || thicknessLinkage != LINKAGE_MODE_OFF || travelLinkage != LINKAGE_MODE_OFF)
-		{
-			// Length linkage
-			if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-				finalLineLength = alphaBoundsWidth * lengthLinkageRate;
-				DebugLog("[LINKAGE DEBUG] Length linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidth, lengthLinkageRate, finalLineLength);
-			} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-				finalLineLength = alphaBoundsHeight * lengthLinkageRate;
-				DebugLog("[LINKAGE DEBUG] Length linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeight, lengthLinkageRate, finalLineLength);
-			}
-			
-			// Thickness linkage
-			if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-				finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
-				DebugLog("[LINKAGE DEBUG] Thickness linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidth, thicknessLinkageRate, finalLineThickness);
-			} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-				finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
-				DebugLog("[LINKAGE DEBUG] Thickness linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeight, thicknessLinkageRate, finalLineThickness);
-			}
-			
-			// Travel linkage
-			if (travelLinkage == LINKAGE_MODE_WIDTH) {
-				finalLineTravel = alphaBoundsWidth * travelLinkageRate;
-				DebugLog("[LINKAGE DEBUG] Travel linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidth, travelLinkageRate, finalLineTravel);
-			} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-				finalLineTravel = alphaBoundsHeight * travelLinkageRate;
-				DebugLog("[LINKAGE DEBUG] Travel linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeight, travelLinkageRate, finalLineTravel);
-			}
+		// Length linkage
+		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineLength = alphaBoundsWidth * lengthLinkageRate;
+		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineLength = alphaBoundsHeight * lengthLinkageRate;
 		}
 		
-		DebugLog("[LINKAGE DEBUG] Final params: length=%.1f, thickness=%.1f, travel=%.1f", finalLineLength, finalLineThickness, finalLineTravel);
+		// Thickness linkage
+		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
+		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
+		}
+		
+		// Travel linkage
+		if (travelLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineTravel = alphaBoundsWidth * travelLinkageRate;
+		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineTravel = alphaBoundsHeight * travelLinkageRate;
+		}
 		
 		// Now calculate scaled values with linkage applied
 		const float lineThicknessScaled = finalLineThickness * dsScale;
