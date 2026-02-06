@@ -1790,7 +1790,7 @@ static PF_Err Render(
 		const float dsMax = dsx > dsy ? dsx : dsy;
 		const float dsScale = dsMax >= 1.0f ? (1.0f / dsMax) : (dsMax > 0.0f ? dsMax : 1.0f);
 		
-		// Linkage parameters
+		// Linkage parameters (read but will be applied after bounding box calculation)
 		const int lengthLinkage = normalizePopup(params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value, 3);
 		const float lengthLinkageRate = (float)params[SDK_PROCAMP_LENGTH_LINKAGE_RATE]->u.fs_d.value / 100.0f;
 		const int thicknessLinkage = normalizePopup(params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value, 3);
@@ -1798,34 +1798,7 @@ static PF_Err Render(
 		const int travelLinkage = normalizePopup(params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value, 3);
 		const float travelLinkageRate = (float)params[SDK_PROCAMP_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
 		
-		// Apply linkage to parameters
-		float finalLineLength = lineLength;
-		float finalLineThickness = lineThickness;
-		float finalLineTravel = lineTravel;
-		
-		// Length linkage
-		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineLength = width * lengthLinkageRate;
-		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineLength = height * lengthLinkageRate;
-		}
-		
-		// Thickness linkage
-		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineThickness = width * thicknessLinkageRate;
-		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineThickness = height * thicknessLinkageRate;
-		}
-		
-		// Travel linkage
-		if (travelLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineTravel = width * travelLinkageRate;
-		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineTravel = height * travelLinkageRate;
-		}
-		
-		const float lineThicknessScaled = finalLineThickness * dsScale;
-		const float lineLengthScaled = finalLineLength * dsScale;
+		// Temporarily use base values (linkage will be applied after bounding box calculation)
 		const float lineAAScaled = lineAA * dsScale;
 		const float effectiveAA = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
 		// Center is now controlled by Origin Offset X/Y only
@@ -1834,7 +1807,7 @@ static PF_Err Render(
 		const float lineInterval = (float)params[SDK_PROCAMP_LINE_INTERVAL]->u.fs_d.value;
 		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
 		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
-		const float lineTravelScaled = finalLineTravel * dsScale;
+		// Note: lineLengthScaled, lineThicknessScaled, lineTravelScaled will be calculated after bounding box
 		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
 		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
 	// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored
@@ -1916,40 +1889,6 @@ static PF_Err Render(
 		const int clampedLineCount = (int)fminf(fmaxf((float)lineCount, 1.0f), 5000.0f);
 		const int intervalFrames = lineInterval < 0.5f ? 0 : (int)(lineInterval + 0.5f);
 		
-		// Generate line params locally each frame for stateless rendering
-		lineState->lineCount = clampedLineCount;
-		lineState->lineSeed = lineSeed;
-		lineState->lineDepthStrength = lineDepthStrength;
-		lineState->lineInterval = intervalFrames;
-		lineState->lineParams.assign(clampedLineCount, {});
-		for (int i = 0; i < clampedLineCount; ++i)
-		{
-			const csSDK_uint32 base = (csSDK_uint32)(lineSeed * 1315423911u) + (csSDK_uint32)i * 2654435761u;
-			const float rx = Rand01(base + 1);
-			const float ry = Rand01(base + 2);
-			const float rstart = Rand01(base + 5);
-			const float rdepth = Rand01(base + 6);
-			const float depthScale = DepthScale(rdepth, lineDepthStrength);
-
-			LineParams lp;
-			lp.posX = rx;
-			lp.posY = ry;
-			lp.baseLen = lineLengthScaled * depthScale;
-			lp.baseThick = lineThicknessScaled * depthScale;
-			lp.angle = lineAngle;
-			const float life = lineLifetime > 1.0f ? lineLifetime : 1.0f;
-			const float interval = intervalFrames > 0 ? (float)intervalFrames : 0.0f;
-			const float period = life + interval;
-			float startFrame = rstart * period; // Sequence-time based, no offset
-			lp.startFrame = startFrame;
-			lp.depthScale = depthScale;
-			lp.depthValue = rdepth;
-			lineState->lineParams[i] = lp;
-		}
-
-		lineState->lineDerived.assign(lineState->lineCount, {});
-		lineState->lineActive.assign(lineState->lineCount, 0);
-
 		const float life = lineLifetime > 1.0f ? lineLifetime : 1.0f;
 		const float interval = intervalFrames > 0 ? (float)intervalFrames : 0.0f;
 		const float period = life + interval;
@@ -1989,6 +1928,68 @@ static PF_Err Render(
 		const float alphaBoundsMinY = (float)alphaMinY + centerOffsetY;
 		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
 		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
+		
+		// Apply linkage to parameters (now that we have bounding box dimensions)
+		float finalLineLength = lineLength;
+		float finalLineThickness = lineThickness;
+		float finalLineTravel = lineTravel;
+		
+		// Length linkage
+		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineLength = alphaBoundsWidth * lengthLinkageRate;
+		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineLength = alphaBoundsHeight * lengthLinkageRate;
+		}
+		
+		// Thickness linkage
+		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
+		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
+		}
+		
+		// Travel linkage
+		if (travelLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineTravel = alphaBoundsWidth * travelLinkageRate;
+		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineTravel = alphaBoundsHeight * travelLinkageRate;
+		}
+		
+		// Now calculate scaled values with linkage applied
+		const float lineThicknessScaled = finalLineThickness * dsScale;
+		const float lineLengthScaled = finalLineLength * dsScale;
+		const float lineTravelScaled = finalLineTravel * dsScale;
+		
+		// Generate line params locally each frame for stateless rendering (after linkage applied)
+		lineState->lineCount = clampedLineCount;
+		lineState->lineSeed = lineSeed;
+		lineState->lineDepthStrength = lineDepthStrength;
+		lineState->lineInterval = intervalFrames;
+		lineState->lineParams.assign(clampedLineCount, {});
+		for (int i = 0; i < clampedLineCount; ++i)
+		{
+			const csSDK_uint32 base = (csSDK_uint32)(lineSeed * 1315423911u) + (csSDK_uint32)i * 2654435761u;
+			const float rx = Rand01(base + 1);
+			const float ry = Rand01(base + 2);
+			const float rstart = Rand01(base + 5);
+			const float rdepth = Rand01(base + 6);
+			const float depthScale = DepthScale(rdepth, lineDepthStrength);
+
+			LineParams lp;
+			lp.posX = rx;
+			lp.posY = ry;
+			lp.baseLen = lineLengthScaled * depthScale;
+			lp.baseThick = lineThicknessScaled * depthScale;
+			lp.angle = lineAngle;
+			float startFrame = rstart * period; // Sequence-time based, no offset
+			lp.startFrame = startFrame;
+			lp.depthScale = depthScale;
+			lp.depthValue = rdepth;
+			lineState->lineParams[i] = lp;
+		}
+
+		lineState->lineDerived.assign(lineState->lineCount, {});
+		lineState->lineActive.assign(lineState->lineCount, 0);
 	
 	// Start Time + Duration: control when lines spawn
 	const float lineStartTime = (float)params[SDK_PROCAMP_LINE_START_TIME]->u.fs_d.value;

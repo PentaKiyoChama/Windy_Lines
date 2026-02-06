@@ -539,14 +539,20 @@ void main(uint3 inXY : SV_DispatchThreadID)
 		// Draw spawn area preview (filled with inverted colors)
 		if (mShowSpawnArea != 0)
 		{
+			// Spawn center is already in pixel space, includes lineCenterOffset
 			float spawnCenterX = mAlphaBoundsMinX + mAlphaBoundsWidth * 0.5f;
 			float spawnCenterY = mAlphaBoundsMinY + mAlphaBoundsHeight * 0.5f;
 			float halfW = mAlphaBoundsWidth * mLineSpawnScaleX * 0.5f;
 			float halfH = mAlphaBoundsHeight * mLineSpawnScaleY * 0.5f;
 			
-			// Transform pixel position to rotated spawn space
-			float relX = (inXY.x + 0.5f) - spawnCenterX - mOriginOffsetX;
-			float relY = (inXY.y + 0.5f) - spawnCenterY - mOriginOffsetY;
+			// Origin offset is already applied to lineCenterX/Y on CPU side
+			// So use lineCenterX/Y directly as the global offset
+			float globalCenterX = mLineCenterX + mOriginOffsetX;
+			float globalCenterY = mLineCenterY + mOriginOffsetY;
+			
+			// Transform pixel position relative to spawn center
+			float relX = (inXY.x + 0.5f) - spawnCenterX - (globalCenterX - mWidth * 0.5f);
+			float relY = (inXY.y + 0.5f) - spawnCenterY - (globalCenterY - mHeight * 0.5f);
 			// Inverse rotate to check bounds
 			float localX = relX * mSpawnRotationCos + relY * mSpawnRotationSin;
 			float localY = -relX * mSpawnRotationSin + relY * mSpawnRotationCos;
