@@ -38,6 +38,7 @@
 #include <mutex>
 #include <cstdarg>
 #include <cstdio>
+#include <ctime>
 
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
@@ -49,18 +50,41 @@ static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)
 {
 	std::lock_guard<std::mutex> lock(sLogMutex);
+	
+	// Try C:\Temp first, then Desktop
+	const char* paths[] = {
+		"C:\\Temp\\SDK_ProcAmp_Log.txt",
+		"C:\\Users\\Owner\\Desktop\\SDK_ProcAmp_Log.txt"
+	};
+	
 	FILE* fp = nullptr;
-	//fopen_s(&fp, "C:\\Temp\\SDK_ProcAmp_Log.txt", "a");
-	if (fp)
+	for (int i = 0; i < 2; ++i)
 	{
-		va_list args;
-		va_start(args, format);
-		vfprintf(fp, format, args);
-		va_end(args);
-		fprintf(fp, "\n");
-		fclose(fp);
+		errno_t err = fopen_s(&fp, paths[i], "a");
+		if (err == 0 && fp)
+		{
+			// Time stamp
+			time_t now = time(nullptr);
+			char timeStr[64];
+			struct tm timeInfo;
+			localtime_s(&timeInfo, &now);
+			strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeInfo);
+			fprintf(fp, "[%s] ", timeStr);
+			
+			// Actual log message
+			va_list args;
+			va_start(args, format);
+			vfprintf(fp, format, args);
+			va_end(args);
+			fprintf(fp, "\n");
+			fflush(fp);
+			fclose(fp);
+			break;
+		}
 	}
 }
+
+#define DebugLog WriteLog
 // ===========================================
 
 
@@ -725,9 +749,23 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 #include <unordered_map>
 #include <mutex>
 
+// Element bounds structure for linkage feature
+struct ElementBounds
+{
+	int minX;
+	int minY;
+	int maxX;
+	int maxY;
+	bool isValid;
+	
+	ElementBounds() : minX(-1), minY(-1), maxX(-1), maxY(-1), isValid(false) {}
+	ElementBounds(int x1, int y1, int x2, int y2) : minX(x1), minY(y1), maxX(x2), maxY(y2), isValid(x2 >= x1 && y2 >= y1) {}
+};
+
 struct SharedClipData
 {
 	static std::unordered_map<csSDK_int64, csSDK_int64> clipStartMap;
+	static std::unordered_map<csSDK_int64, ElementBounds> elementBoundsMap;
 	static std::mutex mapMutex;
 	
 	static void SetClipStart(csSDK_int64 clipOffset, csSDK_int64 clipStartFrame)
@@ -741,6 +779,19 @@ struct SharedClipData
 		std::lock_guard<std::mutex> lock(mapMutex);
 		auto it = clipStartMap.find(clipOffset);
 		return (it != clipStartMap.end()) ? it->second : -1;
+	}
+	
+	static void SetElementBounds(csSDK_int64 clipKey, const ElementBounds& bounds)
+	{
+		std::lock_guard<std::mutex> lock(mapMutex);
+		elementBoundsMap[clipKey] = bounds;
+	}
+	
+	static ElementBounds GetElementBounds(csSDK_int64 clipKey)
+	{
+		std::lock_guard<std::mutex> lock(mapMutex);
+		auto it = elementBoundsMap.find(clipKey);
+		return (it != elementBoundsMap.end()) ? it->second : ElementBounds();
 	}
 };
 #endif

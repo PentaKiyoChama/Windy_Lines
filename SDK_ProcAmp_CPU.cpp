@@ -75,6 +75,7 @@ static int NormalizePopupValue(int value, int maxValue)
 
 // Define shared static variables for CPU-GPU clip start sharing
 std::unordered_map<csSDK_int64, csSDK_int64> SharedClipData::clipStartMap;
+std::unordered_map<csSDK_int64, ElementBounds> SharedClipData::elementBoundsMap;
 std::mutex SharedClipData::mapMutex;
 
 // ========================================================================
@@ -1895,18 +1896,24 @@ static PF_Err Render(
 		// No center offset - use Origin Offset X/Y instead
 		const float centerOffsetX = 0.0f;
 		const float centerOffsetY = 0.0f;
-		const float alphaThreshold = lineAlphaThreshold;
 		const int alphaStride = 4;
+		
+		// Calculate spawn area bounding box (範囲ソース)
 		int alphaMinX = output->width;
 		int alphaMinY = output->height;
 		int alphaMaxX = -1;
 		int alphaMaxY = -1;
+		
+		const float alphaThreshold = lineAlphaThreshold; // Spawn area threshold (respects spawnSource)
+		
 		for (int y = 0; y < output->height; y += alphaStride)
 		{
 			const float* row = (const float*)(srcData + y * src->rowbytes);
 			for (int x = 0; x < output->width; x += alphaStride)
 			{
 				const float aSample = row[x * 4 + 3];
+				
+				// Update spawn area bounding box
 				if (aSample > alphaThreshold)
 				{
 					if (x < alphaMinX) alphaMinX = x;
@@ -1914,7 +1921,6 @@ static PF_Err Render(
 					if (x > alphaMaxX) alphaMaxX = x;
 					if (y > alphaMaxY) alphaMaxY = y;
 				}
-
 			}
 		}
 		if (alphaMaxX < alphaMinX || alphaMaxY < alphaMinY)
@@ -1929,7 +1935,14 @@ static PF_Err Render(
 		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
 		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
 		
-		// Apply linkage to parameters (now that we have bounding box dimensions)
+		// Cache element bounds for GPU renderer using clipStartFrame as key
+		if (clipStartFrame > 0)
+		{
+			ElementBounds bounds(alphaMinX, alphaMinY, alphaMaxX, alphaMaxY);
+			SharedClipData::SetElementBounds(clipStartFrame, bounds);
+		}
+		
+		// Apply linkage to parameters using spawn bounds (範囲ソース)
 		float finalLineLength = lineLength;
 		float finalLineThickness = lineThickness;
 		float finalLineTravel = lineTravel;

@@ -1315,39 +1315,13 @@ public:
 		const float lineTailFade = static_cast<float>(GetParam(SDK_PROCAMP_LINE_TAIL_FADE, inRenderParams->inClipTime).mFloat64);
 		const float lineDepthStrength = static_cast<float>(GetParam(SDK_PROCAMP_LINE_DEPTH_STRENGTH, inRenderParams->inClipTime).mFloat64) / 10.0f; // Normalize 0-10 to 0-1
 		
-		// Linkage parameters
+		// Linkage parameters - will be applied after alphaBounds calculation
 		const int lengthLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_LENGTH_LINKAGE, inRenderParams->inClipTime), 3);
 		const float lengthLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_LENGTH_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
 		const int thicknessLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_THICKNESS_LINKAGE, inRenderParams->inClipTime), 3);
 		const float thicknessLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
 		const int travelLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_TRAVEL_LINKAGE, inRenderParams->inClipTime), 3);
 		const float travelLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
-		
-		// Apply linkage to parameters
-		float finalLineLength = lineLength;
-		float finalLineThickness = lineThickness;
-		float finalLineTravel = lineTravel;
-		
-		// Length linkage
-		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineLength = params.mWidth * lengthLinkageRate;
-		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineLength = params.mHeight * lengthLinkageRate;
-		}
-		
-		// Thickness linkage
-		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineThickness = params.mWidth * thicknessLinkageRate;
-		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineThickness = params.mHeight * thicknessLinkageRate;
-		}
-		
-		// Travel linkage
-		if (travelLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineTravel = params.mWidth * travelLinkageRate;
-		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineTravel = params.mHeight * travelLinkageRate;
-		}
 		
 		const int allowMidPlayInt = allowMidPlay ? 1 : 0;
 		// Center is now controlled by Origin Offset X/Y only
@@ -1362,19 +1336,12 @@ public:
 		params.mLineCenterY = lineCenterY;
 		params.mLineCos = lineCos;
 		params.mLineSin = lineSin;
-		const float lineLengthScaled = finalLineLength * dsScale;
-		// Ensure minimum thickness of 1.0px even at low preview resolutions
-		const float lineThicknessScaled = (finalLineThickness * dsScale) < 1.0f ? 1.0f : (finalLineThickness * dsScale);
-		const float lineTravelScaled = finalLineTravel * dsScale;
+		// Note: Line length, thickness, travel will be set after alphaBounds calculation and linkage
 		const float lineAAScaled = lineAA * dsScale;
 		const float shadowOffsetXScaled = shadowOffsetX * dsScale;
 		const float shadowOffsetYScaled = shadowOffsetY * dsScale;
 		const float originOffsetXScaled = originOffsetX * dsScale;
 		const float originOffsetYScaled = originOffsetY * dsScale;
-	params.mLineLength = lineLengthScaled;
-	params.mLineThickness = lineThicknessScaled;
-	params.mLineLifetime = lineLifetime;
-	params.mLineTravel = lineTravelScaled;
 		params.mLineTailFade = lineTailFade;
 		params.mLineDepthStrength = lineDepthStrength;
 		if (isBGRA)
@@ -1476,9 +1443,7 @@ public:
 		const float lineCenterOffsetX = lineCenterX - (float)params.mWidth * 0.5f;
 		const float lineCenterOffsetY = lineCenterY - (float)params.mHeight * 0.5f;
 		const float lifeFrames = lineLifetime < 1.0f ? 1.0f : lineLifetime;
-		const float travelRange = lineTravelScaled;
-		const float baseLength = lineLengthScaled;
-		const float baseThickness = lineThicknessScaled;
+		// Note: travelRange, baseLength, baseThickness will be set after alphaBounds calculation
 		const float aa = lineAAScaled;
 		const int intervalFrames = params.mLineInterval;
 		const float period = lifeFrames + (float)intervalFrames;
@@ -1722,6 +1687,47 @@ public:
 		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
 		const float alphaBoundsWidthSafe = alphaBoundsWidth > 0.0f ? alphaBoundsWidth : (float)params.mWidth;
 		const float alphaBoundsHeightSafe = alphaBoundsHeight > 0.0f ? alphaBoundsHeight : (float)params.mHeight;
+		
+		// Apply linkage using spawn area bounds (範囲ソース)
+		float finalLineLength = lineLength;
+		float finalLineThickness = lineThickness;
+		float finalLineTravel = lineTravel;
+		
+		// Length linkage
+		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineLength = alphaBoundsWidthSafe * lengthLinkageRate;
+		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineLength = alphaBoundsHeightSafe * lengthLinkageRate;
+		}
+		
+		// Thickness linkage
+		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineThickness = alphaBoundsWidthSafe * thicknessLinkageRate;
+		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineThickness = alphaBoundsHeightSafe * thicknessLinkageRate;
+		}
+		
+		// Travel linkage
+		if (travelLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineTravel = alphaBoundsWidthSafe * travelLinkageRate;
+		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineTravel = alphaBoundsHeightSafe * travelLinkageRate;
+		}
+		
+		// Apply downsampling scale and set params
+		const float lineLengthScaled = finalLineLength * dsScale;
+		const float lineThicknessScaled = (finalLineThickness * dsScale) < 1.0f ? 1.0f : (finalLineThickness * dsScale);
+		const float lineTravelScaled = finalLineTravel * dsScale;
+		
+		params.mLineLength = lineLengthScaled;
+		params.mLineThickness = lineThicknessScaled;
+		params.mLineLifetime = lineLifetime;
+		params.mLineTravel = lineTravelScaled;
+		
+		// Define variables for line generation
+		const float travelRange = lineTravelScaled;
+		const float baseLength = lineLengthScaled;
+		const float baseThickness = lineThicknessScaled;
 		
 		// Set alpha bounds in params for spawn area preview
 		params.mAlphaBoundsMinX = alphaBoundsMinX;
