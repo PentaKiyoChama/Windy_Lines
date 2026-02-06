@@ -75,6 +75,7 @@ static int NormalizePopupValue(int value, int maxValue)
 
 // Define shared static variables for CPU-GPU clip start sharing
 std::unordered_map<csSDK_int64, csSDK_int64> SharedClipData::clipStartMap;
+std::unordered_map<csSDK_int64, ElementBounds> SharedClipData::elementBoundsMap;
 std::mutex SharedClipData::mapMutex;
 
 // ========================================================================
@@ -1014,6 +1015,8 @@ static PF_Err ParamsSetup(
 	PF_ParamDef* params[],
 	PF_LayerDef* output)
 {
+	DebugLog("========== SDK_ProcAmp ParamsSetup START ==========");
+	DebugLog("Plugin loaded successfully");
 	PF_ParamDef	def;
 
 	// ============================================================
@@ -1694,6 +1697,7 @@ static PF_Err Render(
 
 	if (in_data->appl_id == 'PrMr')
 	{
+		DebugLog("[RENDER START] Premiere Pro CPU rendering");
 		PF_LayerDef* src = &params[0]->u.ld;
 		PF_LayerDef* dest = output;
 
@@ -1895,18 +1899,24 @@ static PF_Err Render(
 		// No center offset - use Origin Offset X/Y instead
 		const float centerOffsetX = 0.0f;
 		const float centerOffsetY = 0.0f;
-		const float alphaThreshold = lineAlphaThreshold;
 		const int alphaStride = 4;
+		
+		// Calculate spawn area bounding box (範囲ソース)
 		int alphaMinX = output->width;
 		int alphaMinY = output->height;
 		int alphaMaxX = -1;
 		int alphaMaxY = -1;
+		
+		const float alphaThreshold = lineAlphaThreshold; // Spawn area threshold (respects spawnSource)
+		
 		for (int y = 0; y < output->height; y += alphaStride)
 		{
 			const float* row = (const float*)(srcData + y * src->rowbytes);
 			for (int x = 0; x < output->width; x += alphaStride)
 			{
 				const float aSample = row[x * 4 + 3];
+				
+				// Update spawn area bounding box
 				if (aSample > alphaThreshold)
 				{
 					if (x < alphaMinX) alphaMinX = x;
@@ -1914,7 +1924,6 @@ static PF_Err Render(
 					if (x > alphaMaxX) alphaMaxX = x;
 					if (y > alphaMaxY) alphaMaxY = y;
 				}
-
 			}
 		}
 		if (alphaMaxX < alphaMinX || alphaMaxY < alphaMinY)
@@ -1929,31 +1938,59 @@ static PF_Err Render(
 		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
 		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
 		
-		// Apply linkage to parameters (now that we have bounding box dimensions)
+		// Debug log: bounding boxes
+		DebugLog("[LINKAGE DEBUG] Frame size: %dx%d", output->width, output->height);
+		DebugLog("[LINKAGE DEBUG] Spawn bounds (used for linkage): (%d,%d) to (%d,%d), size: %.1f x %.1f", 
+			alphaMinX, alphaMinY, alphaMaxX, alphaMaxY, alphaBoundsWidth, alphaBoundsHeight);
+		
+		// Cache element bounds for GPU renderer using clipStartFrame as key
+		if (clipStartFrame > 0)
+		{
+			ElementBounds bounds(alphaMinX, alphaMinY, alphaMaxX, alphaMaxY);
+			SharedClipData::SetElementBounds(clipStartFrame, bounds);
+			DebugLog("[LINKAGE DEBUG] Element bounds cached with key=%lld", clipStartFrame);
+		}
+		
+		// Apply linkage to parameters using spawn bounds (範囲ソース)
 		float finalLineLength = lineLength;
 		float finalLineThickness = lineThickness;
 		float finalLineTravel = lineTravel;
 		
-		// Length linkage
-		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineLength = alphaBoundsWidth * lengthLinkageRate;
-		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineLength = alphaBoundsHeight * lengthLinkageRate;
+		DebugLog("[LINKAGE DEBUG] Original params: length=%.1f, thickness=%.1f, travel=%.1f", lineLength, lineThickness, lineTravel);
+		DebugLog("[LINKAGE DEBUG] Linkage modes: length=%d, thickness=%d, travel=%d", lengthLinkage, thicknessLinkage, travelLinkage);
+		DebugLog("[LINKAGE DEBUG] Linkage rates: length=%.3f, thickness=%.3f, travel=%.3f", lengthLinkageRate, thicknessLinkageRate, travelLinkageRate);
+		
+		if (lengthLinkage != LINKAGE_MODE_OFF || thicknessLinkage != LINKAGE_MODE_OFF || travelLinkage != LINKAGE_MODE_OFF)
+		{
+			// Length linkage
+			if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+				finalLineLength = alphaBoundsWidth * lengthLinkageRate;
+				DebugLog("[LINKAGE DEBUG] Length linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidth, lengthLinkageRate, finalLineLength);
+			} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+				finalLineLength = alphaBoundsHeight * lengthLinkageRate;
+				DebugLog("[LINKAGE DEBUG] Length linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeight, lengthLinkageRate, finalLineLength);
+			}
+			
+			// Thickness linkage
+			if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+				finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
+				DebugLog("[LINKAGE DEBUG] Thickness linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidth, thicknessLinkageRate, finalLineThickness);
+			} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+				finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
+				DebugLog("[LINKAGE DEBUG] Thickness linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeight, thicknessLinkageRate, finalLineThickness);
+			}
+			
+			// Travel linkage
+			if (travelLinkage == LINKAGE_MODE_WIDTH) {
+				finalLineTravel = alphaBoundsWidth * travelLinkageRate;
+				DebugLog("[LINKAGE DEBUG] Travel linked to WIDTH: %.1f * %.3f = %.1f", alphaBoundsWidth, travelLinkageRate, finalLineTravel);
+			} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+				finalLineTravel = alphaBoundsHeight * travelLinkageRate;
+				DebugLog("[LINKAGE DEBUG] Travel linked to HEIGHT: %.1f * %.3f = %.1f", alphaBoundsHeight, travelLinkageRate, finalLineTravel);
+			}
 		}
 		
-		// Thickness linkage
-		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
-		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
-		}
-		
-		// Travel linkage
-		if (travelLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineTravel = alphaBoundsWidth * travelLinkageRate;
-		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineTravel = alphaBoundsHeight * travelLinkageRate;
-		}
+		DebugLog("[LINKAGE DEBUG] Final params: length=%.1f, thickness=%.1f, travel=%.1f", finalLineLength, finalLineThickness, finalLineTravel);
 		
 		// Now calculate scaled values with linkage applied
 		const float lineThicknessScaled = finalLineThickness * dsScale;
