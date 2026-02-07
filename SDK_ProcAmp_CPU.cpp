@@ -1029,17 +1029,15 @@ static PF_Err ParamsSetup(
 	// Iterate through parameters in display order defined by PARAM_DISPLAY_ORDER.
 	// The array size is validated at compile-time by static_assert in SDK_ProcAmp_ParamOrder.h
 	// to ensure it contains exactly SDK_PROCAMP_NUM_PARAMS elements.
-	for (int paramIndex = 0; paramIndex < SDK_PROCAMP_NUM_PARAMS; ++paramIndex)
+	// NOTE: We start from index 1 because SDK_PROCAMP_INPUT (index 0) is the input layer
+	// which is automatically handled by the After Effects framework and should not be
+	// explicitly registered via PF_ADD_* macros.
+	for (int paramIndex = 1; paramIndex < SDK_PROCAMP_NUM_PARAMS; ++paramIndex)
 	{
 		int paramId = PARAM_DISPLAY_ORDER[paramIndex];
 		
 		switch (paramId)
 		{
-			case SDK_PROCAMP_INPUT:
-				// Input layer is handled automatically by After Effects framework.
-				// No explicit registration needed - this is the layer input parameter (index 0).
-				break;
-			
 			case SDK_PROCAMP_EFFECT_PRESET:
 				// Effect Preset (top-level, no group)
 				AEFX_CLR_STRUCT(def);
