@@ -440,5 +440,88 @@
     "frame_timing": "Verify frameIndex calc, SharedClipData populated, GPU fallback",
     "param_not_updating": "Check SUPERVISE flag, params[] direct use, UpdateParamUI",
     "new_feature": "1.CUDA 2.OpenCL 3.CPU 4.Test both platforms 5.Update this JSON"
+  },
+  
+  "V64_PARAMETER_REORDERING_MECHANISM": {
+    "date": "2026-02-07",
+    "purpose": "Make parameter reordering easier by decoupling enum order from display order",
+    "problem": {
+      "current_system": "Parameters must be added to ParamsSetup in exact display order. To reorder, developer must manually change multiple PF_ADD_* calls.",
+      "challenges": [
+        "Enum IDs must remain stable for backwards compatibility (saved presets use these IDs)",
+        "Display order was tightly coupled to ParamsSetup function implementation order",
+        "Reordering required careful manual editing of large ParamsSetup function",
+        "Easy to make mistakes when moving parameter blocks, especially with topic groups"
+      ]
+    },
+    "solution": {
+      "approach": "Centralized display order definition in SDK_ProcAmp_ParamOrder.h",
+      "key_insight": "Adobe SDK allows parameters to be registered in any order by specifying the parameter ID in PF_ADD_* macros. The display order is determined by the sequence of PF_ADD_* calls, NOT by the enum values.",
+      "implementation": {
+        "file": "SDK_ProcAmp_ParamOrder.h",
+        "structure": "PARAM_DISPLAY_ORDER array lists parameter IDs in desired display order",
+        "validation": "Compile-time static_assert ensures all parameters are included exactly once"
+      }
+    },
+    "how_to_use": {
+      "reordering_parameters": [
+        "1. Open SDK_ProcAmp_ParamOrder.h",
+        "2. Rearrange items in PARAM_DISPLAY_ORDER array to desired display order",
+        "3. Respect topic group boundaries (HEADER/TOPIC_END must enclose parameters)",
+        "4. Rebuild - parameters will appear in new order automatically"
+      ],
+      "example_reorder": {
+        "scenario": "Move Shadow group before Motion Blur group",
+        "steps": [
+          "Find the Shadow block (SDK_PROCAMP_SHADOW_HEADER through SDK_PROCAMP_SHADOW_TOPIC_END)",
+          "Find the Motion Blur block (SDK_PROCAMP_MOTION_BLUR_HEADER through SDK_PROCAMP_MOTION_BLUR_TOPIC_END)",
+          "Cut and paste Shadow block to appear before Motion Blur block",
+          "Save and rebuild"
+        ],
+        "note": "Enum IDs in SDK_ProcAmp.h remain unchanged - backwards compatibility maintained"
+      }
+    },
+    "technical_details": {
+      "enum_ids": "Enum values in SDK_ProcAmp.h are stable integer IDs used for parameter access (params[SDK_PROCAMP_*])",
+      "display_order": "PARAM_DISPLAY_ORDER array determines UI presentation sequence",
+      "backwards_compatibility": "Old project files with saved parameter values continue to work because enum IDs don't change",
+      "topic_groups": {
+        "structure": "PF_ADD_TOPIC / content parameters / PF_END_TOPIC",
+        "rule": "When reordering, entire topic block (HEADER + content + TOPIC_END) must move together",
+        "validation": "Manual review required to ensure topic pairs are correctly matched"
+      }
+    },
+    "benefits": {
+      "ease_of_reordering": "Change single array instead of editing 70+ PF_ADD_* calls",
+      "visual_clarity": "PARAM_DISPLAY_ORDER array provides clear overview of parameter structure",
+      "safety": "Compile-time validation catches missing or duplicate parameters",
+      "documentation": "Display order is self-documenting in one central location",
+      "maintainability": "Future parameter additions only require updating one array"
+    },
+    "limitations": {
+      "manual_process": "Reordering still requires manual editing of PARAM_DISPLAY_ORDER array",
+      "topic_validation": "No automatic validation that topic groups are properly formed",
+      "not_runtime": "Display order is compile-time only, cannot be changed at runtime"
+    },
+    "future_enhancements": {
+      "potential": [
+        "Automated topic group validation (compile-time check for matching HEADER/TOPIC_END pairs)",
+        "Parameter metadata system (type, group, display name in single definition)",
+        "Code generation tool to automatically create ParamsSetup from declarative definition"
+      ]
+    },
+    "files_modified": [
+      "SDK_ProcAmp_ParamOrder.h (NEW) - Parameter display order definition",
+      "SDK_ProcAmp_Notes.json (UPDATED) - Added this documentation entry"
+    ],
+    "verification": {
+      "test_cases": [
+        "1. Build project - should compile without errors",
+        "2. Open in Premiere Pro - parameters should appear in current order",
+        "3. Modify PARAM_DISPLAY_ORDER - reorder two ungrouped parameters",
+        "4. Rebuild and test - parameters should appear in new order",
+        "5. Open old project file - saved parameter values should load correctly"
+      ]
+    }
   }
 }

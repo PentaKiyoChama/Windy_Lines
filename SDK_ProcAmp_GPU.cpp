@@ -715,35 +715,24 @@ static int NormalizePopupParam(const PrParam& param, int maxValue)
 
 static bool BoolParamFromPrParam(const PrParam& param)
 {
-	if (param.mType == kPrParamType_Bool)
+	switch (param.mType)
 	{
-		return param.mInt32 != 0;
+		case kPrParamType_Bool:
+		case kPrParamType_Int32:
+			return param.mInt32 != 0;
+		case kPrParamType_Int8:
+			return param.mInt8 != 0;
+		case kPrParamType_Int16:
+			return param.mInt16 != 0;
+		case kPrParamType_Int64:
+			return param.mInt64 != 0;
+		case kPrParamType_Float32:
+			return param.mFloat32 >= 0.5f;
+		case kPrParamType_Float64:
+			return param.mFloat64 >= 0.5;
+		default:
+			return false;
 	}
-	if (param.mType == kPrParamType_Int8)
-	{
-		return param.mInt8 != 0;
-	}
-	if (param.mType == kPrParamType_Int16)
-	{
-		return param.mInt16 != 0;
-	}
-	if (param.mType == kPrParamType_Int32)
-	{
-		return param.mInt32 != 0;
-	}
-	if (param.mType == kPrParamType_Int64)
-	{
-		return param.mInt64 != 0;
-	}
-	if (param.mType == kPrParamType_Float64)
-	{
-		return param.mFloat64 >= 0.5;
-	}
-	if (param.mType == kPrParamType_Float32)
-	{
-		return param.mFloat32 >= 0.5f;
-	}
-	return false;
 }
 
 
@@ -1689,35 +1678,40 @@ public:
 		const float alphaBoundsHeightSafe = alphaBoundsHeight > 0.0f ? alphaBoundsHeight : (float)params.mHeight;
 		
 		// Apply linkage using spawn area bounds (範囲ソース)
+		// Note: alphaBoundsWidthSafe/HeightSafe are in downsampled pixels.
+		// When linkage is OFF, user input is in full-resolution pixels, so we need dsScale.
+		// When linkage is ON (WIDTH/HEIGHT), bounds are already downsampled, so no dsScale needed.
 		float finalLineLength = lineLength;
 		float finalLineThickness = lineThickness;
 		float finalLineTravel = lineTravel;
 		
-		// Length linkage
+		// Length linkage (use bounds directly - they represent actual visible size)
 		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
 			finalLineLength = alphaBoundsWidthSafe * lengthLinkageRate;
 		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
 			finalLineLength = alphaBoundsHeightSafe * lengthLinkageRate;
 		}
 		
-		// Thickness linkage
+		// Thickness linkage (use bounds directly - they represent actual visible size)
 		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
 			finalLineThickness = alphaBoundsWidthSafe * thicknessLinkageRate;
 		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
 			finalLineThickness = alphaBoundsHeightSafe * thicknessLinkageRate;
 		}
 		
-		// Travel linkage
+		// Travel linkage (use bounds directly - they represent actual visible size)
 		if (travelLinkage == LINKAGE_MODE_WIDTH) {
 			finalLineTravel = alphaBoundsWidthSafe * travelLinkageRate;
 		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
 			finalLineTravel = alphaBoundsHeightSafe * travelLinkageRate;
 		}
 		
-		// Apply downsampling scale and set params
-		const float lineLengthScaled = finalLineLength * dsScale;
-		const float lineThicknessScaled = (finalLineThickness * dsScale) < 1.0f ? 1.0f : (finalLineThickness * dsScale);
-		const float lineTravelScaled = finalLineTravel * dsScale;
+		// Apply dsScale only when linkage is OFF (user input is full-resolution)
+		// When linkage is ON, values are already in downsampled space
+		const float lineLengthScaled = (lengthLinkage == LINKAGE_MODE_OFF) ? (finalLineLength * dsScale) : finalLineLength;
+		const float lineThicknessScaled_temp = (thicknessLinkage == LINKAGE_MODE_OFF) ? (finalLineThickness * dsScale) : finalLineThickness;
+		const float lineThicknessScaled = lineThicknessScaled_temp < 1.0f ? 1.0f : lineThicknessScaled_temp;
+		const float lineTravelScaled = (travelLinkage == LINKAGE_MODE_OFF) ? (finalLineTravel * dsScale) : finalLineTravel;
 		
 		params.mLineLength = lineLengthScaled;
 		params.mLineThickness = lineThicknessScaled;
@@ -1740,10 +1734,13 @@ public:
 		std::vector<int> tileCounts(tileCount, 0);
 		std::vector<int> tileOffsets(tileCount + 1, 0);
 		std::vector<int> lineIndices;
-		lineData.reserve(lineCount * 4);  // 4 Float4s per line: position, size, color, extra(appearAlpha)
-		lineBounds.reserve(lineCount);
+		
+		// Pre-allocate to maximum size, will resize down after loop
+		lineData.resize(lineCount * 4);  // 4 Float4s per line: position, size, color, extra(appearAlpha)
+		lineBounds.resize(lineCount);
 
 		int skipThick = 0, skipStartTime = 0, skipEndTime = 0, skipAge = 0;
+		int outputIndex = 0;  // Track actual number of lines added
 		for (int i = 0; i < totalLines; ++i)
 		{
 			const csSDK_uint32 base = (csSDK_uint32)(seed * 1315423911u) + (csSDK_uint32)i * 2654435761u;
@@ -1829,17 +1826,17 @@ public:
 			const float tDelta = 1.0f / lifeFrames;  // One frame's worth of t
 			const float tPrev = t > tDelta ? (t - tDelta) : 0.0f;
 			const float easedPrev = ApplyEasing(tPrev, easingType);
-			const float easedCurr = ApplyEasing(t, easingType);
+			const float easedT = ApplyEasing(t, easingType);  // Calculate once, reuse below
 			// Normalized velocity: how much the eased value changes per frame
 			// Range: 0 to ~2 (depends on easing, highest at steep parts)
-			const float instantVelocity = (easedCurr - easedPrev) / tDelta;
+			const float instantVelocity = (easedT - easedPrev) / tDelta;
 			
 			// "Head extends from tail, then tail retracts" animation
 			// Total travel distance includes line length for proper appearance/disappearance
 			const float totalTravelDist = travelScaled + maxLen;  // Total distance for full animation
 			const float tailStartPos = -0.5f * travelScaled - maxLen;  // Start hidden on left
 			
-			const float travelT = ApplyEasing(t, easingType);
+			const float travelT = easedT;  // Reuse pre-computed eased value
 			const float currentTravelPos = tailStartPos + totalTravelDist * travelT;
 			
 			float headPosX, tailPosX, currentLength;
@@ -1847,8 +1844,7 @@ public:
 			// Length animation: use sin(π * easedT) for smooth 0→max→0 curve
 			// This links length to travel easing - when travel is slow, length changes slow too
 			// sin(π * t) gives: 0 at t=0, 1 at t=0.5, 0 at t=1
-			const float easedT = ApplyEasing(t, easingType);  // Same easing as travel
-			const float lengthFactor = sinf((float)M_PI * easedT);
+			const float lengthFactor = sinf((float)M_PI * easedT);  // Reuse pre-computed eased value
 			currentLength = maxLen * lengthFactor;
 			
 			// Position: head extends from tail, then tail retracts toward head
@@ -2006,10 +2002,11 @@ public:
 			Float4 d2 = { outColor0, outColor1, outColor2, instantVelocity };  // Line color + velocity
 			Float4 d3 = { 1.0f, 0.0f, 0.0f, 0.0f };  // Reserved for future use
 			
-			lineData.push_back(d0);
-			lineData.push_back(d1);
-			lineData.push_back(d2);
-			lineData.push_back(d3);
+			// Use direct indexing instead of push_back (faster)
+			lineData[outputIndex * 4 + 0] = d0;
+			lineData[outputIndex * 4 + 1] = d1;
+			lineData[outputIndex * 4 + 2] = d2;
+			lineData[outputIndex * 4 + 3] = d3;
 
 			const float radius = fabsf(segCenterX) + halfLen + halfThick + aa;
 			const float minXf = centerX + segCenterX * lineCos - radius;
@@ -2024,7 +2021,9 @@ public:
 			bounds.maxX = maxXf < 0.0f ? 0 : (maxXf > (float)maxXClamp ? maxXClamp : (int)maxXf);
 			bounds.minY = minYf < 0.0f ? 0 : (minYf > (float)maxYClamp ? maxYClamp : (int)minYf);
 			bounds.maxY = maxYf < 0.0f ? 0 : (maxYf > (float)maxYClamp ? maxYClamp : (int)maxYf);
-			lineBounds.push_back(bounds);
+			
+			// Use direct indexing instead of push_back (faster)
+			lineBounds[outputIndex] = bounds;
 
 			const int minTileX = bounds.minX / tileSize;
 			const int maxTileX = bounds.maxX / tileSize;
@@ -2042,7 +2041,14 @@ public:
 					}
 				}
 			}
+			
+			// Increment output index after successfully adding this line
+			outputIndex++;
 		}
+		
+		// Resize down to actual number of lines added (removing skipped lines)
+		lineData.resize(outputIndex * 4);
+		lineBounds.resize(outputIndex);
 		
 		int running = 0;
 		for (int i = 0; i < tileCount; ++i)
@@ -2080,6 +2086,12 @@ public:
 		const size_t tileOffsetsBytes = tileOffsets.size() * sizeof(int);
 		const size_t tileCountsBytes = tileCounts.size() * sizeof(int);
 		const size_t lineIndicesBytes = lineIndices.size() * sizeof(int);
+		
+		// Buffer optimization: over-allocate by 50% to reduce re-allocation frequency
+		const size_t lineDataBytesWithOverhead = lineDataBytes * 3 / 2;
+		const size_t tileOffsetsBytesWithOverhead = tileOffsetsBytes * 3 / 2;
+		const size_t tileCountsBytesWithOverhead = tileCountsBytes * 3 / 2;
+		const size_t lineIndicesBytesWithOverhead = lineIndicesBytes * 3 / 2;
 
 		// CUDA rendering
 		if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_CUDA)
@@ -2087,10 +2099,10 @@ public:
 #if HAS_CUDA
 			float* ioBuffer = (float*)frameData;
 
-			EnsureCudaBuffer((void**)&sCudaLineData, sCudaLineDataBytes, lineDataBytes);
-			EnsureCudaBuffer((void**)&sCudaTileOffsets, sCudaTileOffsetsBytes, tileOffsetsBytes);
-			EnsureCudaBuffer((void**)&sCudaTileCounts, sCudaTileCountsBytes, tileCountsBytes);
-			EnsureCudaBuffer((void**)&sCudaLineIndices, sCudaLineIndicesBytes, lineIndicesBytes);
+			EnsureCudaBuffer((void**)&sCudaLineData, sCudaLineDataBytes, lineDataBytesWithOverhead);
+			EnsureCudaBuffer((void**)&sCudaTileOffsets, sCudaTileOffsetsBytes, tileOffsetsBytesWithOverhead);
+			EnsureCudaBuffer((void**)&sCudaTileCounts, sCudaTileCountsBytes, tileCountsBytesWithOverhead);
+			EnsureCudaBuffer((void**)&sCudaLineIndices, sCudaLineIndicesBytes, lineIndicesBytesWithOverhead);
 			if (lineDataBytes > 0)
 			{
 				cudaMemcpy(sCudaLineData, lineData.data(), lineDataBytes, cudaMemcpyHostToDevice);
