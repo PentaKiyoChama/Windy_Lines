@@ -1029,9 +1029,9 @@ static PF_Err ParamsSetup(
 	// Iterate through parameters in display order defined by PARAM_DISPLAY_ORDER.
 	// The array size is validated at compile-time by static_assert in SDK_ProcAmp_ParamOrder.h
 	// to ensure it contains exactly SDK_PROCAMP_NUM_PARAMS elements.
-	for (int i = 0; i < SDK_PROCAMP_NUM_PARAMS; ++i)
+	for (int paramIndex = 0; paramIndex < SDK_PROCAMP_NUM_PARAMS; ++paramIndex)
 	{
-		int paramId = PARAM_DISPLAY_ORDER[i];
+		int paramId = PARAM_DISPLAY_ORDER[paramIndex];
 		
 		switch (paramId)
 		{
@@ -1045,10 +1045,10 @@ static PF_Err ParamsSetup(
 				AEFX_CLR_STRUCT(def);
 				{
 					std::string presetLabels = "デフォルト|";
-					for (int j = 0; j < kEffectPresetCount; ++j)
+					for (int presetIndex = 0; presetIndex < kEffectPresetCount; ++presetIndex)
 					{
-						presetLabels += kEffectPresets[j].name;
-						if (j < kEffectPresetCount - 1)
+						presetLabels += kEffectPresets[presetIndex].name;
+						if (presetIndex < kEffectPresetCount - 1)
 						{
 							presetLabels += "|";
 						}
@@ -1833,7 +1833,7 @@ static PF_Err ParamsSetup(
 #ifdef _DEBUG
 				// In debug builds, report the error
 				char error_msg[256];
-				snprintf(error_msg, sizeof(error_msg), "Invalid parameter ID in PARAM_DISPLAY_ORDER[%d]: %d", i, paramId);
+				std::snprintf(error_msg, sizeof(error_msg), "Invalid parameter ID in PARAM_DISPLAY_ORDER[%d]: %d", paramIndex, paramId);
 				out_data->out_flags = PF_OutFlag_DISPLAY_ERROR_MESSAGE;
 				PF_SPRINTF(out_data->return_msg, error_msg);
 				return PF_Err_BAD_CALLBACK_PARAM;
