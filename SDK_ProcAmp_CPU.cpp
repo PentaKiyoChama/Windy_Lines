@@ -22,6 +22,7 @@
 
 #include "SDK_ProcAmp.h"
 #include "SDK_ProcAmp_ParamNames.h"
+#include "SDK_ProcAmp_ParamOrder.h"
 #include "SDK_ProcAmp_Version.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
@@ -1024,1902 +1025,807 @@ static PF_Err ParamsSetup(
 	PF_LayerDef* output)
 {
 	PF_ParamDef	def;
-
-	// ============================================================
-	// Effect Preset (top-level, no group)
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	std::string presetLabels = "デフォルト|";
-	for (int i = 0; i < kEffectPresetCount; ++i)
+	
+	// Iterate through parameters in display order defined by PARAM_DISPLAY_ORDER
+	for (int i = 0; i < SDK_PROCAMP_NUM_PARAMS; ++i)
 	{
-		presetLabels += kEffectPresets[i].name;
-		if (i < kEffectPresetCount - 1)
+		int paramId = PARAM_DISPLAY_ORDER[i];
+		
+		switch (paramId)
 		{
-			presetLabels += "|";
+			case SDK_PROCAMP_INPUT:
+				// Input layer is handled automatically by After Effects
+				break;
+			
+			case SDK_PROCAMP_EFFECT_PRESET:
+				// Effect Preset (top-level, no group)
+				AEFX_CLR_STRUCT(def);
+				{
+					std::string presetLabels = "デフォルト|";
+					for (int j = 0; j < kEffectPresetCount; ++j)
+					{
+						presetLabels += kEffectPresets[j].name;
+						if (j < kEffectPresetCount - 1)
+						{
+							presetLabels += "|";
+						}
+					}
+					def.flags = PF_ParamFlag_SUPERVISE;
+					PF_ADD_POPUP(
+						P_EFFECT_PRESET,
+						1 + kEffectPresetCount,
+						1,
+						presetLabels.c_str(),
+						SDK_PROCAMP_EFFECT_PRESET);
+				}
+				break;
+			
+			case SDK_PROCAMP_LINE_SEED:
+				// Random Seed
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_SEED,
+					LINE_SEED_MIN_VALUE,
+					LINE_SEED_MAX_VALUE,
+					LINE_SEED_MIN_SLIDER,
+					LINE_SEED_MAX_SLIDER,
+					LINE_SEED_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_LINE_SEED);
+				break;
+			
+			case SDK_PROCAMP_LINE_COUNT:
+				// Line Count
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_LINE_COUNT,
+					LINE_COUNT_MIN_VALUE,
+					LINE_COUNT_MAX_VALUE,
+					LINE_COUNT_MIN_SLIDER,
+					LINE_COUNT_MAX_SLIDER,
+					LINE_COUNT_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_LINE_COUNT);
+				break;
+			
+			case SDK_PROCAMP_LINE_LIFETIME:
+				// Line Lifetime (frames)
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_LIFETIME,
+					LINE_LIFETIME_MIN_VALUE,
+					LINE_LIFETIME_MAX_VALUE,
+					LINE_LIFETIME_MIN_SLIDER,
+					LINE_LIFETIME_MAX_SLIDER,
+					LINE_LIFETIME_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_LINE_LIFETIME);
+				break;
+			
+			case SDK_PROCAMP_LINE_INTERVAL:
+				// Spawn Interval
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_INTERVAL,
+					LINE_INTERVAL_MIN_VALUE,
+					LINE_INTERVAL_MAX_VALUE,
+					LINE_INTERVAL_MIN_SLIDER,
+					LINE_INTERVAL_MAX_SLIDER,
+					LINE_INTERVAL_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_LINE_INTERVAL);
+				break;
+			
+			case SDK_PROCAMP_LINE_TRAVEL:
+				// Travel Distance
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_TRAVEL,
+					LINE_TRAVEL_MIN_VALUE,
+					LINE_TRAVEL_MAX_VALUE,
+					LINE_TRAVEL_MIN_SLIDER,
+					LINE_TRAVEL_MAX_SLIDER,
+					LINE_TRAVEL_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_TRAVEL);
+				break;
+			
+			case SDK_PROCAMP_LINE_EASING:
+				// Easing
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_EASING,
+					28,
+					LINE_EASING_DFLT,
+					PM_EASING,
+					SDK_PROCAMP_LINE_EASING);
+				break;
+			
+			case SDK_PROCAMP_COLOR_MODE:
+				// Color Mode
+				AEFX_CLR_STRUCT(def);
+				def.flags = PF_ParamFlag_SUPERVISE;
+				PF_ADD_POPUP(
+					P_COLOR_MODE,
+					3,
+					COLOR_MODE_DFLT,
+					PM_COLOR_MODE,
+					SDK_PROCAMP_COLOR_MODE);
+				break;
+			
+			case SDK_PROCAMP_LINE_COLOR:
+				// Single Color
+				AEFX_CLR_STRUCT(def);
+				def.flags = PF_ParamFlag_SUPERVISE;
+				PF_ADD_COLOR(
+					P_COLOR,
+					LINE_COLOR_DFLT_R8,
+					LINE_COLOR_DFLT_G8,
+					LINE_COLOR_DFLT_B8,
+					SDK_PROCAMP_LINE_COLOR);
+				break;
+			
+			case SDK_PROCAMP_COLOR_PRESET:
+				// Color Preset
+				AEFX_CLR_STRUCT(def);
+				def.flags = PF_ParamFlag_SUPERVISE;
+				PF_ADD_POPUP(
+					P_COLOR_PRESET,
+					33,
+					COLOR_PRESET_DFLT,
+					PM_COLOR_PRESET,
+					SDK_PROCAMP_COLOR_PRESET);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_1:
+				// Custom Color 1
+				AEFX_CLR_STRUCT(def);
+				def.ui_flags = PF_PUI_ECW_SEPARATOR;
+				PF_ADD_COLOR(P_CUSTOM_1, 255, 0, 0, SDK_PROCAMP_CUSTOM_COLOR_1);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_2:
+				// Custom Color 2
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_CUSTOM_2, 255, 128, 0, SDK_PROCAMP_CUSTOM_COLOR_2);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_3:
+				// Custom Color 3
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_CUSTOM_3, 255, 255, 0, SDK_PROCAMP_CUSTOM_COLOR_3);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_4:
+				// Custom Color 4
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_CUSTOM_4, 0, 255, 0, SDK_PROCAMP_CUSTOM_COLOR_4);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_5:
+				// Custom Color 5
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_CUSTOM_5, 0, 255, 255, SDK_PROCAMP_CUSTOM_COLOR_5);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_6:
+				// Custom Color 6
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_CUSTOM_6, 0, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_6);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_7:
+				// Custom Color 7
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_CUSTOM_7, 128, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_7);
+				break;
+			
+			case SDK_PROCAMP_CUSTOM_COLOR_8:
+				// Custom Color 8
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_CUSTOM_8, 255, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_8);
+				break;
+			
+			case SDK_PROCAMP_LINE_THICKNESS:
+				// Line Thickness
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_THICKNESS,
+					LINE_THICKNESS_MIN_VALUE,
+					LINE_THICKNESS_MAX_VALUE,
+					LINE_THICKNESS_MIN_SLIDER,
+					LINE_THICKNESS_MAX_SLIDER,
+					LINE_THICKNESS_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_THICKNESS);
+				break;
+			
+			case SDK_PROCAMP_LINE_LENGTH:
+				// Line Length
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_LENGTH,
+					LINE_LENGTH_MIN_VALUE,
+					LINE_LENGTH_MAX_VALUE,
+					LINE_LENGTH_MIN_SLIDER,
+					LINE_LENGTH_MAX_SLIDER,
+					LINE_LENGTH_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_LENGTH);
+				break;
+			
+			case SDK_PROCAMP_LINE_ANGLE:
+				// Line Angle
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_ANGLE(
+					P_ANGLE,
+					0,
+					SDK_PROCAMP_LINE_ANGLE);
+				break;
+			
+			case SDK_PROCAMP_LINE_CAP:
+				// Line Cap
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_LINE_CAP,
+					2,
+					LINE_CAP_DFLT,
+					PM_LINE_CAP,
+					SDK_PROCAMP_LINE_CAP);
+				break;
+			
+			case SDK_PROCAMP_LINE_TAIL_FADE:
+				// Tail Fade
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_TAIL_FADE,
+					LINE_TAIL_FADE_MIN_VALUE,
+					LINE_TAIL_FADE_MAX_VALUE,
+					LINE_TAIL_FADE_MIN_SLIDER,
+					LINE_TAIL_FADE_MAX_SLIDER,
+					LINE_TAIL_FADE_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_TAIL_FADE);
+				break;
+			
+			case SDK_PROCAMP_POSITION_HEADER:
+				// Line Origin Topic Start
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_TOPIC(P_POSITION_HEADER, SDK_PROCAMP_POSITION_HEADER);
+				break;
+			
+			case SDK_PROCAMP_SPAWN_SOURCE:
+				// Spawn Source
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_SPAWN_SOURCE,
+					2,
+					SPAWN_SOURCE_DFLT,
+					P_SPAWN_SOURCE_CHOICES,
+					SDK_PROCAMP_SPAWN_SOURCE);
+				break;
+			
+			case SDK_PROCAMP_LINE_ALPHA_THRESH:
+				// Alpha Threshold
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_ALPHA_THRESH,
+					LINE_ALPHA_THRESH_MIN_VALUE,
+					LINE_ALPHA_THRESH_MAX_VALUE,
+					LINE_ALPHA_THRESH_MIN_SLIDER,
+					LINE_ALPHA_THRESH_MAX_SLIDER,
+					LINE_ALPHA_THRESH_DFLT,
+					PF_Precision_THOUSANDTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_ALPHA_THRESH);
+				break;
+			
+			case SDK_PROCAMP_LINE_ORIGIN_MODE:
+				// Wind Origin Mode
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_ORIGIN_MODE,
+					3,
+					LINE_ORIGIN_MODE_DFLT,
+					PM_ORIGIN_MODE,
+					SDK_PROCAMP_LINE_ORIGIN_MODE);
+				break;
+			
+			case SDK_PROCAMP_ANIM_PATTERN:
+				// Animation Pattern (Direction)
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_ANIM_PATTERN,
+					3,
+					ANIM_PATTERN_DFLT,
+					PM_ANIM_PATTERN,
+					SDK_PROCAMP_ANIM_PATTERN);
+				break;
+			
+			case SDK_PROCAMP_LINE_START_TIME:
+				// Start Time
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_START_TIME,
+					LINE_START_TIME_MIN_VALUE,
+					LINE_START_TIME_MAX_VALUE,
+					LINE_START_TIME_MIN_SLIDER,
+					LINE_START_TIME_MAX_SLIDER,
+					LINE_START_TIME_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_LINE_START_TIME);
+				break;
+			
+			case SDK_PROCAMP_LINE_DURATION:
+				// Duration
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_DURATION,
+					LINE_DURATION_MIN_VALUE,
+					LINE_DURATION_MAX_VALUE,
+					LINE_DURATION_MIN_SLIDER,
+					LINE_DURATION_MAX_SLIDER,
+					LINE_DURATION_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_LINE_DURATION);
+				break;
+			
+			case SDK_PROCAMP_LINE_DEPTH_STRENGTH:
+				// Depth Strength
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_DEPTH_STRENGTH,
+					LINE_DEPTH_MIN_VALUE,
+					LINE_DEPTH_MAX_VALUE,
+					LINE_DEPTH_MIN_SLIDER,
+					LINE_DEPTH_MAX_SLIDER,
+					LINE_DEPTH_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_DEPTH_STRENGTH);
+				break;
+			
+			case SDK_PROCAMP_CENTER_GAP:
+				// Center Gap
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_CENTER_GAP,
+					CENTER_GAP_MIN_VALUE,
+					CENTER_GAP_MAX_VALUE,
+					CENTER_GAP_MIN_SLIDER,
+					CENTER_GAP_MAX_SLIDER,
+					CENTER_GAP_DFLT,
+					PF_Precision_HUNDREDTHS,
+					0,
+					0,
+					SDK_PROCAMP_CENTER_GAP);
+				break;
+			
+			case SDK_PROCAMP_ORIGIN_OFFSET_X:
+				// Origin Offset X
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_OFFSET_X,
+					ORIGIN_OFFSET_X_MIN_VALUE,
+					ORIGIN_OFFSET_X_MAX_VALUE,
+					ORIGIN_OFFSET_X_MIN_SLIDER,
+					ORIGIN_OFFSET_X_MAX_SLIDER,
+					ORIGIN_OFFSET_X_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_ORIGIN_OFFSET_X);
+				break;
+			
+			case SDK_PROCAMP_ORIGIN_OFFSET_Y:
+				// Origin Offset Y
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_OFFSET_Y,
+					ORIGIN_OFFSET_Y_MIN_VALUE,
+					ORIGIN_OFFSET_Y_MAX_VALUE,
+					ORIGIN_OFFSET_Y_MIN_SLIDER,
+					ORIGIN_OFFSET_Y_MAX_SLIDER,
+					ORIGIN_OFFSET_Y_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_ORIGIN_OFFSET_Y);
+				break;
+			
+			case SDK_PROCAMP_LINE_SPAWN_SCALE_X:
+				// Spawn Scale X
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_SPAWN_SCALE_X,
+					LINE_SPAWN_SCALE_X_MIN_VALUE,
+					LINE_SPAWN_SCALE_X_MAX_VALUE,
+					LINE_SPAWN_SCALE_X_MIN_SLIDER,
+					LINE_SPAWN_SCALE_X_MAX_SLIDER,
+					LINE_SPAWN_SCALE_X_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_SPAWN_SCALE_X);
+				break;
+			
+			case SDK_PROCAMP_LINE_SPAWN_SCALE_Y:
+				// Spawn Scale Y
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_SPAWN_SCALE_Y,
+					LINE_SPAWN_SCALE_Y_MIN_VALUE,
+					LINE_SPAWN_SCALE_Y_MAX_VALUE,
+					LINE_SPAWN_SCALE_Y_MIN_SLIDER,
+					LINE_SPAWN_SCALE_Y_MAX_SLIDER,
+					LINE_SPAWN_SCALE_Y_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_SPAWN_SCALE_Y);
+				break;
+			
+			case SDK_PROCAMP_LINE_SPAWN_ROTATION:
+				// Spawn Rotation
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_SPAWN_ROTATION,
+					LINE_SPAWN_ROTATION_MIN_VALUE,
+					LINE_SPAWN_ROTATION_MAX_VALUE,
+					LINE_SPAWN_ROTATION_MIN_SLIDER,
+					LINE_SPAWN_ROTATION_MAX_SLIDER,
+					LINE_SPAWN_ROTATION_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_SPAWN_ROTATION);
+				break;
+			
+			case SDK_PROCAMP_LINE_SHOW_SPAWN_AREA:
+				// Show Spawn Area
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_CHECKBOX(P_SHOW_SPAWN, "", SHOW_SPAWN_AREA_DFLT, 0, SDK_PROCAMP_LINE_SHOW_SPAWN_AREA);
+				break;
+			
+			case SDK_PROCAMP_LINE_SPAWN_AREA_COLOR:
+				// Spawn Area Color
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_COLOR(P_SPAWN_COLOR, 128, 128, 255, SDK_PROCAMP_LINE_SPAWN_AREA_COLOR);
+				break;
+			
+			case SDK_PROCAMP_POSITION_TOPIC_END:
+				// Line Origin Topic End
+				AEFX_CLR_STRUCT(def);
+				PF_END_TOPIC(SDK_PROCAMP_POSITION_TOPIC_END);
+				break;
+			
+			case SDK_PROCAMP_SHADOW_HEADER:
+				// Shadow Topic Start
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_TOPIC(P_SHADOW, SDK_PROCAMP_SHADOW_HEADER);
+				break;
+			
+			case SDK_PROCAMP_SHADOW_ENABLE:
+				// Shadow Enable
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_CHECKBOX(P_SHADOW_ENABLE, "", SHADOW_ENABLE_DFLT, 0, SDK_PROCAMP_SHADOW_ENABLE);
+				break;
+			
+			case SDK_PROCAMP_SHADOW_COLOR:
+				// Shadow Color
+				AEFX_CLR_STRUCT(def);
+				def.u.cd.value.red = static_cast<A_u_short>(SHADOW_COLOR_R_DFLT * 65535);
+				def.u.cd.value.green = static_cast<A_u_short>(SHADOW_COLOR_G_DFLT * 65535);
+				def.u.cd.value.blue = static_cast<A_u_short>(SHADOW_COLOR_B_DFLT * 65535);
+				def.u.cd.value.alpha = 65535;
+				def.u.cd.dephault = def.u.cd.value;
+				PF_ADD_COLOR(P_SHADOW_COLOR, def.u.cd.value.red, def.u.cd.value.green, def.u.cd.value.blue, SDK_PROCAMP_SHADOW_COLOR);
+				break;
+			
+			case SDK_PROCAMP_SHADOW_OFFSET_X:
+				// Shadow Offset X
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_SHADOW_OFFSET_X,
+					SHADOW_OFFSET_X_MIN,
+					SHADOW_OFFSET_X_MAX,
+					SHADOW_OFFSET_X_MIN,
+					SHADOW_OFFSET_X_MAX,
+					SHADOW_OFFSET_X_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_SHADOW_OFFSET_X);
+				break;
+			
+			case SDK_PROCAMP_SHADOW_OFFSET_Y:
+				// Shadow Offset Y
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_SHADOW_OFFSET_Y,
+					SHADOW_OFFSET_Y_MIN,
+					SHADOW_OFFSET_Y_MAX,
+					SHADOW_OFFSET_Y_MIN,
+					SHADOW_OFFSET_Y_MAX,
+					SHADOW_OFFSET_Y_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_SHADOW_OFFSET_Y);
+				break;
+			
+			case SDK_PROCAMP_SHADOW_OPACITY:
+				// Shadow Opacity
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_SHADOW_OPACITY,
+					SHADOW_OPACITY_MIN,
+					SHADOW_OPACITY_MAX,
+					SHADOW_OPACITY_MIN,
+					SHADOW_OPACITY_MAX,
+					SHADOW_OPACITY_DFLT,
+					PF_Precision_HUNDREDTHS,
+					0,
+					0,
+					SDK_PROCAMP_SHADOW_OPACITY);
+				break;
+			
+			case SDK_PROCAMP_SHADOW_TOPIC_END:
+				// Shadow Topic End
+				AEFX_CLR_STRUCT(def);
+				PF_END_TOPIC(SDK_PROCAMP_SHADOW_TOPIC_END);
+				break;
+			
+			case SDK_PROCAMP_MOTION_BLUR_HEADER:
+				// Motion Blur Topic Start
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_TOPIC(P_MOTION_BLUR, SDK_PROCAMP_MOTION_BLUR_HEADER);
+				break;
+			
+			case SDK_PROCAMP_MOTION_BLUR_ENABLE:
+				// Motion Blur Enable
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_CHECKBOX(P_MOTION_BLUR, "", MOTION_BLUR_ENABLE_DFLT, 0, SDK_PROCAMP_MOTION_BLUR_ENABLE);
+				break;
+			
+			case SDK_PROCAMP_MOTION_BLUR_SAMPLES:
+				// Motion Blur Samples (Quality)
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_BLUR_SAMPLES,
+					MOTION_BLUR_SAMPLES_MIN_VALUE,
+					MOTION_BLUR_SAMPLES_MAX_VALUE,
+					MOTION_BLUR_SAMPLES_MIN_SLIDER,
+					MOTION_BLUR_SAMPLES_MAX_SLIDER,
+					MOTION_BLUR_SAMPLES_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_MOTION_BLUR_SAMPLES);
+				break;
+			
+			case SDK_PROCAMP_MOTION_BLUR_STRENGTH:
+				// Motion Blur Shutter Angle (0-360°)
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_BLUR_ANGLE,
+					MOTION_BLUR_ANGLE_MIN_VALUE,
+					MOTION_BLUR_ANGLE_MAX_VALUE,
+					MOTION_BLUR_ANGLE_MIN_SLIDER,
+					MOTION_BLUR_ANGLE_MAX_SLIDER,
+					MOTION_BLUR_ANGLE_DFLT,
+					PF_Precision_INTEGER,
+					0,
+					0,
+					SDK_PROCAMP_MOTION_BLUR_STRENGTH);
+				break;
+			
+			case SDK_PROCAMP_MOTION_BLUR_TOPIC_END:
+				// Motion Blur Topic End
+				AEFX_CLR_STRUCT(def);
+				PF_END_TOPIC(SDK_PROCAMP_MOTION_BLUR_TOPIC_END);
+				break;
+			
+			case SDK_PROCAMP_ADVANCED_HEADER:
+				// Advanced Topic Start
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_TOPIC(P_ADVANCED_HEADER, SDK_PROCAMP_ADVANCED_HEADER);
+				break;
+			
+			case SDK_PROCAMP_LINE_AA:
+				// Anti-Aliasing
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_AA,
+					LINE_AA_MIN_VALUE,
+					LINE_AA_MAX_VALUE,
+					LINE_AA_MIN_SLIDER,
+					LINE_AA_MAX_SLIDER,
+					LINE_AA_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LINE_AA);
+				break;
+			
+			case SDK_PROCAMP_HIDE_ELEMENT:
+				// Hide Element (lines only)
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_CHECKBOX(P_HIDE_ELEMENT, "", HIDE_ELEMENT_DFLT, 0, SDK_PROCAMP_HIDE_ELEMENT);
+				break;
+			
+			case SDK_PROCAMP_BLEND_MODE:
+				// Blend Mode
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_BLEND_MODE,
+					4,
+					BLEND_MODE_DFLT,
+					PM_BLEND_MODE,
+					SDK_PROCAMP_BLEND_MODE);
+				break;
+			
+			case SDK_PROCAMP_ADVANCED_TOPIC_END:
+				// Advanced Topic End
+				AEFX_CLR_STRUCT(def);
+				PF_END_TOPIC(SDK_PROCAMP_ADVANCED_TOPIC_END);
+				break;
+			
+			case SDK_PROCAMP_LINKAGE_HEADER:
+				// Linkage Topic Start
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_TOPIC(P_LINKAGE_HEADER, SDK_PROCAMP_LINKAGE_HEADER);
+				break;
+			
+			case SDK_PROCAMP_LENGTH_LINKAGE:
+				// Length Linkage
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_LENGTH_LINKAGE,
+					3,
+					LINKAGE_MODE_DFLT,
+					PM_LINKAGE_MODE,
+					SDK_PROCAMP_LENGTH_LINKAGE);
+				break;
+			
+			case SDK_PROCAMP_LENGTH_LINKAGE_RATE:
+				// Length Linkage Rate
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_LENGTH_LINKAGE_RATE,
+					LINKAGE_RATE_MIN_VALUE,
+					LINKAGE_RATE_MAX_VALUE,
+					LINKAGE_RATE_MIN_SLIDER,
+					LINKAGE_RATE_MAX_SLIDER,
+					LINKAGE_RATE_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_LENGTH_LINKAGE_RATE);
+				break;
+			
+			case SDK_PROCAMP_THICKNESS_LINKAGE:
+				// Thickness Linkage
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_THICKNESS_LINKAGE,
+					3,
+					LINKAGE_MODE_DFLT,
+					PM_LINKAGE_MODE,
+					SDK_PROCAMP_THICKNESS_LINKAGE);
+				break;
+			
+			case SDK_PROCAMP_THICKNESS_LINKAGE_RATE:
+				// Thickness Linkage Rate
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_THICKNESS_LINKAGE_RATE,
+					LINKAGE_RATE_MIN_VALUE,
+					LINKAGE_RATE_MAX_VALUE,
+					LINKAGE_RATE_MIN_SLIDER,
+					LINKAGE_RATE_MAX_SLIDER,
+					LINKAGE_RATE_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_THICKNESS_LINKAGE_RATE);
+				break;
+			
+			case SDK_PROCAMP_TRAVEL_LINKAGE:
+				// Travel Distance Linkage
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_POPUP(
+					P_TRAVEL_LINKAGE,
+					3,
+					LINKAGE_MODE_DFLT,
+					PM_LINKAGE_MODE,
+					SDK_PROCAMP_TRAVEL_LINKAGE);
+				break;
+			
+			case SDK_PROCAMP_TRAVEL_LINKAGE_RATE:
+				// Travel Distance Linkage Rate
+				AEFX_CLR_STRUCT(def);
+				PF_ADD_FLOAT_SLIDERX(
+					P_TRAVEL_LINKAGE_RATE,
+					LINKAGE_RATE_MIN_VALUE,
+					LINKAGE_RATE_MAX_VALUE,
+					LINKAGE_RATE_MIN_SLIDER,
+					LINKAGE_RATE_MAX_SLIDER,
+					LINKAGE_RATE_DFLT,
+					PF_Precision_TENTHS,
+					0,
+					0,
+					SDK_PROCAMP_TRAVEL_LINKAGE_RATE);
+				break;
+			
+			case SDK_PROCAMP_LINKAGE_TOPIC_END:
+				// Linkage Topic End
+				AEFX_CLR_STRUCT(def);
+				PF_END_TOPIC(SDK_PROCAMP_LINKAGE_TOPIC_END);
+				break;
+			
+			case SDK_PROCAMP_LINE_ALLOW_MIDPLAY:
+				// Hidden Parameter: Allow Midplay
+				AEFX_CLR_STRUCT(def);
+				def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
+				def.ui_flags = PF_PUI_INVISIBLE;
+				PF_ADD_CHECKBOX("", "", LINE_ALLOW_MIDPLAY_DFLT, 0, SDK_PROCAMP_LINE_ALLOW_MIDPLAY);
+				break;
+			
+			case SDK_PROCAMP_LINE_COLOR_R:
+				// Hidden Parameter: Line Color R
+				AEFX_CLR_STRUCT(def);
+				def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
+				def.ui_flags = PF_PUI_INVISIBLE;
+				PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
+					LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
+					PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_R);
+				break;
+			
+			case SDK_PROCAMP_LINE_COLOR_G:
+				// Hidden Parameter: Line Color G
+				AEFX_CLR_STRUCT(def);
+				def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
+				def.ui_flags = PF_PUI_INVISIBLE;
+				PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
+					LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
+					PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_G);
+				break;
+			
+			case SDK_PROCAMP_LINE_COLOR_B:
+				// Hidden Parameter: Line Color B
+				AEFX_CLR_STRUCT(def);
+				def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
+				def.ui_flags = PF_PUI_INVISIBLE;
+				PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
+					LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
+					PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_B);
+				break;
 		}
 	}
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_EFFECT_PRESET,
-		1 + kEffectPresetCount,
-		1,
-		presetLabels.c_str(),
-		SDK_PROCAMP_EFFECT_PRESET);
-
-	// Random Seed (moved to top, after preset)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_SEED,
-		LINE_SEED_MIN_VALUE,
-		LINE_SEED_MAX_VALUE,
-		LINE_SEED_MIN_SLIDER,
-		LINE_SEED_MAX_SLIDER,
-		LINE_SEED_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_LINE_SEED);
-
-	// ============================================================
-	// Basic Settings
-	// ============================================================
-
-	// Line Count
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_LINE_COUNT,
-		LINE_COUNT_MIN_VALUE,
-		LINE_COUNT_MAX_VALUE,
-		LINE_COUNT_MIN_SLIDER,
-		LINE_COUNT_MAX_SLIDER,
-		LINE_COUNT_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_LINE_COUNT);
-
-	// Line Lifetime (frames)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_LIFETIME,
-		LINE_LIFETIME_MIN_VALUE,
-		LINE_LIFETIME_MAX_VALUE,
-		LINE_LIFETIME_MIN_SLIDER,
-		LINE_LIFETIME_MAX_SLIDER,
-		LINE_LIFETIME_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_LINE_LIFETIME);
-
-	// Spawn Interval (moved from Position group)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_INTERVAL,
-		LINE_INTERVAL_MIN_VALUE,
-		LINE_INTERVAL_MAX_VALUE,
-		LINE_INTERVAL_MIN_SLIDER,
-		LINE_INTERVAL_MAX_SLIDER,
-		LINE_INTERVAL_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_LINE_INTERVAL);
-
-	// Travel Distance
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_TRAVEL,
-		LINE_TRAVEL_MIN_VALUE,
-		LINE_TRAVEL_MAX_VALUE,
-		LINE_TRAVEL_MIN_SLIDER,
-		LINE_TRAVEL_MAX_SLIDER,
-		LINE_TRAVEL_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_TRAVEL);
-
-	// Easing (moved here, after Travel Distance)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_EASING,
-		28,
-		LINE_EASING_DFLT,
-		PM_EASING,
-		SDK_PROCAMP_LINE_EASING);
-
-	// ============================================================
-	// Color Settings
-	// ============================================================
-
-	// Color Mode
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_COLOR_MODE,
-		3,
-		COLOR_MODE_DFLT,
-		PM_COLOR_MODE,
-		SDK_PROCAMP_COLOR_MODE);
-
-	// Single Color
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_COLOR(
-		P_COLOR,
-		LINE_COLOR_DFLT_R8,
-		LINE_COLOR_DFLT_G8,
-		LINE_COLOR_DFLT_B8,
-		SDK_PROCAMP_LINE_COLOR);
-
-	// Color Preset
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_COLOR_PRESET,
-		33,
-		COLOR_PRESET_DFLT,
-		PM_COLOR_PRESET,
-		SDK_PROCAMP_COLOR_PRESET);
-
-	// Custom Colors 1-8
-	AEFX_CLR_STRUCT(def);
-	def.ui_flags = PF_PUI_ECW_SEPARATOR;
-	PF_ADD_COLOR(P_CUSTOM_1, 255, 0, 0, SDK_PROCAMP_CUSTOM_COLOR_1);
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_2, 255, 128, 0, SDK_PROCAMP_CUSTOM_COLOR_2);
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_3, 255, 255, 0, SDK_PROCAMP_CUSTOM_COLOR_3);
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_4, 0, 255, 0, SDK_PROCAMP_CUSTOM_COLOR_4);
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_5, 0, 255, 255, SDK_PROCAMP_CUSTOM_COLOR_5);
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_6, 0, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_6);
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_7, 128, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_7);
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_8, 255, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_8);
-
-	// ============================================================
-	// Appearance
-	// ============================================================
-
-	// Line Thickness
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_THICKNESS,
-		LINE_THICKNESS_MIN_VALUE,
-		LINE_THICKNESS_MAX_VALUE,
-		LINE_THICKNESS_MIN_SLIDER,
-		LINE_THICKNESS_MAX_SLIDER,
-		LINE_THICKNESS_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_THICKNESS);
-
-	// Line Length
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_LENGTH,
-		LINE_LENGTH_MIN_VALUE,
-		LINE_LENGTH_MAX_VALUE,
-		LINE_LENGTH_MIN_SLIDER,
-		LINE_LENGTH_MAX_SLIDER,
-		LINE_LENGTH_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_LENGTH);
-
-	// Line Angle
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_ANGLE(
-		P_ANGLE,
-		0,
-		SDK_PROCAMP_LINE_ANGLE);
-
-	// Line Cap
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_LINE_CAP,
-		2,
-		LINE_CAP_DFLT,
-		PM_LINE_CAP,
-		SDK_PROCAMP_LINE_CAP);
-
-	// Tail Fade
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_TAIL_FADE,
-		LINE_TAIL_FADE_MIN_VALUE,
-		LINE_TAIL_FADE_MAX_VALUE,
-		LINE_TAIL_FADE_MIN_SLIDER,
-		LINE_TAIL_FADE_MAX_SLIDER,
-		LINE_TAIL_FADE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_TAIL_FADE);
-
-	// ============================================================
-	// Line Origin (線�E起点)
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_POSITION_HEADER, SDK_PROCAMP_POSITION_HEADER);
-
-	// 1. Spawn Source
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_SPAWN_SOURCE,
-		2,
-		SPAWN_SOURCE_DFLT,
-		P_SPAWN_SOURCE_CHOICES,
-		SDK_PROCAMP_SPAWN_SOURCE);
-
-	// 2. Alpha Threshold
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_ALPHA_THRESH,
-		LINE_ALPHA_THRESH_MIN_VALUE,
-		LINE_ALPHA_THRESH_MAX_VALUE,
-		LINE_ALPHA_THRESH_MIN_SLIDER,
-		LINE_ALPHA_THRESH_MAX_SLIDER,
-		LINE_ALPHA_THRESH_DFLT,
-		PF_Precision_THOUSANDTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_ALPHA_THRESH);
-
-	// 3. Wind Origin Mode (moved before Animation Pattern)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_ORIGIN_MODE,
-		3,
-		LINE_ORIGIN_MODE_DFLT,
-		PM_ORIGIN_MODE,
-		SDK_PROCAMP_LINE_ORIGIN_MODE);
-
-	// 4. Animation Pattern (Direction)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_ANIM_PATTERN,
-		3,
-		ANIM_PATTERN_DFLT,
-		PM_ANIM_PATTERN,
-		SDK_PROCAMP_ANIM_PATTERN);
-
-	// 5. Start Time
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_START_TIME,
-		LINE_START_TIME_MIN_VALUE,
-		LINE_START_TIME_MAX_VALUE,
-		LINE_START_TIME_MIN_SLIDER,
-		LINE_START_TIME_MAX_SLIDER,
-		LINE_START_TIME_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_LINE_START_TIME);
-
-	// 6. Duration
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_DURATION,
-		LINE_DURATION_MIN_VALUE,
-		LINE_DURATION_MAX_VALUE,
-		LINE_DURATION_MIN_SLIDER,
-		LINE_DURATION_MAX_SLIDER,
-		LINE_DURATION_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_LINE_DURATION);
-
-	// 7. Depth Strength (moved from Advanced)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_DEPTH_STRENGTH,
-		LINE_DEPTH_MIN_VALUE,
-		LINE_DEPTH_MAX_VALUE,
-		LINE_DEPTH_MIN_SLIDER,
-		LINE_DEPTH_MAX_SLIDER,
-		LINE_DEPTH_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_DEPTH_STRENGTH);
-
-	// 8. Center Gap (moved before Offset X)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_CENTER_GAP,
-		CENTER_GAP_MIN_VALUE,
-		CENTER_GAP_MAX_VALUE,
-		CENTER_GAP_MIN_SLIDER,
-		CENTER_GAP_MAX_SLIDER,
-		CENTER_GAP_DFLT,
-		PF_Precision_HUNDREDTHS,
-		0,
-		0,
-		SDK_PROCAMP_CENTER_GAP);
-
-	// 9. Origin Offset X
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_OFFSET_X,
-		ORIGIN_OFFSET_X_MIN_VALUE,
-		ORIGIN_OFFSET_X_MAX_VALUE,
-		ORIGIN_OFFSET_X_MIN_SLIDER,
-		ORIGIN_OFFSET_X_MAX_SLIDER,
-		ORIGIN_OFFSET_X_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_ORIGIN_OFFSET_X);
-
-	// 10. Origin Offset Y
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_OFFSET_Y,
-		ORIGIN_OFFSET_Y_MIN_VALUE,
-		ORIGIN_OFFSET_Y_MAX_VALUE,
-		ORIGIN_OFFSET_Y_MIN_SLIDER,
-		ORIGIN_OFFSET_Y_MAX_SLIDER,
-		ORIGIN_OFFSET_Y_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_ORIGIN_OFFSET_Y);
-
-	// 11. Spawn Scale X
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_SPAWN_SCALE_X,
-		LINE_SPAWN_SCALE_X_MIN_VALUE,
-		LINE_SPAWN_SCALE_X_MAX_VALUE,
-		LINE_SPAWN_SCALE_X_MIN_SLIDER,
-		LINE_SPAWN_SCALE_X_MAX_SLIDER,
-		LINE_SPAWN_SCALE_X_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_SPAWN_SCALE_X);
-
-	// 12. Spawn Scale Y
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_SPAWN_SCALE_Y,
-		LINE_SPAWN_SCALE_Y_MIN_VALUE,
-		LINE_SPAWN_SCALE_Y_MAX_VALUE,
-		LINE_SPAWN_SCALE_Y_MIN_SLIDER,
-		LINE_SPAWN_SCALE_Y_MAX_SLIDER,
-		LINE_SPAWN_SCALE_Y_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_SPAWN_SCALE_Y);
-
-	// 13. Spawn Rotation
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_SPAWN_ROTATION,
-		LINE_SPAWN_ROTATION_MIN_VALUE,
-		LINE_SPAWN_ROTATION_MAX_VALUE,
-		LINE_SPAWN_ROTATION_MIN_SLIDER,
-		LINE_SPAWN_ROTATION_MAX_SLIDER,
-		LINE_SPAWN_ROTATION_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_SPAWN_ROTATION);
-
-	// 14. Show Spawn Area
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_SHOW_SPAWN, "", SHOW_SPAWN_AREA_DFLT, 0, SDK_PROCAMP_LINE_SHOW_SPAWN_AREA);
-
-	// 16. Spawn Area Color
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_SPAWN_COLOR, 128, 128, 255, SDK_PROCAMP_LINE_SPAWN_AREA_COLOR);  // Light blue default
-
-	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_POSITION_TOPIC_END);
-
-	// ============================================================
-	// Shadow
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_SHADOW, SDK_PROCAMP_SHADOW_HEADER);
-
-	// Shadow Enable
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_SHADOW_ENABLE, "", SHADOW_ENABLE_DFLT, 0, SDK_PROCAMP_SHADOW_ENABLE);
-
-	// Shadow Color
-	AEFX_CLR_STRUCT(def);
-	def.u.cd.value.red = static_cast<A_u_short>(SHADOW_COLOR_R_DFLT * 65535);
-	def.u.cd.value.green = static_cast<A_u_short>(SHADOW_COLOR_G_DFLT * 65535);
-	def.u.cd.value.blue = static_cast<A_u_short>(SHADOW_COLOR_B_DFLT * 65535);
-	def.u.cd.value.alpha = 65535;
-	def.u.cd.dephault = def.u.cd.value;
-	PF_ADD_COLOR(P_SHADOW_COLOR, def.u.cd.value.red, def.u.cd.value.green, def.u.cd.value.blue, SDK_PROCAMP_SHADOW_COLOR);
-
-	// Shadow Offset X
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_SHADOW_OFFSET_X,
-		SHADOW_OFFSET_X_MIN,
-		SHADOW_OFFSET_X_MAX,
-		SHADOW_OFFSET_X_MIN,
-		SHADOW_OFFSET_X_MAX,
-		SHADOW_OFFSET_X_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_SHADOW_OFFSET_X);
-
-	// Shadow Offset Y
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_SHADOW_OFFSET_Y,
-		SHADOW_OFFSET_Y_MIN,
-		SHADOW_OFFSET_Y_MAX,
-		SHADOW_OFFSET_Y_MIN,
-		SHADOW_OFFSET_Y_MAX,
-		SHADOW_OFFSET_Y_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_SHADOW_OFFSET_Y);
-
-	// Shadow Opacity
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_SHADOW_OPACITY,
-		SHADOW_OPACITY_MIN,
-		SHADOW_OPACITY_MAX,
-		SHADOW_OPACITY_MIN,
-		SHADOW_OPACITY_MAX,
-		SHADOW_OPACITY_DFLT,
-		PF_Precision_HUNDREDTHS,
-		0,
-		0,
-		SDK_PROCAMP_SHADOW_OPACITY);
-
-	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_SHADOW_TOPIC_END);
-
-	// ============================================================
-	// Motion Blur
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_MOTION_BLUR, SDK_PROCAMP_MOTION_BLUR_HEADER);
-
-	// Motion Blur Enable
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_MOTION_BLUR, "", MOTION_BLUR_ENABLE_DFLT, 0, SDK_PROCAMP_MOTION_BLUR_ENABLE);
-
-	// Motion Blur Samples (Quality)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_BLUR_SAMPLES,
-		MOTION_BLUR_SAMPLES_MIN_VALUE,
-		MOTION_BLUR_SAMPLES_MAX_VALUE,
-		MOTION_BLUR_SAMPLES_MIN_SLIDER,
-		MOTION_BLUR_SAMPLES_MAX_SLIDER,
-		MOTION_BLUR_SAMPLES_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_MOTION_BLUR_SAMPLES);
-
-	// Motion Blur Shutter Angle (0-360°)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_BLUR_ANGLE,
-		MOTION_BLUR_ANGLE_MIN_VALUE,
-		MOTION_BLUR_ANGLE_MAX_VALUE,
-		MOTION_BLUR_ANGLE_MIN_SLIDER,
-		MOTION_BLUR_ANGLE_MAX_SLIDER,
-		MOTION_BLUR_ANGLE_DFLT,
-		PF_Precision_INTEGER,
-		0,
-		0,
-		SDK_PROCAMP_MOTION_BLUR_STRENGTH);
-
-	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_MOTION_BLUR_TOPIC_END);
-
-	// ============================================================
-	// Advanced
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_ADVANCED_HEADER, SDK_PROCAMP_ADVANCED_HEADER);
-
-	// Anti-Aliasing (moved to Advanced)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_AA,
-		LINE_AA_MIN_VALUE,
-		LINE_AA_MAX_VALUE,
-		LINE_AA_MIN_SLIDER,
-		LINE_AA_MAX_SLIDER,
-		LINE_AA_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_AA);
-
-	// Hide Element (lines only)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_HIDE_ELEMENT, "", HIDE_ELEMENT_DFLT, 0, SDK_PROCAMP_HIDE_ELEMENT);
-
-	// Blend Mode
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_BLEND_MODE,
-		4,
-		BLEND_MODE_DFLT,
-		PM_BLEND_MODE,
-		SDK_PROCAMP_BLEND_MODE);
-
-	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_ADVANCED_TOPIC_END);
-
-	// ============================================================
-	// ▼ Linkage Settings
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_LINKAGE_HEADER, SDK_PROCAMP_LINKAGE_HEADER);
-
-	// Length Linkage
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_LENGTH_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_LENGTH_LINKAGE);
-
-	// Length Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_LENGTH_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LENGTH_LINKAGE_RATE);
-
-	// Thickness Linkage
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_THICKNESS_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_THICKNESS_LINKAGE);
-
-	// Thickness Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_THICKNESS_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_THICKNESS_LINKAGE_RATE);
-
-	// Travel Distance Linkage
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_TRAVEL_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_TRAVEL_LINKAGE);
-
-	// Travel Distance Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_TRAVEL_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_TRAVEL_LINKAGE_RATE);
-
-	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_LINKAGE_TOPIC_END);
-
-	// ============================================================
-	// Hidden Parameters (for backwards compatibility)
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
-	def.ui_flags = PF_PUI_INVISIBLE;
-	PF_ADD_CHECKBOX("", "", LINE_ALLOW_MIDPLAY_DFLT, 0, SDK_PROCAMP_LINE_ALLOW_MIDPLAY);
-
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
-	def.ui_flags = PF_PUI_INVISIBLE;
-	PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
-		LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
-		PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_R);
-
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
-	def.ui_flags = PF_PUI_INVISIBLE;
-	PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
-		LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
-		PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_G);
-
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
-	def.ui_flags = PF_PUI_INVISIBLE;
-	PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
-		LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
-		PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_B);
-
+	
 	out_data->num_params = SDK_PROCAMP_NUM_PARAMS;
 	return PF_Err_NONE;
-}
-
-/*
-**
-*/
-static PF_Err Render(
-	PF_InData* in_data,
-	PF_OutData* out_data,
-	PF_ParamDef* params[],
-	PF_LayerDef* output)
-{
-	auto normalizePopup = [](int value, int maxValue) {
-		if (value >= 1 && value <= maxValue)
-		{
-			return value - 1;
-		}
-		if (value >= 0 && value < maxValue)
-		{
-			return value;
-		}
-		return 0;
-	};
-
-	if (in_data->appl_id == 'PrMr')
-	{
-		PF_LayerDef* src = &params[0]->u.ld;
-		PF_LayerDef* dest = output;
-
-		const char* srcData = (const char*)src->data;
-		char* destData = (char*)dest->data;
-
-		// Color Mode and Palette Setup
-		// normalizePopup returns 0-based: 0=Single, 1=Preset, 2=Custom
-		const int colorMode = normalizePopup(params[SDK_PROCAMP_COLOR_MODE]->u.pd.value, 3);
-		const int presetIndex = normalizePopup(params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, 33);
-		
-		// Build color palette (8 colors, RGB normalized)
-		float colorPalette[8][3];
-		
-		if (colorMode == 0)  // Single (0-based)
-		{
-			// Single color mode: all 8 slots have the same color
-			const PF_Pixel singleColor = params[SDK_PROCAMP_LINE_COLOR]->u.cd.value;
-			const float singleR = singleColor.red / 255.0f;
-			const float singleG = singleColor.green / 255.0f;
-			const float singleB = singleColor.blue / 255.0f;
-			for (int i = 0; i < 8; ++i)
-			{
-				colorPalette[i][0] = singleR;
-				colorPalette[i][1] = singleG;
-				colorPalette[i][2] = singleB;
-			}
-		}
-		else if (colorMode == 1)  // Preset (0-based)
-		{
-			// Preset mode: load from preset palette (presetIndex is 0-based)
-			const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
-			for (int i = 0; i < 8; ++i)
-			{
-				colorPalette[i][0] = preset[i].r / 255.0f;
-				colorPalette[i][1] = preset[i].g / 255.0f;
-				colorPalette[i][2] = preset[i].b / 255.0f;
-			}
-		}
-		else  // Custom (colorMode == 2, 0-based)
-		{
-			// Custom mode: load from custom color parameters
-			const int customColorParams[8] = {
-				SDK_PROCAMP_CUSTOM_COLOR_1, SDK_PROCAMP_CUSTOM_COLOR_2,
-				SDK_PROCAMP_CUSTOM_COLOR_3, SDK_PROCAMP_CUSTOM_COLOR_4,
-				SDK_PROCAMP_CUSTOM_COLOR_5, SDK_PROCAMP_CUSTOM_COLOR_6,
-				SDK_PROCAMP_CUSTOM_COLOR_7, SDK_PROCAMP_CUSTOM_COLOR_8
-			};
-			for (int i = 0; i < 8; ++i)
-			{
-				const PF_Pixel customColor = params[customColorParams[i]]->u.cd.value;
-				colorPalette[i][0] = customColor.red / 255.0f;
-				colorPalette[i][1] = customColor.green / 255.0f;
-				colorPalette[i][2] = customColor.blue / 255.0f;
-			}
-		}
-		
-		// Convert color palette to VUYA format for rendering
-		float paletteV[8], paletteU[8], paletteY[8];
-		for (int i = 0; i < 8; ++i)
-		{
-			const float r = colorPalette[i][0];
-			const float g = colorPalette[i][1];
-			const float b = colorPalette[i][2];
-			paletteY[i] = r * 0.299f + g * 0.587f + b * 0.114f;
-			paletteU[i] = r * -0.168736f + g * -0.331264f + b * 0.5f;
-			paletteV[i] = r * 0.5f + g * -0.418688f + b * -0.081312f;
-		}
-		
-		// Default line color (for compatibility, use first palette color)
-		const float lineR = colorPalette[0][0];
-		const float lineG = colorPalette[0][1];
-		const float lineB = colorPalette[0][2];
-		const float lineYVal = paletteY[0];
-		const float lineUVal = paletteU[0];
-		const float lineVVal = paletteV[0];
-
-	const float lineThickness = (float)params[SDK_PROCAMP_LINE_THICKNESS]->u.fs_d.value;
-	const float lineLength = (float)params[SDK_PROCAMP_LINE_LENGTH]->u.fs_d.value;
-	const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
-	const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
-		const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
-		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
-		
-		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
-		const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
-		float lineAlphaThreshold = (float)params[SDK_PROCAMP_LINE_ALPHA_THRESH]->u.fs_d.value;
-		if (spawnSource == SPAWN_SOURCE_FULL_FRAME) {
-			lineAlphaThreshold = 1.0f;  // Full frame: ignore alpha, spawn everywhere
-		}
-		const int lineOriginMode = normalizePopup(params[SDK_PROCAMP_LINE_ORIGIN_MODE]->u.pd.value, 3);
-		const float dsx = (in_data->downsample_x.den != 0) ? ((float)in_data->downsample_x.num / (float)in_data->downsample_x.den) : 1.0f;
-		const float dsy = (in_data->downsample_y.den != 0) ? ((float)in_data->downsample_y.num / (float)in_data->downsample_y.den) : 1.0f;
-		const float dsMax = dsx > dsy ? dsx : dsy;
-		const float dsScale = dsMax >= 1.0f ? (1.0f / dsMax) : (dsMax > 0.0f ? dsMax : 1.0f);
-		
-		// Linkage parameters (read but will be applied after bounding box calculation)
-		const int lengthLinkage = normalizePopup(params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value, 3);
-		const float lengthLinkageRate = (float)params[SDK_PROCAMP_LENGTH_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		const int thicknessLinkage = normalizePopup(params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value, 3);
-		const float thicknessLinkageRate = (float)params[SDK_PROCAMP_THICKNESS_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		const int travelLinkage = normalizePopup(params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value, 3);
-		const float travelLinkageRate = (float)params[SDK_PROCAMP_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		
-		// Temporarily use base values (linkage will be applied after bounding box calculation)
-		const float lineAAScaled = lineAA * dsScale;
-		const float effectiveAA = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
-		// Center is now controlled by Origin Offset X/Y only
-		const int lineCount = (int)params[SDK_PROCAMP_LINE_COUNT]->u.fs_d.value;
-		const float lineLifetime = (float)params[SDK_PROCAMP_LINE_LIFETIME]->u.fs_d.value;
-		const float lineInterval = (float)params[SDK_PROCAMP_LINE_INTERVAL]->u.fs_d.value;
-		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
-		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
-		// Note: lineLengthScaled, lineThicknessScaled, lineTravelScaled will be calculated after bounding box
-		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
-		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
-	// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored
-	// const bool allowMidPlay = params[SDK_PROCAMP_LINE_ALLOW_MIDPLAY]->u.bd.value != 0;
-	const bool hideElement = params[SDK_PROCAMP_HIDE_ELEMENT]->u.bd.value != 0;
-	const int blendMode = NormalizePopupValue((int)params[SDK_PROCAMP_BLEND_MODE]->u.pd.value, 4);
-	
-	// Shadow parameters
-	const bool shadowEnable = params[SDK_PROCAMP_SHADOW_ENABLE]->u.bd.value != 0;
-	const float shadowColorR = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.red / 255.0f;
-	const float shadowColorG = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.green / 255.0f;
-	const float shadowColorB = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.blue / 255.0f;
-	// Convert shadow color to YUV
-	const float shadowY = shadowColorR * 0.299f + shadowColorG * 0.587f + shadowColorB * 0.114f;
-	const float shadowU = shadowColorR * -0.168736f + shadowColorG * -0.331264f + shadowColorB * 0.5f;
-	const float shadowV = shadowColorR * 0.5f + shadowColorG * -0.418688f + shadowColorB * -0.081312f;
-	const float shadowOffsetX = (float)params[SDK_PROCAMP_SHADOW_OFFSET_X]->u.fs_d.value * dsScale;
-	const float shadowOffsetY = (float)params[SDK_PROCAMP_SHADOW_OFFSET_Y]->u.fs_d.value * dsScale;
-	const float shadowOpacity = (float)params[SDK_PROCAMP_SHADOW_OPACITY]->u.fs_d.value;
-	
-	// Motion Blur parameters
-	const bool motionBlurEnable = params[SDK_PROCAMP_MOTION_BLUR_ENABLE]->u.bd.value != 0;
-	const int motionBlurSamples = (int)params[SDK_PROCAMP_MOTION_BLUR_SAMPLES]->u.fs_d.value;
-	const float motionBlurStrength = (float)params[SDK_PROCAMP_MOTION_BLUR_STRENGTH]->u.fs_d.value;
-	
-	// Focus (Depth of Field) parameters
-	// Focus parameters removed
-	const float spawnScaleX = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_X]->u.fs_d.value / 100.0f;
-	const float spawnScaleY = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_Y]->u.fs_d.value / 100.0f;
-	const float spawnRotationDeg = (float)params[SDK_PROCAMP_LINE_SPAWN_ROTATION]->u.fs_d.value;
-	const float spawnRotationRad = spawnRotationDeg * 3.14159265f / 180.0f;
-	const float spawnCos = FastCos(spawnRotationRad);
-	const float spawnSin = FastSin(spawnRotationRad);
-	const bool showSpawnArea = params[SDK_PROCAMP_LINE_SHOW_SPAWN_AREA]->u.bd.value != 0;
-	const PF_Pixel spawnAreaColorPx = params[SDK_PROCAMP_LINE_SPAWN_AREA_COLOR]->u.cd.value;
-	const float spawnAreaColorR = spawnAreaColorPx.red / 255.0f;
-	const float spawnAreaColorG = spawnAreaColorPx.green / 255.0f;
-	const float spawnAreaColorB = spawnAreaColorPx.blue / 255.0f;
-	// Convert spawn area color to YUV
-	const float spawnAreaY = spawnAreaColorR * 0.299f + spawnAreaColorG * 0.587f + spawnAreaColorB * 0.114f;
-	const float spawnAreaU = spawnAreaColorR * -0.168736f + spawnAreaColorG * -0.331264f + spawnAreaColorB * 0.5f;
-	const float spawnAreaV = spawnAreaColorR * 0.5f + spawnAreaColorG * -0.418688f + spawnAreaColorB * -0.081312f;
-	// CPU rendering uses current_time which is clip-relative time.
-		// This ensures cache consistency - same clip frame = same result.
-		const A_long clipTime = in_data->current_time; // Clip-relative time
-		const A_long frameIndex = (in_data->time_step != 0) ? (clipTime / in_data->time_step) : 0;
-		
-		// Try to get clip start using PF_UtilitySuite
-		A_long clipStartFrame = 0;
-		A_long trackItemStart = 0;
-		{
-			AEFX_SuiteScoper<PF_UtilitySuite> utilitySuite(in_data, kPFUtilitySuite, kPFUtilitySuiteVersion, out_data);
-			if (utilitySuite.get())
-			{
-				utilitySuite->GetClipStart(in_data->effect_ref, &clipStartFrame);
-				utilitySuite->GetTrackItemStart(in_data->effect_ref, &trackItemStart);
-			}
-		}
-		
-		// Share clipStartFrame with GPU renderer
-		// Key: clipStartFrame itself, Value: clipStartFrame
-		// GPU can find the correct clipStart by looking for keys <= mediaFrameIndex
-		if (clipStartFrame > 0)
-		{
-			SharedClipData::SetClipStart(clipStartFrame, clipStartFrame);
-		}
-
-		const float angleRadians = (float)(M_PI / 180) * lineAngle;
-		const float lineCos = cos(angleRadians);
-		const float lineSin = sin(angleRadians);
-		// Optimized branchless saturate using fminf/fmaxf
-		auto saturate = [](float v) { return fminf(fmaxf(v, 0.0f), 1.0f); };
-
-		// Use local state for stateless rendering (no global caching)
-		LineInstanceState localLineState;
-		LineInstanceState* lineState = &localLineState;
-
-		// Branchless clamp for line count
-		const int clampedLineCount = (int)fminf(fmaxf((float)lineCount, 1.0f), 5000.0f);
-		const int intervalFrames = lineInterval < 0.5f ? 0 : (int)(lineInterval + 0.5f);
-		
-		const float life = lineLifetime > 1.0f ? lineLifetime : 1.0f;
-		const float interval = intervalFrames > 0 ? (float)intervalFrames : 0.0f;
-		const float period = life + interval;
-		// No center offset - use Origin Offset X/Y instead
-		const float centerOffsetX = 0.0f;
-		const float centerOffsetY = 0.0f;
-		const int alphaStride = 4;
-		
-		// Calculate spawn area bounding box (範囲ソース)
-		int alphaMinX = output->width;
-		int alphaMinY = output->height;
-		int alphaMaxX = -1;
-		int alphaMaxY = -1;
-		
-		const float alphaThreshold = lineAlphaThreshold; // Spawn area threshold (respects spawnSource)
-		
-		for (int y = 0; y < output->height; y += alphaStride)
-		{
-			const float* row = (const float*)(srcData + y * src->rowbytes);
-			for (int x = 0; x < output->width; x += alphaStride)
-			{
-				const float aSample = row[x * 4 + 3];
-				
-				// Update spawn area bounding box
-				if (aSample > alphaThreshold)
-				{
-					if (x < alphaMinX) alphaMinX = x;
-					if (y < alphaMinY) alphaMinY = y;
-					if (x > alphaMaxX) alphaMaxX = x;
-					if (y > alphaMaxY) alphaMaxY = y;
-				}
-			}
-		}
-		if (alphaMaxX < alphaMinX || alphaMaxY < alphaMinY)
-		{
-			alphaMinX = 0;
-			alphaMinY = 0;
-			alphaMaxX = output->width > 0 ? (output->width - 1) : 0;
-			alphaMaxY = output->height > 0 ? (output->height - 1) : 0;
-		}
-		const float alphaBoundsMinX = (float)alphaMinX + centerOffsetX;
-		const float alphaBoundsMinY = (float)alphaMinY + centerOffsetY;
-		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
-		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
-		
-		// Cache element bounds for GPU renderer using clipStartFrame as key
-		if (clipStartFrame > 0)
-		{
-			ElementBounds bounds(alphaMinX, alphaMinY, alphaMaxX, alphaMaxY);
-			SharedClipData::SetElementBounds(clipStartFrame, bounds);
-		}
-		
-		// Apply linkage to parameters using spawn bounds (範囲ソース)
-		// Note: alphaBoundsWidth/Height are in downsampled pixels.
-		// When linkage is OFF, user input is in full-resolution pixels, so we need dsScale.
-		// When linkage is ON (WIDTH/HEIGHT), bounds are already downsampled, so no dsScale needed.
-		float finalLineLength = lineLength;
-		float finalLineThickness = lineThickness;
-		float finalLineTravel = lineTravel;
-		
-		// Length linkage (use bounds directly - they represent actual visible size)
-		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineLength = alphaBoundsWidth * lengthLinkageRate;
-		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineLength = alphaBoundsHeight * lengthLinkageRate;
-		}
-		
-		// Thickness linkage (use bounds directly - they represent actual visible size)
-		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
-		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
-		}
-		
-		// Travel linkage (use bounds directly - they represent actual visible size)
-		if (travelLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineTravel = alphaBoundsWidth * travelLinkageRate;
-		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineTravel = alphaBoundsHeight * travelLinkageRate;
-		}
-		
-		// Apply dsScale only when linkage is OFF (user input is full-resolution)
-		// When linkage is ON, values are already in downsampled space
-		const float lineThicknessScaled = (thicknessLinkage == LINKAGE_MODE_OFF) ? (finalLineThickness * dsScale) : finalLineThickness;
-		const float lineLengthScaled = (lengthLinkage == LINKAGE_MODE_OFF) ? (finalLineLength * dsScale) : finalLineLength;
-		const float lineTravelScaled = (travelLinkage == LINKAGE_MODE_OFF) ? (finalLineTravel * dsScale) : finalLineTravel;
-		
-		// Generate line params locally each frame for stateless rendering (after linkage applied)
-		lineState->lineCount = clampedLineCount;
-		lineState->lineSeed = lineSeed;
-		lineState->lineDepthStrength = lineDepthStrength;
-		lineState->lineInterval = intervalFrames;
-		
-		// Memory pool optimization: reserve capacity on first allocation or when growing
-		if (clampedLineCount > lineState->maxLineCapacity)
-		{
-			const int newCapacity = clampedLineCount * 3 / 2;  // 50% over-allocation
-			lineState->lineParams.reserve(newCapacity);
-			lineState->lineDerived.reserve(newCapacity);
-			lineState->lineActive.reserve(newCapacity);
-			lineState->maxLineCapacity = newCapacity;
-		}
-		
-		// Use resize instead of assign (faster when capacity is already reserved)
-		lineState->lineParams.resize(clampedLineCount);
-		for (int i = 0; i < clampedLineCount; ++i)
-		{
-			const csSDK_uint32 base = (csSDK_uint32)(lineSeed * 1315423911u) + (csSDK_uint32)i * 2654435761u;
-			const float rx = Rand01(base + 1);
-			const float ry = Rand01(base + 2);
-			const float rstart = Rand01(base + 5);
-			const float rdepth = Rand01(base + 6);
-			const float depthScale = DepthScale(rdepth, lineDepthStrength);
-
-			LineParams lp;
-			lp.posX = rx;
-			lp.posY = ry;
-			lp.baseLen = lineLengthScaled * depthScale;
-			lp.baseThick = lineThicknessScaled * depthScale;
-			lp.angle = lineAngle;
-			float startFrame = rstart * period; // Sequence-time based, no offset
-			lp.startFrame = startFrame;
-			lp.depthScale = depthScale;
-			lp.depthValue = rdepth;
-			lineState->lineParams[i] = lp;
-		}
-
-		lineState->lineDerived.resize(lineState->lineCount);
-		lineState->lineActive.resize(lineState->lineCount);
-	
-	// Start Time + Duration: control when lines spawn
-	const float lineStartTime = (float)params[SDK_PROCAMP_LINE_START_TIME]->u.fs_d.value;
-	const float lineDuration = (float)params[SDK_PROCAMP_LINE_DURATION]->u.fs_d.value;
-	// Calculate effective end time (0 duration = infinite)
-	const float lineEndTime = (lineDuration > 0.0f) ? (lineStartTime + lineDuration) : 0.0f;
-	
-	// Use frameIndex directly for sequence-time based rendering.
-	const float timeFramesBase = (float)frameIndex;
-	
-	// Origin Offset X/Y (px) - 線の起点のオフセット
-	// Apply downsample scale to origin offsets (user inputs in full-resolution pixels)
-	const float userOriginOffsetX = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_X]->u.fs_d.value * dsScale;
-	const float userOriginOffsetY = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_Y]->u.fs_d.value * dsScale;
-	
-	// Animation Pattern (1=Simple, 2=Half Reverse, 3=Split)
-	const int animPattern = params[SDK_PROCAMP_ANIM_PATTERN]->u.pd.value;
-	const float centerGap = (float)params[SDK_PROCAMP_CENTER_GAP]->u.fs_d.value;
-	
-	// Pre-compute perpendicular vector (optimization: avoid redundant calculation in line loop)
-	// All lines share the same perpendicular axis for center gap and Split pattern
-	const float invW = alphaBoundsWidth > 0.0f ? (1.0f / alphaBoundsWidth) : 1.0f;
-	const float invH = alphaBoundsHeight > 0.0f ? (1.0f / alphaBoundsHeight) : 1.0f;
-	const float dirX = lineCos * invW;
-	const float dirY = lineSin * invH;
-	float perpX = -dirY;  // Perpendicular to movement direction
-	float perpY = dirX;
-	const float perpLen = sqrtf(perpX * perpX + perpY * perpY);
-	if (perpLen > 0.00001f)
-	{
-		perpX /= perpLen;
-		perpY /= perpLen;
-	}
-	
-	for (int i = 0; lineState && i < lineState->lineCount; ++i)
-		{
-			const LineParams& lp = lineState->lineParams[i];
-			const float timeFrames = timeFramesBase;
-			// Note: allowMidPlay functionality is now handled by negative Start Time
-			// Start Time < 0 allows lines to appear mid-animation at clip start
-			float age = fmodf(timeFrames - lp.startFrame, period);
-			if (age < 0.0f)
-			{
-				age += period;
-			}
-			
-			// Start Time + End Time support: skip cycles outside the active time range
-			{
-				// Calculate when this cycle started
-				const float cycleStartFrame = timeFrames - age;
-				// Skip if this cycle started before startTime
-				if (cycleStartFrame < lineStartTime)
-				{
-					continue;
-				}
-				// Skip if endTime is set and this cycle started after endTime
-				if (lineEndTime > 0.0f && cycleStartFrame >= lineEndTime)
-				{
-					continue;
-				}
-			}
-			
-			if (age > life)
-			{
-				continue;
-			}
-		const float t = age / life;
-		const float tMove = ApplyEasingLUT(t, lineEasing);
-		const float maxLen = lp.baseLen;
-		const float travelRange = lineTravelScaled * lp.depthScale;
-		
-		// "Head extends from tail, then tail retracts" animation (matches GPU logic)????
-		// Total travel distance includes line length for proper appearance/disappearance
-		const float totalTravelDist = travelRange + maxLen;  // Total distance for full animation
-		const float tailStartPos = -0.5f * travelRange - maxLen;  // Start hidden on left
-		
-		const float travelT = ApplyEasingLUT(t, lineEasing);
-		const float currentTravelPos = tailStartPos + totalTravelDist * travelT;
-		
-		float headPosX, tailPosX, currentLength;
-		
-		if (t <= 0.5f)
-		{
-			// First half: tail at current travel position, head extends from it
-			const float extendT = ApplyEasingLUT(t * 2.0f, lineEasing);
-			tailPosX = currentTravelPos;
-			headPosX = tailPosX + maxLen * extendT;
-			currentLength = maxLen * extendT;
-		}
-		else
-		{
-			// Second half: head at current travel position + maxLen, tail retracts toward it
-			const float retractT = ApplyEasingLUT((t - 0.5f) * 2.0f, lineEasing);
-			headPosX = currentTravelPos + maxLen;
-			tailPosX = headPosX - maxLen * (1.0f - retractT);
-			currentLength = maxLen * (1.0f - retractT);
-		}
-		
-		// For rendering: center = midpoint between head and tail
-		const float segCenterX = (headPosX + tailPosX) * 0.5f;
-		
-		// Appear/Disappear scale + fade: smooth fade-in at start, fade-out at end
-		// Uses easeOutCubic for appear (fast start, very slow end - more natural)
-		// Uses easeInCubic for disappear (very slow start, fast end - more natural)
-		const float appearDuration = 0.10f;   // 10% of lifetime for appear
-		const float disappearDuration = 0.10f; // 10% of lifetime for disappear
-		float appearScale = 1.0f;
-		float appearAlpha = 1.0f;
-		if (t < appearDuration)
-		{
-			// Appear: easeOutCubic (1 - (1-t)^3) - starts fast, ends very smoothly
-			const float at = t / appearDuration;
-			const float inv = 1.0f - at;
-			const float eased = 1.0f - inv * inv * inv;
-			appearScale = eased;
-			appearAlpha = eased;  // Fade in with scale
-		}
-		else if (t > (1.0f - disappearDuration))
-		{
-			// Disappear: easeInCubic (t^3) - starts very smoothly, ends fast
-			const float dt = (1.0f - t) / disappearDuration;
-			const float eased = dt * dt * dt;
-			appearScale = eased;
-			appearAlpha = eased;  // Fade out with scale
-		}
-		
-		const float halfLen = currentLength * 0.5f * appearScale;
-
-		// Skip if thickness is less than 1px (effectively invisible)
-		const bool isTiny = (lp.baseThick * appearScale < 1.0f);
-		lineState->lineActive[i] = isTiny ? 0 : 1;
-		if (isTiny)
-		{
-			continue;
-		}
-
-		// Wind Origin: adjust spawn area position (overall atmosphere, not per-line animation)
-		// Apply offset in the direction of line angle (both X and Y components)
-		float originOffset = 0.0f;
-		if (lineOriginMode == 1)  // Forward
-		{
-			originOffset = 0.5f * travelRange;
-		}
-		else if (lineOriginMode == 2)  // Backward
-		{
-			originOffset = -0.5f * travelRange;
-		}
-
-		// Animation Pattern adjustments
-		// Pattern 1: Simple - all same direction
-		// Pattern 2: Half Reverse - every other line reversed
-		// Pattern 3: Split - sides go opposite directions (angle-linked)
-		// Center Gap applies to all patterns when > 0
-		
-		float adjustedPosX = lp.posX;
-		float adjustedPosY = lp.posY;
-		float adjustedAngle = lineAngle;
-		
-		// Use pre-computed perpendicular vector (optimization)
-		const float sideValue = (lp.posX - 0.5f) * perpX + (lp.posY - 0.5f) * perpY;
-		
-		// Apply center gap (hide lines in center zone)
-		if (centerGap > 0.0f && sideValue > -centerGap && sideValue < centerGap)
-		{
-			// Center zone - hide line
-			adjustedPosX = -10.0f;
-			adjustedPosY = -10.0f;
-		}
-		else
-		{
-			// Pattern-specific direction adjustments
-			if (animPattern == 2)  // Half Reverse: 50% of lines go opposite direction
-			{
-				if (i % 2 == 1)
-				{
-					adjustedAngle = lineAngle + 180.0f;
-				}
-			}
-			else if (animPattern == 3)  // Split: sides go opposite directions
-			{
-				if (sideValue < 0.0f)
-				{
-					adjustedAngle = lineAngle + 180.0f;  // Negative side flows opposite
-				}
-				// Positive side keeps original angle
-			}
-			// animPattern == 1 (Simple): no direction adjustment
-		}
-		
-		const float adjustedCos = FastCos(adjustedAngle * 3.14159265f / 180.0f);
-		const float adjustedSin = FastSin(adjustedAngle * 3.14159265f / 180.0f);
-
-		LineDerived ld;
-		const float alphaCenterX = alphaBoundsMinX + alphaBoundsWidth * 0.5f;
-		const float alphaCenterY = alphaBoundsMinY + alphaBoundsHeight * 0.5f;
-		// Apply spawn rotation to the spawn position offset
-		const float spawnOffsetX = (adjustedPosX - 0.5f) * alphaBoundsWidth * spawnScaleX;
-		const float spawnOffsetY = (adjustedPosY - 0.5f) * alphaBoundsHeight * spawnScaleY;
-		const float rotatedSpawnX = spawnOffsetX * spawnCos - spawnOffsetY * spawnSin;
-		const float rotatedSpawnY = spawnOffsetX * spawnSin + spawnOffsetY * spawnCos;
-		ld.centerX = alphaCenterX + rotatedSpawnX + originOffset * adjustedCos + userOriginOffsetX;
-		ld.centerY = alphaCenterY + rotatedSpawnY + originOffset * adjustedSin + userOriginOffsetY;
-		ld.cosA = adjustedCos;
-		ld.sinA = adjustedSin;
-		ld.halfLen = halfLen;
-		ld.segCenterX = segCenterX;
-		ld.depth = lp.depthValue;  // Store depth value for consistent blend mode
-
-		// Focus (Depth of Field) disabled
-		ld.halfThick = lp.baseThick * 0.5f * appearScale;
-		ld.focusAlpha = 1.0f;
-		ld.appearAlpha = appearAlpha;  // Appear/disappear fade alpha
-		ld.lineVelocity = ApplyEasingDerivative(t, lineEasing);  // Motion blur velocity
-		
-		// Select color from palette: Single mode uses 0, Preset/Custom uses random based on seed
-		if (colorMode == 0)  // Single mode
-		{
-			ld.colorIndex = 0;
-		}
-		else  // Preset or Custom mode
-		{
-			// Use existing seed + line index for random color selection
-			const csSDK_uint32 colorBase = (csSDK_uint32)(lineSeed * 1315423911u) + (csSDK_uint32)i * 2654435761u + 12345u;
-			ld.colorIndex = (int)(Rand01(colorBase) * 8.0f);
-			if (ld.colorIndex > 7) ld.colorIndex = 7;
-		}
-		
-		// Pre-compute expensive per-pixel calculations once per line
-		const float depthScale = DepthScale(ld.depth, lineDepthStrength);
-		const float depthFadeT = saturate((depthScale - 0.2f) / (0.6f - 0.2f));
-		ld.depthAlpha = 0.05f + 0.95f * depthFadeT;
-		const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
-		ld.invDenom = 1.0f / denom;
-		
-		lineState->lineDerived[i] = ld;
-	}
-
-		const int tileSize = 32;
-		const int tileCountX = (output->width + tileSize - 1) / tileSize;
-		const int tileCountY = (output->height + tileSize - 1) / tileSize;
-		const int tileCount = tileCountX * tileCountY;
-		
-		// Pre-compute tile boundaries for each line (optimization: avoid redundant calculation)
-		for (int i = 0; i < lineState->lineCount; ++i)
-		{
-			LineDerived& ld = lineState->lineDerived[i];
-			const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
-			int minX = (int)((ld.centerX - radius) / tileSize);
-			int maxX = (int)((ld.centerX + radius) / tileSize);
-			int minY = (int)((ld.centerY - radius) / tileSize);
-			int maxY = (int)((ld.centerY + radius) / tileSize);
-			
-			// Clamp to tile grid bounds
-			ld.tileMinX = (minX < 0) ? 0 : ((minX >= tileCountX) ? (tileCountX - 1) : minX);
-			ld.tileMaxX = (maxX < 0) ? 0 : ((maxX >= tileCountX) ? (tileCountX - 1) : maxX);
-			ld.tileMinY = (minY < 0) ? 0 : ((minY >= tileCountY) ? (tileCountY - 1) : minY);
-			ld.tileMaxY = (maxY < 0) ? 0 : ((maxY >= tileCountY) ? (tileCountY - 1) : maxY);
-		}
-
-		if (lineState)
-		{
-			// Memory pool optimization: reserve capacity for tile data
-			if (tileCount > lineState->maxTileCapacity)
-			{
-				const int newTileCapacity = tileCount * 3 / 2;  // 50% over-allocation
-				lineState->tileCounts.reserve(newTileCapacity);
-				lineState->tileOffsets.reserve(newTileCapacity + 1);
-				// tileIndices needs dynamic sizing, estimated at lineCount * tileCount / 4
-				const int estimatedIndices = lineState->lineCount * tileCount / 4;
-				lineState->tileIndices.reserve(estimatedIndices);
-				lineState->maxTileCapacity = newTileCapacity;
-			}
-			
-			// Use resize instead of assign (faster when capacity is already reserved)
-			lineState->tileCounts.resize(tileCount);
-			// Clear to zero explicitly since resize doesn't initialize
-			std::fill(lineState->tileCounts.begin(), lineState->tileCounts.end(), 0);
-		}
-		for (int i = 0; lineState && i < lineState->lineCount; ++i)
-		{
-			if (!lineState->lineActive[i])
-			{
-				continue;
-			}
-			const LineDerived& ld = lineState->lineDerived[i];
-			// Use pre-computed tile boundaries (optimization)
-			for (int ty = ld.tileMinY; ty <= ld.tileMaxY; ++ty)
-			{
-				for (int tx = ld.tileMinX; tx <= ld.tileMaxX; ++tx)
-				{
-					lineState->tileCounts[ty * tileCountX + tx] += 1;
-				}
-			}
-		}
-
-		if (lineState)
-		{
-			lineState->tileOffsets.resize(tileCount + 1);
-			lineState->tileOffsets[0] = 0;
-			for (int i = 0; i < tileCount; ++i)
-			{
-				lineState->tileOffsets[i + 1] = lineState->tileOffsets[i] + lineState->tileCounts[i];
-			}
-		}
-		if (lineState)
-		{
-			const int totalIndices = lineState->tileOffsets[tileCount];
-			lineState->tileIndices.resize(totalIndices);
-			// Avoid vector copy by resizing and copying separately
-			std::vector<int> tileCursor;
-			tileCursor.resize(lineState->tileOffsets.size());
-			std::copy(lineState->tileOffsets.begin(), lineState->tileOffsets.end(), tileCursor.begin());
-			for (int i = 0; i < lineState->lineCount; ++i)
-			{
-				if (!lineState->lineActive[i])
-				{
-					continue;
-				}
-				const LineDerived& ld = lineState->lineDerived[i];
-				// Use pre-computed tile boundaries (optimization)
-				for (int ty = ld.tileMinY; ty <= ld.tileMaxY; ++ty)
-				{
-					for (int tx = ld.tileMinX; tx <= ld.tileMaxX; ++tx)
-					{
-						const int idx = ty * tileCountX + tx;
-						lineState->tileIndices[tileCursor[idx]++] = i;
-					}
-				}
-			}
-		}
-
-		// Main render loop - compiler optimization hints
-#if defined(__clang__)
-#pragma clang loop unroll_count(4)
-#endif
-		for (int y = 0; y < output->height; ++y, srcData += src->rowbytes, destData += dest->rowbytes)
-		{
-			// Tile optimization: compute tile info once per row, update only when X crosses tile boundary
-			const int currentTileY = y / tileSize;
-			int lastTileX = -1;
-			int tileIndex = 0;
-			int start = 0;
-			int count = 0;
-			
-			for (int x = 0; x < output->width; ++x)
-			{
-				float v, u, luma, a;
-				if (hideElement)
-				{
-					// Hide original element - start with transparent black
-					v = 0.0f;
-					u = 0.0f;
-					luma = 0.0f;
-					a = 0.0f;
-				}
-				else
-				{
-					v = ((const float*)srcData)[x * 4 + 0];
-					u = ((const float*)srcData)[x * 4 + 1];
-					luma = ((const float*)srcData)[x * 4 + 2];
-					a = ((const float*)srcData)[x * 4 + 3];
-				}
-
-				float outV = v;
-				float outU = u;
-				float outY = luma;
-				const float originalAlpha = a;  // Save original alpha for blend modes
-				const float originalV = v;  // Save original color for Alpha XOR mode
-				const float originalU = u;
-				const float originalY = luma;
-				// Accumulate front lines separately for blend mode 2
-				float frontV = 0.0f;
-				float frontU = 0.0f;
-				float frontY = 0.0f;
-				float frontA = 0.0f;
-				float frontAppearAlpha = 1.0f;
-				
-				// Track line-only alpha for Alpha XOR mode (blend mode 3)
-				float lineOnlyAlpha = 0.0f;
-
-				// Tile optimization: only update when crossing tile boundary
-				const int currentTileX = x / tileSize;
-				if (currentTileX != lastTileX)
-				{
-					tileIndex = currentTileY * tileCountX + currentTileX;
-					start = lineState ? lineState->tileOffsets[tileIndex] : 0;
-					count = lineState ? lineState->tileCounts[tileIndex] : 0;
-					lastTileX = currentTileX;
-				}
-				// Main line pass (with shadow drawn first for each line)
-				for (int i = 0; i < count; ++i)
-				{
-					const LineDerived& ld = lineState->lineDerived[lineState->tileIndices[start + i]];
-					const float depthAlpha = ld.depthAlpha;  // Use pre-computed
-
-					// === STEP 2: Early skip optimization ===
-					// Check if pixel is outside line bounding box (with shadow offset margin)
-					const float skipDx = (x + 0.5f) - ld.centerX;
-					const float skipDy = (y + 0.5f) - ld.centerY;
-					const float shadowMargin = shadowEnable ? fmaxf(fabsf(shadowOffsetX), fabsf(shadowOffsetY)) : 0.0f;
-					const float margin = ld.halfThick + lineAAScaled + shadowMargin;
-					const float skipPx = skipDx * ld.cosA + skipDy * ld.sinA - ld.segCenterX;
-					const float skipPy = -skipDx * ld.sinA + skipDy * ld.cosA;
-					
-					if (fabsf(skipPx) > ld.halfLen + margin && fabsf(skipPy) > margin)
-					{
-						continue;  // Skip this line - pixel is too far away
-					}
-					// === END STEP 2 ===
-					
-				// Draw shadow first (before the line) with motion blur
-				if (shadowEnable)
-				{
-					const float sdx = (x + 0.5f) - (ld.centerX + shadowOffsetX);
-					const float sdy = (y + 0.5f) - (ld.centerY + shadowOffsetY);
-					float scoverage = 0.0f;
-
-					// Motion blur for shadow (matching OpenCL/Metal implementation)
-					if (motionBlurEnable && motionBlurSamples > 1)
-					{
-						const int samples = motionBlurSamples;
-						const float shutterFraction = motionBlurStrength / 360.0f;
-						const float pixelsPerFrame = lineTravel / lineLifetime;
-						const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
-						const float blurRange = effectiveVelocity * shutterFraction;
-						if (blurRange > 0.5f)
-						{
-							// Pre-compute rotation for shadow (optimization)
-							const float spx_rotated = sdx * ld.cosA + sdy * ld.sinA;
-							const float spy_rotated = -sdx * ld.sinA + sdy * ld.cosA;
-							float saccumA = 0.0f;
-
-							for (int s = 0; s < samples; ++s)
-							{
-								const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
-								const float sampleOffset = blurRange * t;
-
-								// Use pre-computed rotation, only apply offset
-								const float spxSample = spx_rotated - (ld.segCenterX + sampleOffset);
-								const float spySample = spy_rotated;
-
-								float sdistSample = (lineCap == 0)
-									? SDFBox(spxSample, spySample, ld.halfLen, ld.halfThick)
-									: SDFCapsule(spxSample, spySample, ld.halfLen, ld.halfThick);
-
-								const float stailT = saturate((spxSample + ld.halfLen) * ld.invDenom);  // Use pre-computed
-								const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
-								const float saa = effectiveAA;
-								float sampleCoverage = 0.0f;
-								if (saa > 0.0f)
-								{
-									const float tt = saturate((sdistSample - saa) / (0.0f - saa));
-									sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade;
-								}
-
-								saccumA += sampleCoverage;
-							}
-
-							scoverage = (saccumA / (float)samples) * shadowOpacity * depthAlpha;
-						}
-						else
-						{
-							// Blur too small, use single sample
-							float spx = sdx * ld.cosA + sdy * ld.sinA;
-							const float spy = -sdx * ld.sinA + sdy * ld.cosA;
-							spx -= ld.segCenterX;
-
-							float sdist = (lineCap == 0)
-								? SDFBox(spx, spy, ld.halfLen, ld.halfThick)
-								: SDFCapsule(spx, spy, ld.halfLen, ld.halfThick);
-
-							const float stailT = saturate((spx + ld.halfLen) * ld.invDenom);  // Use pre-computed
-							const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
-							const float saa = effectiveAA;
-							if (saa > 0.0f)
-							{
-								const float tt = saturate((sdist - saa) / (0.0f - saa));
-								scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * shadowOpacity * depthAlpha;
-							}
-						}
-					}
-					else
-					{
-						// No motion blur - single sample
-						float spx = sdx * ld.cosA + sdy * ld.sinA;
-						const float spy = -sdx * ld.sinA + sdy * ld.cosA;
-						spx -= ld.segCenterX;
-
-						float sdist = (lineCap == 0)
-							? SDFBox(spx, spy, ld.halfLen, ld.halfThick)
-							: SDFCapsule(spx, spy, ld.halfLen, ld.halfThick);
-
-						const float stailT = saturate((spx + ld.halfLen) * ld.invDenom);  // Use pre-computed
-						const float stailFade = 1.0f + (stailT - 1.0f) * lineTailFade;
-						const float saa = effectiveAA;
-						if (saa > 0.0f)
-						{
-							const float tt = saturate((sdist - saa) / (0.0f - saa));
-							scoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * shadowOpacity * depthAlpha;
-						}
-					}
-						if (scoverage > 0.001f)
-						{
-							float shadowBlend = scoverage;
-							if (blendMode == 0)
-							{
-								// Back: keep shadow behind the original element
-								shadowBlend = scoverage * (1.0f - originalAlpha);
-							}
-							else if (blendMode == 2 && ld.depth < 0.5f)
-							{
-								// Back portion of "Back and Front": keep shadow behind the original element
-								shadowBlend = scoverage * (1.0f - originalAlpha);
-							}
-
-							// Shadow: premultiplied alpha compositing (v62 fix)
-							float invShadow = 1.0f - shadowBlend;
-							float outAlpha = shadowBlend + a * invShadow;
-							if (outAlpha > 0.0f) {
-								outY = (shadowY * shadowBlend + outY * a * invShadow) / outAlpha;
-								outU = (shadowU * shadowBlend + outU * a * invShadow) / outAlpha;
-								outV = (shadowV * shadowBlend + outV * a * invShadow) / outAlpha;
-							}
-							a = outAlpha;
-						}
-					}
-					
-					// Draw the main line with motion blur
-					const float dx = (x + 0.5f) - ld.centerX;
-					const float dy = (y + 0.5f) - ld.centerY;
-					float coverage = 0.0f;
-
-					// Motion blur sampling
-					if (motionBlurEnable && motionBlurSamples > 1)
-					{
-						const int samples = motionBlurSamples;
-						const float shutterFraction = motionBlurStrength / 360.0f;
-						const float pixelsPerFrame = lineTravel / lineLifetime;
-						const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
-						const float blurRange = effectiveVelocity * shutterFraction;
-	
-						if (blurRange > 0.5f)
-						{
-							// Multi-sample motion blur with uniform averaging
-							// Pre-compute rotation (optimization: avoid redundant calculation in loop)
-							const float px_rotated = dx * ld.cosA + dy * ld.sinA;
-							const float py_rotated = -dx * ld.sinA + dy * ld.cosA;
-							float accumA = 0.0f;
-
-							for (int s = 0; s < samples; ++s)
-							{
-								const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
-								const float sampleOffset = blurRange * t;
-
-								// Use pre-computed rotation, only apply offset
-								const float pxSample = px_rotated - (ld.segCenterX + sampleOffset);
-								const float pySample = py_rotated;
-
-								float distSample = (lineCap == 0)
-									? SDFBox(pxSample, pySample, ld.halfLen, ld.halfThick)
-									: SDFCapsule(pxSample, pySample, ld.halfLen, ld.halfThick);
-
-								const float tailT = saturate((pxSample + ld.halfLen) * ld.invDenom);  // Use pre-computed
-								const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
-								const float aa = effectiveAA;
-								float sampleCoverage = 0.0f;
-								if (aa > 0.0f)
-								{
-									const float tt = saturate((distSample - aa) / (0.0f - aa));
-									sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
-								}
-
-								accumA += sampleCoverage;
-							}
-
-							coverage = (accumA / (float)samples) * ld.focusAlpha * depthAlpha;
-						}
-						else
-						{
-							// Blur too small, use single sample
-							float px = dx * ld.cosA + dy * ld.sinA;
-							const float py = -dx * ld.sinA + dy * ld.cosA;
-							px -= ld.segCenterX;
-
-							float dist = (lineCap == 0)
-								? SDFBox(px, py, ld.halfLen, ld.halfThick)
-								: SDFCapsule(px, py, ld.halfLen, ld.halfThick);
-
-							const float aa = effectiveAA;
-									const float tailT = saturate((px + ld.halfLen) * ld.invDenom);  // Use pre-computed
-							const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
-							if (aa > 0.0f)
-							{
-								const float tt = saturate((dist - aa) / (0.0f - aa));
-								coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * ld.focusAlpha * depthAlpha;
-							}
-						}
-					}
-					else
-					{
-						// No motion blur (single sample)
-						float px = dx * ld.cosA + dy * ld.sinA;
-						const float py = -dx * ld.sinA + dy * ld.cosA;
-						px -= ld.segCenterX;
-
-						float dist = (lineCap == 0)
-							? SDFBox(px, py, ld.halfLen, ld.halfThick)
-							: SDFCapsule(px, py, ld.halfLen, ld.halfThick);
-
-						const float aa = effectiveAA;
-							const float tailT = saturate((px + ld.halfLen) * ld.invDenom);  // Use pre-computed
-						const float tailFade = 1.0f + (tailT - 1.0f) * lineTailFade;
-						if (aa > 0.0f)
-						{
-							const float tt = saturate((dist - aa) / (0.0f - aa));
-							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * ld.focusAlpha * depthAlpha;
-						}
-					}
-					if (coverage > 0.001f)
-					{
-						const int ci = ld.colorIndex >= 0 && ld.colorIndex < 8 ? ld.colorIndex : 0;
-						
-						// Save alpha before this line's contribution
-						const float prevAlpha = a;
-						
-						// Apply blend mode
-						if (blendMode == 0)  // Back (behind element)
-						{
-							float srcAlpha = coverage * (1.0f - originalAlpha);
-							BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
-							                   outY, outU, outV, a);
-						}
-						else if (blendMode == 1)  // Front (in front of element)
-						{
-							float srcAlpha = coverage;
-							BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
-							                   outY, outU, outV, a);
-						}
-						else if (blendMode == 2)  // Back and Front (split by per-line depth)
-						{
-							// Use stored depth value from line data (consistent across frames)
-							if (ld.depth < 0.5f)
-							{
-								// Back mode (full)
-								float srcAlpha = coverage * (1.0f - originalAlpha);
-								BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
-								                   outY, outU, outV, a);
-							}
-							else
-							{
-								// Front mode (full) -> accumulate separately, apply after loop
-								// Use un-premultiplied accumulation (same as CUDA/OpenCL)
-								float srcAlpha = coverage;
-								BlendUnpremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
-								                     frontY, frontU, frontV, frontA);
-								frontAppearAlpha = std::min(frontAppearAlpha, ld.appearAlpha);
-							}
-						}
-						else if (blendMode == 3)  // Alpha (XOR with original element only)
-						{
-							// Line-to-line blending: premultiplied compositing
-							float srcAlpha = coverage;
-							BlendPremultiplied(paletteY[ci], paletteU[ci], paletteV[ci], srcAlpha,
-							                   outY, outU, outV, a);
-							// Track line-only alpha
-							lineOnlyAlpha = std::max(lineOnlyAlpha, coverage * ld.appearAlpha);
-						}
-					}
-				}
-
-				// Apply XOR with original element AFTER all lines are drawn (blend mode 3)
-				if (blendMode == 3 && originalAlpha > 0.0f)
-				{
-					// Alpha XOR mode: 
-					// - Where lines exist: XOR alpha with original, show original color
-					// - Where only original exists (no lines): show original element as-is
-					
-					if (lineOnlyAlpha > 0.0f)
-					{
-						// XOR alpha calculation: where overlap exists, alpha is reduced
-						const float xorAlpha = saturate(originalAlpha + lineOnlyAlpha - (originalAlpha * lineOnlyAlpha * 2.0f));
-						
-						// For color: where original element exists, show original color
-						outV = outV * (1.0f - originalAlpha) + originalV * originalAlpha;
-						outU = outU * (1.0f - originalAlpha) + originalU * originalAlpha;
-						outY = outY * (1.0f - originalAlpha) + originalY * originalAlpha;
-						a = xorAlpha;
-					}
-					else
-					{
-						// No lines here, but original element exists - show original element
-						outV = originalV;
-						outU = originalU;
-						outY = originalY;
-						a = originalAlpha;
-					}
-				}
-
-				// Apply front lines after back lines (blend mode 2)
-				if (blendMode == 2 && frontA > 0.0f)
-				{
-				float prevAlpha = a;
-				float invFrontA = 1.0f - frontA;
-				float newAlpha = frontA + a * invFrontA;
-				if (newAlpha > 0.0f) {
-					outV = (frontV * frontA + outV * a * invFrontA) / newAlpha;
-					outU = (frontU * frontA + outU * a * invFrontA) / newAlpha;
-					outY = (frontY * frontA + outY * a * invFrontA) / newAlpha;
-				}
-				a = prevAlpha + (newAlpha - prevAlpha) * frontAppearAlpha;
-			}
-
-			// Draw spawn area preview (filled with inverted colors)
-			if (showSpawnArea)
-				{
-					const float alphaCenterX = alphaBoundsMinX + alphaBoundsWidth * 0.5f;
-					const float alphaCenterY = alphaBoundsMinY + alphaBoundsHeight * 0.5f;
-					const float halfW = alphaBoundsWidth * spawnScaleX * 0.5f;
-					const float halfH = alphaBoundsHeight * spawnScaleY * 0.5f;
-					
-					// Transform pixel position to rotated spawn space
-					const float relX = (x + 0.5f) - alphaCenterX - userOriginOffsetX;
-					const float relY = (y + 0.5f) - alphaCenterY - userOriginOffsetY;
-					// Inverse rotate to check bounds
-					const float localX = relX * spawnCos + relY * spawnSin;
-					const float localY = -relX * spawnSin + relY * spawnCos;
-					
-					// Check if inside the spawn area (filled)
-					if (fabsf(localX) <= halfW && fabsf(localY) <= halfH)
-					{
-						// Blend with spawn area color at 50%
-						const float blendAlpha = 0.5f;
-						const float baseV = (a <= 0.0f) ? spawnAreaV : outV;
-						const float baseU = (a <= 0.0f) ? spawnAreaU : outU;
-						const float baseY = (a <= 0.0f) ? spawnAreaY : outY;
-						float blendedV = baseV + (spawnAreaV - baseV) * blendAlpha;
-						float blendedU = baseU + (spawnAreaU - baseU) * blendAlpha;
-						float blendedY = baseY + (spawnAreaY - baseY) * blendAlpha;
-						outV = blendedV;
-						outU = blendedU;
-						outY = blendedY;
-						a = std::max(a, blendAlpha);
-					}
-				}
-
-				// DEBUG: Draw RED CIRCLE in top-left corner to indicate CPU is being used
-				// Shape: Circle (CPU = fallback)
-				{
-					const float cx = 20.0f;  // Circle center X
-					const float cy = 20.0f;  // Circle center Y
-					const float radius = 15.0f;
-					const float dx = (x + 0.5f) - cx;
-					const float dy = (y + 0.5f) - cy;
-					if (dx * dx + dy * dy <= radius * radius)
-					{
-					outV = 0.5f;   // V for red in YUV
-					outU = 0.0f;   // U for red in YUV
-					outY = 0.3f;   // Y for red in YUV (low luma)
-					a = 1.0f;      // A = 1
-				}
-			}
-			
-			// Note: Premultiplied alpha compositing already produces correctly weighted colors
-			// No additional premultiplication needed - output is straight alpha format
-			// Premiere Pro handles the compositing correctly with straight alpha
-
-			((float*)destData)[x * 4 + 0] = outV;
-			((float*)destData)[x * 4 + 1] = outU;
-			((float*)destData)[x * 4 + 2] = outY;
-			((float*)destData)[x * 4 + 3] = a;
-		}
-	}
-}	return PF_Err_NONE;
-}
-
-/*
-**
-*/
-#if _WIN32 || defined(MSWindows)
-#define DllExport   __declspec( dllexport )
-#else
-#define DllExport	__attribute__((visibility("default")))
-#endif
-extern "C" DllExport PF_Err EffectMain(
-	PF_Cmd inCmd,
-	PF_InData* in_data,
-	PF_OutData* out_data,
-	PF_ParamDef* params[],
-	PF_LayerDef* inOutput,
-	void* extra)
-{
-	PF_Err err = PF_Err_NONE;
-	switch (inCmd)
-	{
-	case PF_Cmd_GLOBAL_SETUP:
-		err = GlobalSetup(in_data, out_data, params, inOutput);
-		break;
-	case PF_Cmd_GLOBAL_SETDOWN:
-		err = GlobalSetdown(in_data, out_data, params, inOutput);
-		break;
-	case PF_Cmd_PARAMS_SETUP:
-		err = ParamsSetup(in_data, out_data, params, inOutput);
-		break;
-	case PF_Cmd_USER_CHANGED_PARAM:
-	{
-		PF_UserChangedParamExtra* changedExtra = reinterpret_cast<PF_UserChangedParamExtra*>(extra);
-		
-		// Effect Preset: apply preset parameters or defaults
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_EFFECT_PRESET)
-		{
-			const int presetValue = params[SDK_PROCAMP_EFFECT_PRESET]->u.pd.value;
-			if (presetValue == 1)
-			{
-				ApplyDefaultEffectParams(in_data, out_data, params);
-			}
-			else if (presetValue > 1)
-			{
-				// Debounce: ignore double-fire within 200ms
-				const uint32_t currentTime = GetCurrentTimeMs();
-				const uint32_t lastTime = sLastPresetClickTime.load();
-				if (currentTime - lastTime < kPresetDebounceMs)
-				{
-					break;  // Ignore duplicate event
-				}
-				sLastPresetClickTime.store(currentTime);
-				ApplyEffectPreset(in_data, out_data, params, presetValue - 2);
-			}
-		}
-		
-		// Color Preset: auto-switch Color Mode to "Preset"
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_COLOR_PRESET)
-		{
-			const int currentMode = params[SDK_PROCAMP_COLOR_MODE]->u.pd.value;
-			if (currentMode != COLOR_MODE_PRESET)
-			{
-				params[SDK_PROCAMP_COLOR_MODE]->u.pd.value = COLOR_MODE_PRESET;
-				params[SDK_PROCAMP_COLOR_MODE]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
-				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
-				if (paramUtils.get())
-				{
-					paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_COLOR_MODE, params[SDK_PROCAMP_COLOR_MODE]);
-				}
-				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
-			}
-		}
-		
-		// Single Color: auto-switch Color Mode to "Single"
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_LINE_COLOR)
-		{
-			const int currentMode = params[SDK_PROCAMP_COLOR_MODE]->u.pd.value;
-			if (currentMode != COLOR_MODE_SINGLE)
-			{
-				params[SDK_PROCAMP_COLOR_MODE]->u.pd.value = COLOR_MODE_SINGLE;
-				params[SDK_PROCAMP_COLOR_MODE]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
-				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
-				if (paramUtils.get())
-				{
-					paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_COLOR_MODE, params[SDK_PROCAMP_COLOR_MODE]);
-				}
-				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
-			}
-		}
-		
-		// Spawn Source: enable/disable Alpha Threshold based on selection
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_SPAWN_SOURCE)
-		{
-			// Update Alpha Threshold visibility
-			UpdateAlphaThresholdVisibility(in_data, params);
-			out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
-		}
-		
-		ApplyRectColorUi(in_data, out_data, params);
-		SyncLineColorParams(params);
-		HideLineColorParams(in_data);
-		UpdateAlphaThresholdVisibility(in_data, params);
-		UpdatePseudoGroupVisibility(in_data, params);
-	}
-		break;
-	case PF_Cmd_UPDATE_PARAMS_UI:
-	{
-		// Update UI state for all parameters
-		ApplyRectColorUi(in_data, out_data, params);
-		SyncLineColorParams(params);
-		HideLineColorParams(in_data);
-		UpdateAlphaThresholdVisibility(in_data, params);
-		UpdatePseudoGroupVisibility(in_data, params);
-	}
-		break;
-	case PF_Cmd_RENDER:
-		SyncLineColorParams(params);
-		HideLineColorParams(in_data);
-		err = Render(in_data, out_data, params, inOutput);
-		break;
-	}
-	return err;
 }
