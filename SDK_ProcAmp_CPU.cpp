@@ -1026,7 +1026,9 @@ static PF_Err ParamsSetup(
 {
 	PF_ParamDef	def;
 	
-	// Iterate through parameters in display order defined by PARAM_DISPLAY_ORDER
+	// Iterate through parameters in display order defined by PARAM_DISPLAY_ORDER.
+	// The array size is validated at compile-time by static_assert in SDK_ProcAmp_ParamOrder.h
+	// to ensure it contains exactly SDK_PROCAMP_NUM_PARAMS elements.
 	for (int i = 0; i < SDK_PROCAMP_NUM_PARAMS; ++i)
 	{
 		int paramId = PARAM_DISPLAY_ORDER[i];
@@ -1034,7 +1036,8 @@ static PF_Err ParamsSetup(
 		switch (paramId)
 		{
 			case SDK_PROCAMP_INPUT:
-				// Input layer is handled automatically by After Effects
+				// Input layer is handled automatically by After Effects framework.
+				// No explicit registration needed - this is the layer input parameter (index 0).
 				break;
 			
 			case SDK_PROCAMP_EFFECT_PRESET:
@@ -1823,6 +1826,21 @@ static PF_Err ParamsSetup(
 					LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
 					PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_B);
 				break;
+			
+			default:
+				// This should never happen due to compile-time static_assert in SDK_ProcAmp_ParamOrder.h
+				// If we reach here, PARAM_DISPLAY_ORDER contains an invalid parameter ID
+#ifdef _DEBUG
+				// In debug builds, report the error
+				char error_msg[256];
+				snprintf(error_msg, sizeof(error_msg), "Invalid parameter ID in PARAM_DISPLAY_ORDER[%d]: %d", i, paramId);
+				out_data->out_flags = PF_OutFlag_DISPLAY_ERROR_MESSAGE;
+				PF_SPRINTF(out_data->return_msg, error_msg);
+				return PF_Err_BAD_CALLBACK_PARAM;
+#else
+				// In release builds, silently skip to avoid crashes
+				break;
+#endif
 		}
 	}
 	
