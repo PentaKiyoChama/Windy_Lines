@@ -1,5 +1,30 @@
 # Parameter Reordering Implementation Notes
 
+## ⚠️ CRITICAL FIX APPLIED - 2026-02-07
+
+**Issue**: Plugin was not appearing in After Effects effect list after implementation.
+
+**Root Cause**: The ParamsSetup loop was starting at index 0, which included SDK_PROCAMP_INPUT. However, INPUT (parameter 0) should NOT be explicitly registered via PF_ADD_* macros as it's automatically handled by the After Effects framework.
+
+**Solution Applied**: Changed loop to start at index 1:
+```cpp
+// CORRECT implementation (applied):
+for (int paramIndex = 1; paramIndex < SDK_PROCAMP_NUM_PARAMS; ++paramIndex)
+{
+    int paramId = PARAM_DISPLAY_ORDER[paramIndex];
+    switch (paramId) {
+        case SDK_PROCAMP_EFFECT_PRESET:  // First actual parameter
+            // ... register it
+            break;
+        // ... other parameters (INPUT case removed)
+    }
+}
+```
+
+See **PARAMSSETUP_FIX_2026-02-07.md** for complete details.
+
+---
+
 ## Current Implementation Status
 
 ### ✅ Completed
@@ -8,9 +33,8 @@
 3. **Validation test** - test_param_order.cpp (all tests passing)
 4. **Documentation** - Complete guides and examples
 5. **Design validation** - System architecture proven sound
-
-### 🔲 To Complete
-**Modify ParamsSetup() in SDK_ProcAmp_CPU.cpp** to use PARAM_DISPLAY_ORDER array
+6. **ParamsSetup integration** - Implemented with switch statement approach (2026-02-07)
+7. **Plugin visibility fix** - Loop now correctly starts at index 1 (2026-02-07)
 
 ---
 
@@ -98,7 +122,8 @@ static PF_Err ParamsSetup(...)
     PF_ParamDef def;
     
     // Register parameters in DISPLAY order
-    for (int i = 0; i < SDK_PROCAMP_NUM_PARAMS; ++i)
+    // NOTE: Start from index 1 to skip SDK_PROCAMP_INPUT (automatically handled)
+    for (int i = 1; i < SDK_PROCAMP_NUM_PARAMS; ++i)
     {
         int paramId = PARAM_DISPLAY_ORDER[i];
         PARAM_REGISTRARS[paramId](def);
@@ -121,9 +146,11 @@ static PF_Err ParamsSetup(...)
 
 ---
 
-#### Option B: Switch Statement (Simpler)
+#### Option B: Switch Statement (Simpler) ✅ IMPLEMENTED
 
 Use a switch statement to call appropriate PF_ADD_* based on parameter ID:
+
+**IMPORTANT**: Loop must start at index 1 to skip SDK_PROCAMP_INPUT!
 
 ```cpp
 static PF_Err ParamsSetup(...)
@@ -131,7 +158,8 @@ static PF_Err ParamsSetup(...)
     PF_ParamDef def;
     
     // Register parameters in DISPLAY order
-    for (int i = 0; i < SDK_PROCAMP_NUM_PARAMS; ++i)
+    // NOTE: Start from index 1 to skip SDK_PROCAMP_INPUT (automatically handled)
+    for (int i = 1; i < SDK_PROCAMP_NUM_PARAMS; ++i)
     {
         int paramId = PARAM_DISPLAY_ORDER[i];
         
@@ -139,10 +167,7 @@ static PF_Err ParamsSetup(...)
         
         switch (paramId)
         {
-            case SDK_PROCAMP_INPUT:
-                // Input is handled automatically by SDK
-                break;
-                
+            case SDK_PROCAMP_EFFECT_PRESET:
             case SDK_PROCAMP_EFFECT_PRESET:
             {
                 std::string presetLabels = "デフォルト|";
@@ -216,7 +241,8 @@ static PF_Err ParamsSetup(...)
 {
     PF_ParamDef def;
     
-    for (int i = 0; i < SDK_PROCAMP_NUM_PARAMS; ++i)
+    // NOTE: Start from index 1 to skip SDK_PROCAMP_INPUT (automatically handled)
+    for (int i = 1; i < SDK_PROCAMP_NUM_PARAMS; ++i)
     {
         int paramId = PARAM_DISPLAY_ORDER[i];
         AEFX_CLR_STRUCT(def);
