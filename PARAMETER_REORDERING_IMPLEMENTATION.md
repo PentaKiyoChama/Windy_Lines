@@ -168,7 +168,6 @@ static PF_Err ParamsSetup(...)
         switch (paramId)
         {
             case SDK_PROCAMP_EFFECT_PRESET:
-            case SDK_PROCAMP_EFFECT_PRESET:
             {
                 std::string presetLabels = "デフォルト|";
                 for (int j = 0; j < kEffectPresetCount; ++j) {
