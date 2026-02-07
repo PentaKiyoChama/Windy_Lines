@@ -125,7 +125,7 @@
 
 namespace ParamNames
 {
-    constexpr const char* LINE_COUNT        = "線の数";
+    constexpr const char* LINE_COUNT        = "線の数";//default: 100
     constexpr const char* LIFETIME          = "寿命(fps)";
     constexpr const char* TRAVEL            = "移動距離(px)";
     constexpr const char* SEED              = "ランダムシード";
