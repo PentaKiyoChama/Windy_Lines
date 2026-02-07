@@ -25,6 +25,7 @@
 #include "SDK_ProcAmp_Version.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
+#include <algorithm>
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
@@ -394,8 +395,11 @@ struct alignas(64) LineDerived
 	float lineVelocity;    // Instantaneous velocity for motion blur
 	int colorIndex;        // Palette color index (0-7)
 	
-	// Padding to align to cache line boundary (offset 56-63)
-	int _padding;
+	// Pre-computed tile boundaries (optimization: avoid redundant calculation)
+	int tileMinX;
+	int tileMinY;
+	int tileMaxX;
+	int tileMaxY;
 };
 
 struct LineInstanceState
@@ -410,6 +414,10 @@ struct LineInstanceState
 	int lineSeed = 0;
 	float lineDepthStrength = 0.0f;
 	int lineInterval = 0;
+	
+	// Memory pool optimization: track reserved capacity
+	int maxLineCapacity = 0;
+	int maxTileCapacity = 0;
 };
 
 struct ClipTimeState
@@ -1943,42 +1951,58 @@ static PF_Err Render(
 		}
 		
 		// Apply linkage to parameters using spawn bounds (範囲ソース)
+		// Note: alphaBoundsWidth/Height are in downsampled pixels.
+		// When linkage is OFF, user input is in full-resolution pixels, so we need dsScale.
+		// When linkage is ON (WIDTH/HEIGHT), bounds are already downsampled, so no dsScale needed.
 		float finalLineLength = lineLength;
 		float finalLineThickness = lineThickness;
 		float finalLineTravel = lineTravel;
 		
-		// Length linkage
+		// Length linkage (use bounds directly - they represent actual visible size)
 		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
 			finalLineLength = alphaBoundsWidth * lengthLinkageRate;
 		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
 			finalLineLength = alphaBoundsHeight * lengthLinkageRate;
 		}
 		
-		// Thickness linkage
+		// Thickness linkage (use bounds directly - they represent actual visible size)
 		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
 			finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
 		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
 			finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
 		}
 		
-		// Travel linkage
+		// Travel linkage (use bounds directly - they represent actual visible size)
 		if (travelLinkage == LINKAGE_MODE_WIDTH) {
 			finalLineTravel = alphaBoundsWidth * travelLinkageRate;
 		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
 			finalLineTravel = alphaBoundsHeight * travelLinkageRate;
 		}
 		
-		// Now calculate scaled values with linkage applied
-		const float lineThicknessScaled = finalLineThickness * dsScale;
-		const float lineLengthScaled = finalLineLength * dsScale;
-		const float lineTravelScaled = finalLineTravel * dsScale;
+		// Apply dsScale only when linkage is OFF (user input is full-resolution)
+		// When linkage is ON, values are already in downsampled space
+		const float lineThicknessScaled = (thicknessLinkage == LINKAGE_MODE_OFF) ? (finalLineThickness * dsScale) : finalLineThickness;
+		const float lineLengthScaled = (lengthLinkage == LINKAGE_MODE_OFF) ? (finalLineLength * dsScale) : finalLineLength;
+		const float lineTravelScaled = (travelLinkage == LINKAGE_MODE_OFF) ? (finalLineTravel * dsScale) : finalLineTravel;
 		
 		// Generate line params locally each frame for stateless rendering (after linkage applied)
 		lineState->lineCount = clampedLineCount;
 		lineState->lineSeed = lineSeed;
 		lineState->lineDepthStrength = lineDepthStrength;
 		lineState->lineInterval = intervalFrames;
-		lineState->lineParams.assign(clampedLineCount, {});
+		
+		// Memory pool optimization: reserve capacity on first allocation or when growing
+		if (clampedLineCount > lineState->maxLineCapacity)
+		{
+			const int newCapacity = clampedLineCount * 3 / 2;  // 50% over-allocation
+			lineState->lineParams.reserve(newCapacity);
+			lineState->lineDerived.reserve(newCapacity);
+			lineState->lineActive.reserve(newCapacity);
+			lineState->maxLineCapacity = newCapacity;
+		}
+		
+		// Use resize instead of assign (faster when capacity is already reserved)
+		lineState->lineParams.resize(clampedLineCount);
 		for (int i = 0; i < clampedLineCount; ++i)
 		{
 			const csSDK_uint32 base = (csSDK_uint32)(lineSeed * 1315423911u) + (csSDK_uint32)i * 2654435761u;
@@ -2001,8 +2025,8 @@ static PF_Err Render(
 			lineState->lineParams[i] = lp;
 		}
 
-		lineState->lineDerived.assign(lineState->lineCount, {});
-		lineState->lineActive.assign(lineState->lineCount, 0);
+		lineState->lineDerived.resize(lineState->lineCount);
+		lineState->lineActive.resize(lineState->lineCount);
 	
 	// Start Time + Duration: control when lines spawn
 	const float lineStartTime = (float)params[SDK_PROCAMP_LINE_START_TIME]->u.fs_d.value;
@@ -2021,6 +2045,21 @@ static PF_Err Render(
 	// Animation Pattern (1=Simple, 2=Half Reverse, 3=Split)
 	const int animPattern = params[SDK_PROCAMP_ANIM_PATTERN]->u.pd.value;
 	const float centerGap = (float)params[SDK_PROCAMP_CENTER_GAP]->u.fs_d.value;
+	
+	// Pre-compute perpendicular vector (optimization: avoid redundant calculation in line loop)
+	// All lines share the same perpendicular axis for center gap and Split pattern
+	const float invW = alphaBoundsWidth > 0.0f ? (1.0f / alphaBoundsWidth) : 1.0f;
+	const float invH = alphaBoundsHeight > 0.0f ? (1.0f / alphaBoundsHeight) : 1.0f;
+	const float dirX = lineCos * invW;
+	const float dirY = lineSin * invH;
+	float perpX = -dirY;  // Perpendicular to movement direction
+	float perpY = dirX;
+	const float perpLen = sqrtf(perpX * perpX + perpY * perpY);
+	if (perpLen > 0.00001f)
+	{
+		perpX /= perpLen;
+		perpY /= perpLen;
+	}
 	
 	for (int i = 0; lineState && i < lineState->lineCount; ++i)
 		{
@@ -2146,19 +2185,7 @@ static PF_Err Render(
 		float adjustedPosY = lp.posY;
 		float adjustedAngle = lineAngle;
 		
-		// Calculate perpendicular axis for center gap and Split pattern (aspect-corrected)
-		const float invW = alphaBoundsWidth > 0.0f ? (1.0f / alphaBoundsWidth) : 1.0f;
-		const float invH = alphaBoundsHeight > 0.0f ? (1.0f / alphaBoundsHeight) : 1.0f;
-		const float dirX = lineCos * invW;
-		const float dirY = lineSin * invH;
-		float perpX = -dirY;  // Perpendicular to movement direction
-		float perpY = dirX;
-		const float perpLen = sqrtf(perpX * perpX + perpY * perpY);
-		if (perpLen > 0.00001f)
-		{
-			perpX /= perpLen;
-			perpY /= perpLen;
-		}
+		// Use pre-computed perpendicular vector (optimization)
 		const float sideValue = (lp.posX - 0.5f) * perpX + (lp.posY - 0.5f) * perpY;
 		
 		// Apply center gap (hide lines in center zone)
@@ -2233,7 +2260,6 @@ static PF_Err Render(
 		ld.depthAlpha = 0.05f + 0.95f * depthFadeT;
 		const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
 		ld.invDenom = 1.0f / denom;
-		ld._padding = 0;  // Initialize padding for clean memory
 		
 		lineState->lineDerived[i] = ld;
 	}
@@ -2242,10 +2268,42 @@ static PF_Err Render(
 		const int tileCountX = (output->width + tileSize - 1) / tileSize;
 		const int tileCountY = (output->height + tileSize - 1) / tileSize;
 		const int tileCount = tileCountX * tileCountY;
+		
+		// Pre-compute tile boundaries for each line (optimization: avoid redundant calculation)
+		for (int i = 0; i < lineState->lineCount; ++i)
+		{
+			LineDerived& ld = lineState->lineDerived[i];
+			const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
+			int minX = (int)((ld.centerX - radius) / tileSize);
+			int maxX = (int)((ld.centerX + radius) / tileSize);
+			int minY = (int)((ld.centerY - radius) / tileSize);
+			int maxY = (int)((ld.centerY + radius) / tileSize);
+			
+			// Clamp to tile grid bounds
+			ld.tileMinX = (minX < 0) ? 0 : ((minX >= tileCountX) ? (tileCountX - 1) : minX);
+			ld.tileMaxX = (maxX < 0) ? 0 : ((maxX >= tileCountX) ? (tileCountX - 1) : maxX);
+			ld.tileMinY = (minY < 0) ? 0 : ((minY >= tileCountY) ? (tileCountY - 1) : minY);
+			ld.tileMaxY = (maxY < 0) ? 0 : ((maxY >= tileCountY) ? (tileCountY - 1) : maxY);
+		}
 
 		if (lineState)
 		{
-			lineState->tileCounts.assign(tileCount, 0);
+			// Memory pool optimization: reserve capacity for tile data
+			if (tileCount > lineState->maxTileCapacity)
+			{
+				const int newTileCapacity = tileCount * 3 / 2;  // 50% over-allocation
+				lineState->tileCounts.reserve(newTileCapacity);
+				lineState->tileOffsets.reserve(newTileCapacity + 1);
+				// tileIndices needs dynamic sizing, estimated at lineCount * tileCount / 4
+				const int estimatedIndices = lineState->lineCount * tileCount / 4;
+				lineState->tileIndices.reserve(estimatedIndices);
+				lineState->maxTileCapacity = newTileCapacity;
+			}
+			
+			// Use resize instead of assign (faster when capacity is already reserved)
+			lineState->tileCounts.resize(tileCount);
+			// Clear to zero explicitly since resize doesn't initialize
+			std::fill(lineState->tileCounts.begin(), lineState->tileCounts.end(), 0);
 		}
 		for (int i = 0; lineState && i < lineState->lineCount; ++i)
 		{
@@ -2254,18 +2312,10 @@ static PF_Err Render(
 				continue;
 			}
 			const LineDerived& ld = lineState->lineDerived[i];
-			const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
-			int minX = (int)((ld.centerX - radius) / tileSize);
-			int maxX = (int)((ld.centerX + radius) / tileSize);
-			int minY = (int)((ld.centerY - radius) / tileSize);
-			int maxY = (int)((ld.centerY + radius) / tileSize);
-			if (minX < 0) minX = 0;
-			if (minY < 0) minY = 0;
-			if (maxX >= tileCountX) maxX = tileCountX - 1;
-			if (maxY >= tileCountY) maxY = tileCountY - 1;
-			for (int ty = minY; ty <= maxY; ++ty)
+			// Use pre-computed tile boundaries (optimization)
+			for (int ty = ld.tileMinY; ty <= ld.tileMaxY; ++ty)
 			{
-				for (int tx = minX; tx <= maxX; ++tx)
+				for (int tx = ld.tileMinX; tx <= ld.tileMaxX; ++tx)
 				{
 					lineState->tileCounts[ty * tileCountX + tx] += 1;
 				}
@@ -2274,7 +2324,8 @@ static PF_Err Render(
 
 		if (lineState)
 		{
-			lineState->tileOffsets.assign(tileCount + 1, 0);
+			lineState->tileOffsets.resize(tileCount + 1);
+			lineState->tileOffsets[0] = 0;
 			for (int i = 0; i < tileCount; ++i)
 			{
 				lineState->tileOffsets[i + 1] = lineState->tileOffsets[i] + lineState->tileCounts[i];
@@ -2282,8 +2333,12 @@ static PF_Err Render(
 		}
 		if (lineState)
 		{
-			lineState->tileIndices.assign(lineState->tileOffsets[tileCount], 0);
-			std::vector<int> tileCursor = lineState->tileOffsets;
+			const int totalIndices = lineState->tileOffsets[tileCount];
+			lineState->tileIndices.resize(totalIndices);
+			// Avoid vector copy by resizing and copying separately
+			std::vector<int> tileCursor;
+			tileCursor.resize(lineState->tileOffsets.size());
+			std::copy(lineState->tileOffsets.begin(), lineState->tileOffsets.end(), tileCursor.begin());
 			for (int i = 0; i < lineState->lineCount; ++i)
 			{
 				if (!lineState->lineActive[i])
@@ -2291,18 +2346,10 @@ static PF_Err Render(
 					continue;
 				}
 				const LineDerived& ld = lineState->lineDerived[i];
-				const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
-				int minX = (int)((ld.centerX - radius) / tileSize);
-				int maxX = (int)((ld.centerX + radius) / tileSize);
-				int minY = (int)((ld.centerY - radius) / tileSize);
-				int maxY = (int)((ld.centerY + radius) / tileSize);
-				if (minX < 0) minX = 0;
-				if (minY < 0) minY = 0;
-				if (maxX >= tileCountX) maxX = tileCountX - 1;
-				if (maxY >= tileCountY) maxY = tileCountY - 1;
-				for (int ty = minY; ty <= maxY; ++ty)
+				// Use pre-computed tile boundaries (optimization)
+				for (int ty = ld.tileMinY; ty <= ld.tileMaxY; ++ty)
 				{
-					for (int tx = minX; tx <= maxX; ++tx)
+					for (int tx = ld.tileMinX; tx <= ld.tileMaxX; ++tx)
 					{
 						const int idx = ty * tileCountX + tx;
 						lineState->tileIndices[tileCursor[idx]++] = i;
@@ -2317,6 +2364,13 @@ static PF_Err Render(
 #endif
 		for (int y = 0; y < output->height; ++y, srcData += src->rowbytes, destData += dest->rowbytes)
 		{
+			// Tile optimization: compute tile info once per row, update only when X crosses tile boundary
+			const int currentTileY = y / tileSize;
+			int lastTileX = -1;
+			int tileIndex = 0;
+			int start = 0;
+			int count = 0;
+			
 			for (int x = 0; x < output->width; ++x)
 			{
 				float v, u, luma, a;
@@ -2353,22 +2407,20 @@ static PF_Err Render(
 				// Track line-only alpha for Alpha XOR mode (blend mode 3)
 				float lineOnlyAlpha = 0.0f;
 
-				const int tileX = x / tileSize;
-				const int tileY = y / tileSize;
-				const int tileIndex = tileY * tileCountX + tileX;
-				const int start = lineState ? lineState->tileOffsets[tileIndex] : 0;
-				const int count = lineState ? lineState->tileCounts[tileIndex] : 0;
+				// Tile optimization: only update when crossing tile boundary
+				const int currentTileX = x / tileSize;
+				if (currentTileX != lastTileX)
+				{
+					tileIndex = currentTileY * tileCountX + currentTileX;
+					start = lineState ? lineState->tileOffsets[tileIndex] : 0;
+					count = lineState ? lineState->tileCounts[tileIndex] : 0;
+					lastTileX = currentTileX;
+				}
 				// Main line pass (with shadow drawn first for each line)
 				for (int i = 0; i < count; ++i)
 				{
 					const LineDerived& ld = lineState->lineDerived[lineState->tileIndices[start + i]];
 					const float depthAlpha = ld.depthAlpha;  // Use pre-computed
-
-					// === STEP 1-4: Skip extremely tiny lines (< 1 pixel thick) ===
-					if (ld.halfThick < 0.5f)
-					{
-						continue;  // Invisible line - skip all processing
-					}
 
 					// === STEP 2: Early skip optimization ===
 					// Check if pixel is outside line bounding box (with shadow offset margin)
@@ -2402,6 +2454,9 @@ static PF_Err Render(
 						const float blurRange = effectiveVelocity * shutterFraction;
 						if (blurRange > 0.5f)
 						{
+							// Pre-compute rotation for shadow (optimization)
+							const float spx_rotated = sdx * ld.cosA + sdy * ld.sinA;
+							const float spy_rotated = -sdx * ld.sinA + sdy * ld.cosA;
 							float saccumA = 0.0f;
 
 							for (int s = 0; s < samples; ++s)
@@ -2409,9 +2464,9 @@ static PF_Err Render(
 								const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
 								const float sampleOffset = blurRange * t;
 
-								float spxSample = sdx * ld.cosA + sdy * ld.sinA;
-								const float spySample = -sdx * ld.sinA + sdy * ld.cosA;
-								spxSample -= (ld.segCenterX + sampleOffset);
+								// Use pre-computed rotation, only apply offset
+								const float spxSample = spx_rotated - (ld.segCenterX + sampleOffset);
+								const float spySample = spy_rotated;
 
 								float sdistSample = (lineCap == 0)
 									? SDFBox(spxSample, spySample, ld.halfLen, ld.halfThick)
@@ -2516,6 +2571,9 @@ static PF_Err Render(
 						if (blurRange > 0.5f)
 						{
 							// Multi-sample motion blur with uniform averaging
+							// Pre-compute rotation (optimization: avoid redundant calculation in loop)
+							const float px_rotated = dx * ld.cosA + dy * ld.sinA;
+							const float py_rotated = -dx * ld.sinA + dy * ld.cosA;
 							float accumA = 0.0f;
 
 							for (int s = 0; s < samples; ++s)
@@ -2523,9 +2581,9 @@ static PF_Err Render(
 								const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
 								const float sampleOffset = blurRange * t;
 
-								float pxSample = dx * ld.cosA + dy * ld.sinA;
-								const float pySample = -dx * ld.sinA + dy * ld.cosA;
-								pxSample -= (ld.segCenterX + sampleOffset);
+								// Use pre-computed rotation, only apply offset
+								const float pxSample = px_rotated - (ld.segCenterX + sampleOffset);
+								const float pySample = py_rotated;
 
 								float distSample = (lineCap == 0)
 									? SDFBox(pxSample, pySample, ld.halfLen, ld.halfThick)
