@@ -506,6 +506,11 @@
 							float tt = fminf(fmaxf((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
 							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * focusAlpha * depthAlpha;
 						}
+						else
+						{
+							// No anti-aliasing: simple distance test (optimized)
+							coverage = (dist <= 0.0f) ? (tailFade * focusAlpha * depthAlpha) : 0.0f;
+						}
 					}
 				}
 				else
@@ -540,6 +545,11 @@
 					{
 						float tt = fminf(fmaxf((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
 						coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * focusAlpha * depthAlpha;
+					}
+					else
+					{
+						// No anti-aliasing: simple distance test (optimized)
+						coverage = (dist <= 0.0f) ? (tailFade * focusAlpha * depthAlpha) : 0.0f;
 					}
 				}
 				if (coverage > 0.0f)

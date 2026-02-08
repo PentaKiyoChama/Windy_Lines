@@ -2666,6 +2666,11 @@ static PF_Err Render(
 							const float tt = saturate((dist - aa) / (0.0f - aa));
 							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * ld.focusAlpha * depthAlpha;
 						}
+						else
+						{
+							// No anti-aliasing: simple distance test (optimized)
+							coverage = (dist <= 0.0f) ? (tailFade * ld.focusAlpha * depthAlpha) : 0.0f;
+						}
 					}
 					if (coverage > 0.001f)
 					{
