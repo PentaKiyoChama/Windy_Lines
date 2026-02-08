@@ -806,6 +806,30 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(SDK_PROCAMP_LINE_COLOR, true);
 	setVisible(SDK_PROCAMP_COLOR_PRESET, true);
 
+	// ========================================
+	// Linkage Settings: Conditional visibility based on linkage mode
+	// When linkage = "Off" (1): Show actual value, hide linkage rate
+	// When linkage = "On" (2 or 3): Hide actual value, show linkage rate
+	// ========================================
+	
+	// Thickness Linkage
+	const int thicknessLinkage = params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value;
+	const bool thicknessIsLinked = (thicknessLinkage == 2 || thicknessLinkage == 3); // 2=Width, 3=Height
+	setVisible(SDK_PROCAMP_LINE_THICKNESS, !thicknessIsLinked);         // Show actual value when Off
+	setVisible(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, thicknessIsLinked);  // Show rate when linked
+
+	// Length Linkage
+	const int lengthLinkage = params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value;
+	const bool lengthIsLinked = (lengthLinkage == 2 || lengthLinkage == 3); // 2=Width, 3=Height
+	setVisible(SDK_PROCAMP_LINE_LENGTH, !lengthIsLinked);         // Show actual value when Off
+	setVisible(SDK_PROCAMP_LENGTH_LINKAGE_RATE, lengthIsLinked);  // Show rate when linked
+
+	// Travel Distance Linkage
+	const int travelLinkage = params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value;
+	const bool travelIsLinked = (travelLinkage == 2 || travelLinkage == 3); // 2=Width, 3=Height
+	setVisible(SDK_PROCAMP_LINE_TRAVEL, !travelIsLinked);         // Show actual value when Off
+	setVisible(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, travelIsLinked);  // Show rate when linked
+
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
 }
 
@@ -1106,6 +1130,30 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_LINE_INTERVAL);
 
+	// Travel Distance Linkage
+	AEFX_CLR_STRUCT(def);
+	def.flags = PF_ParamFlag_SUPERVISE;
+	PF_ADD_POPUP(
+		P_TRAVEL_LINKAGE,
+		3,
+		LINKAGE_MODE_DFLT,
+		PM_LINKAGE_MODE,
+		SDK_PROCAMP_TRAVEL_LINKAGE);
+
+	// Travel Distance Linkage Rate
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_TRAVEL_LINKAGE_RATE,
+		LINKAGE_RATE_MIN_VALUE,
+		LINKAGE_RATE_MAX_VALUE,
+		LINKAGE_RATE_MIN_SLIDER,
+		LINKAGE_RATE_MAX_SLIDER,
+		LINKAGE_RATE_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		SDK_PROCAMP_TRAVEL_LINKAGE_RATE);
+
 	// Travel Distance
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_FLOAT_SLIDERX(
@@ -1186,6 +1234,30 @@ static PF_Err ParamsSetup(
 	// Appearance
 	// ============================================================
 
+	// Line Thickness Linkage
+	AEFX_CLR_STRUCT(def);
+	def.flags = PF_ParamFlag_SUPERVISE;
+	PF_ADD_POPUP(
+		P_THICKNESS_LINKAGE,
+		3,
+		LINKAGE_MODE_DFLT,
+		PM_LINKAGE_MODE,
+		SDK_PROCAMP_THICKNESS_LINKAGE);
+
+	// Line Thickness Linkage Rate
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_THICKNESS_LINKAGE_RATE,
+		LINKAGE_RATE_MIN_VALUE,
+		LINKAGE_RATE_MAX_VALUE,
+		LINKAGE_RATE_MIN_SLIDER,
+		LINKAGE_RATE_MAX_SLIDER,
+		LINKAGE_RATE_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		SDK_PROCAMP_THICKNESS_LINKAGE_RATE);
+
 	// Line Thickness
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_FLOAT_SLIDERX(
@@ -1199,6 +1271,30 @@ static PF_Err ParamsSetup(
 		0,
 		0,
 		SDK_PROCAMP_LINE_THICKNESS);
+
+	// Line Length Linkage
+	AEFX_CLR_STRUCT(def);
+	def.flags = PF_ParamFlag_SUPERVISE;
+	PF_ADD_POPUP(
+		P_LENGTH_LINKAGE,
+		3,
+		LINKAGE_MODE_DFLT,
+		PM_LINKAGE_MODE,
+		SDK_PROCAMP_LENGTH_LINKAGE);
+
+	// Line Length Linkage Rate
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_LENGTH_LINKAGE_RATE,
+		LINKAGE_RATE_MIN_VALUE,
+		LINKAGE_RATE_MAX_VALUE,
+		LINKAGE_RATE_MIN_SLIDER,
+		LINKAGE_RATE_MAX_SLIDER,
+		LINKAGE_RATE_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		SDK_PROCAMP_LENGTH_LINKAGE_RATE);
 
 	// Line Length
 	AEFX_CLR_STRUCT(def);
@@ -1568,84 +1664,6 @@ static PF_Err ParamsSetup(
 
 	AEFX_CLR_STRUCT(def);
 	PF_END_TOPIC(SDK_PROCAMP_ADVANCED_TOPIC_END);
-
-	// ============================================================
-	// ▼ Linkage Settings
-	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_LINKAGE_HEADER, SDK_PROCAMP_LINKAGE_HEADER);
-
-	// Length Linkage
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_LENGTH_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_LENGTH_LINKAGE);
-
-	// Length Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_LENGTH_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LENGTH_LINKAGE_RATE);
-
-	// Thickness Linkage
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_THICKNESS_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_THICKNESS_LINKAGE);
-
-	// Thickness Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_THICKNESS_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_THICKNESS_LINKAGE_RATE);
-
-	// Travel Distance Linkage
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_TRAVEL_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_TRAVEL_LINKAGE);
-
-	// Travel Distance Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_TRAVEL_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_TRAVEL_LINKAGE_RATE);
-
-	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_LINKAGE_TOPIC_END);
 
 	// ============================================================
 	// Hidden Parameters (for backwards compatibility)
@@ -2892,6 +2910,15 @@ extern "C" DllExport PF_Err EffectMain(
 				}
 				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 			}
+		}
+		
+		// Linkage Parameters: update visibility when linkage mode changes
+		if (changedExtra && (changedExtra->param_index == SDK_PROCAMP_THICKNESS_LINKAGE ||
+		                     changedExtra->param_index == SDK_PROCAMP_LENGTH_LINKAGE ||
+		                     changedExtra->param_index == SDK_PROCAMP_TRAVEL_LINKAGE))
+		{
+			UpdatePseudoGroupVisibility(in_data, params);
+			out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 		}
 		
 		// Spawn Source: enable/disable Alpha Threshold based on selection
