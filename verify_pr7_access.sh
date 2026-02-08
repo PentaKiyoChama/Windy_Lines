@@ -24,7 +24,7 @@ echo ""
 
 # Test 2: Fetch the branch
 echo "Test 2: Fetching PR #7 branch..."
-if git fetch origin copilot/update-parameter-display-logic 2>&1 | grep -q "From"; then
+if git fetch origin copilot/update-parameter-display-logic 2>&1 >/dev/null; then
     echo -e "${GREEN}✓ PASS${NC}: Successfully fetched branch"
 else
     echo -e "${RED}✗ FAIL${NC}: Failed to fetch branch"
@@ -48,11 +48,11 @@ echo ""
 
 # Test 4: List changed files
 echo "Test 4: Listing files changed in PR #7..."
-git fetch origin copilot/update-parameter-display-logic:pr7-branch-temp 2>/dev/null || true
-CHANGED_FILES=$(git diff --name-only main pr7-branch-temp 2>/dev/null | wc -l)
+git fetch origin copilot/update-parameter-display-logic >/dev/null 2>&1
+CHANGED_FILES=$(git diff --name-only main FETCH_HEAD 2>/dev/null | wc -l)
 if [ "$CHANGED_FILES" -gt 0 ]; then
     echo -e "${GREEN}✓ PASS${NC}: Found $CHANGED_FILES changed files:"
-    git diff --name-only main pr7-branch-temp 2>/dev/null | head -10 | sed 's/^/  - /'
+    git diff --name-only main FETCH_HEAD 2>/dev/null | head -10 | sed 's/^/  - /'
 else
     echo -e "${RED}✗ FAIL${NC}: No changed files found"
     exit 1
@@ -61,9 +61,9 @@ echo ""
 
 # Test 5: Verify specific files exist
 echo "Test 5: Verifying key files from PR #7..."
-if git show pr7-branch-temp:LINKAGE_UI_IMPLEMENTATION_MEMO.md >/dev/null 2>&1; then
+if git show FETCH_HEAD:LINKAGE_UI_IMPLEMENTATION_MEMO.md >/dev/null 2>&1; then
     echo -e "${GREEN}✓ PASS${NC}: LINKAGE_UI_IMPLEMENTATION_MEMO.md exists in PR #7"
-    FILE_SIZE=$(git show pr7-branch-temp:LINKAGE_UI_IMPLEMENTATION_MEMO.md | wc -l)
+    FILE_SIZE=$(git show FETCH_HEAD:LINKAGE_UI_IMPLEMENTATION_MEMO.md | wc -l)
     echo "  File has $FILE_SIZE lines"
 else
     echo -e "${RED}✗ FAIL${NC}: Key file not found"
