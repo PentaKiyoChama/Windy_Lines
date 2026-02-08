@@ -1,6 +1,9 @@
 #ifndef SDK_PROC_AMP
 #define SDK_PROC_AMP
 
+// DEBUG RENDER MARKERS for OpenCL/Metal (must match SDK_ProcAmp.h)
+#define ENABLE_DEBUG_RENDER_MARKERS 1
+
 #include "PrGPU/KernelSupport/KernelCore.h" //includes KernelWrapper.h
 #include "PrGPU/KernelSupport/KernelMemory.h"
 
@@ -736,8 +739,8 @@
 						pixel.y = 0.5f;   // G = 0.5
 						pixel.z = 0.0f;   // B = 0
 						pixel.w = 1.0f;   // A = 1
-			}
-		}
+					}
+				}
 #endif
 		
 		// Note: Alpha compositing is already done correctly using premultiplied alpha blending above

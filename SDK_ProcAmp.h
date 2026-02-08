@@ -43,7 +43,7 @@
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
 // Set to 0 to disable completely (zero performance impact)
-#define ENABLE_DEBUG_RENDER_MARKERS 0
+#define ENABLE_DEBUG_RENDER_MARKERS 1
 // ========== DEBUG LOGGING (Common) ==========
 static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)
@@ -347,7 +347,7 @@ struct EffectPreset
 #define	LINE_LIFETIME_MAX_VALUE		600
 #define	LINE_LIFETIME_MIN_SLIDER	1
 #define	LINE_LIFETIME_MAX_SLIDER	600
-#define	LINE_LIFETIME_DFLT			30
+#define	LINE_LIFETIME_DFLT			20
 
 #define	LINE_INTERVAL_MIN_VALUE		0
 #define	LINE_INTERVAL_MAX_VALUE		600
@@ -367,7 +367,7 @@ struct EffectPreset
 #define	LINE_TRAVEL_MAX_VALUE		5000
 #define	LINE_TRAVEL_MIN_SLIDER		0
 #define	LINE_TRAVEL_MAX_SLIDER		2000
-#define	LINE_TRAVEL_DFLT			400
+#define	LINE_TRAVEL_DFLT			300
 
 #define	LINE_TAIL_FADE_MIN_VALUE	0
 #define	LINE_TAIL_FADE_MAX_VALUE	1
@@ -418,14 +418,14 @@ struct EffectPreset
 #define HIDE_ELEMENT_DFLT       0   // Off by default (show element + lines)
 
 // Default value for blend mode
-#define BLEND_MODE_DFLT         3   // Front&back
+#define BLEND_MODE_DFLT         4   // Front&back
 
 // Line spawn area scale (%)
 #define	LINE_SPAWN_SCALE_X_MIN_VALUE	0
 #define	LINE_SPAWN_SCALE_X_MAX_VALUE	200
 #define	LINE_SPAWN_SCALE_X_MIN_SLIDER	0
 #define	LINE_SPAWN_SCALE_X_MAX_SLIDER	200
-#define	LINE_SPAWN_SCALE_X_DFLT			100  // 100% = current behavior
+#define	LINE_SPAWN_SCALE_X_DFLT			75  // 100% = current behavior
 
 #define	LINE_SPAWN_SCALE_Y_MIN_VALUE	0
 #define	LINE_SPAWN_SCALE_Y_MAX_VALUE	200

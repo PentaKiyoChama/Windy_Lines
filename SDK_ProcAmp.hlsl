@@ -14,6 +14,10 @@
  * is strictly forbidden unless prior written permission is obtained
  * from Adobe.
  **************************************************************************/
+
+// DEBUG RENDER MARKERS for HLSL/DirectX (must match SDK_ProcAmp.h)
+#define ENABLE_DEBUG_RENDER_MARKERS 1
+
  /*
   * Buffers associated with the shader
   * Read-Write/Write buffers are registered as UAVs while

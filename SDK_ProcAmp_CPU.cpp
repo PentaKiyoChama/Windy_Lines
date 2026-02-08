@@ -1314,7 +1314,7 @@ static PF_Err ParamsSetup(
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_ANGLE(
 		P_ANGLE,
-		0,
+		180,
 		SDK_PROCAMP_LINE_ANGLE);
 
 	// Line Cap
