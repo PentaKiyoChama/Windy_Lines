@@ -1,3 +1,14 @@
 {
-    "r.lsp.promptToInstall": false
+    "r.lsp.promptToInstall": false,
+    "r.languageServer.enabled": false,
+    "r.rterm.windows": "",
+    "r.sessionWatcher": false,
+    "r.alwaysUseActiveTerminal": false,
+    "files.associations": {
+        "*.r": "plaintext",
+        "*.R": "plaintext"
+    },
+    "files.exclude": {
+        "**/*.r": false
+    }
 }
