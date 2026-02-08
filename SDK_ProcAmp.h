@@ -102,14 +102,16 @@ enum
 	SDK_PROCAMP_LINE_COUNT,                   // 3. Number of lines
 	SDK_PROCAMP_LINE_LIFETIME,                // 4. Line lifetime (frames)
 	SDK_PROCAMP_LINE_INTERVAL,                // 5. Spawn interval (frames)
-	SDK_PROCAMP_LINE_TRAVEL,                  // 6. Travel distance (px)
-	SDK_PROCAMP_LINE_EASING,                  // 7. Easing function
+	SDK_PROCAMP_TRAVEL_LINKAGE,               // 6. Travel distance linkage (Off/Width/Height)
+	SDK_PROCAMP_TRAVEL_LINKAGE_RATE,          // 7. Travel distance linkage rate (%)
+	SDK_PROCAMP_LINE_TRAVEL,                  // 8. Travel distance (px)
+	SDK_PROCAMP_LINE_EASING,                  // 9. Easing function
 	
 	// ▼ Color Settings
-	SDK_PROCAMP_COLOR_MODE,                   // 8. Single/Preset/Custom
-	SDK_PROCAMP_LINE_COLOR,                   // 9. Single color picker
-	SDK_PROCAMP_COLOR_PRESET,                 // 10. Preset selection popup
-	SDK_PROCAMP_CUSTOM_COLOR_1,               // 11-18. Custom colors 1-8
+	SDK_PROCAMP_COLOR_MODE,                   // 10. Single/Preset/Custom
+	SDK_PROCAMP_LINE_COLOR,                   // 11. Single color picker
+	SDK_PROCAMP_COLOR_PRESET,                 // 12. Preset selection popup
+	SDK_PROCAMP_CUSTOM_COLOR_1,               // 13-20. Custom colors 1-8
 	SDK_PROCAMP_CUSTOM_COLOR_2,
 	SDK_PROCAMP_CUSTOM_COLOR_3,
 	SDK_PROCAMP_CUSTOM_COLOR_4,
@@ -119,69 +121,63 @@ enum
 	SDK_PROCAMP_CUSTOM_COLOR_8,
 	
 	// ▼ Appearance
-	SDK_PROCAMP_LINE_THICKNESS,               // 19. Line thickness (px)
-	SDK_PROCAMP_LINE_LENGTH,                  // 20. Line length (px)
-	SDK_PROCAMP_LINE_ANGLE,                   // 21. Line angle (degrees)
-	SDK_PROCAMP_LINE_CAP,                     // 22. Line cap style
-	SDK_PROCAMP_LINE_TAIL_FADE,               // 23. Tail fade amount
+	SDK_PROCAMP_THICKNESS_LINKAGE,            // 21. Thickness linkage (Off/Width/Height)
+	SDK_PROCAMP_THICKNESS_LINKAGE_RATE,       // 22. Thickness linkage rate (%)
+	SDK_PROCAMP_LINE_THICKNESS,               // 23. Line thickness (px)
+	SDK_PROCAMP_LENGTH_LINKAGE,               // 24. Length linkage (Off/Width/Height)
+	SDK_PROCAMP_LENGTH_LINKAGE_RATE,          // 25. Length linkage rate (%)
+	SDK_PROCAMP_LINE_LENGTH,                  // 26. Line length (px)
+	SDK_PROCAMP_LINE_ANGLE,                   // 27. Line angle (degrees)
+	SDK_PROCAMP_LINE_CAP,                     // 28. Line cap style
+	SDK_PROCAMP_LINE_TAIL_FADE,               // 29. Tail fade amount
 	
 	// ▼ Position & Spawn - Line Origin
-	SDK_PROCAMP_POSITION_HEADER,              // 24. Line origin topic start
-	SDK_PROCAMP_SPAWN_SOURCE,                 // 25. Spawn source (Full Frame / Element Bounds)
-	SDK_PROCAMP_LINE_ALPHA_THRESH,            // 26. Alpha threshold
-	SDK_PROCAMP_LINE_ORIGIN_MODE,             // 27. Wind origin mode
-	SDK_PROCAMP_ANIM_PATTERN,                 // 28. Animation pattern (direction)
-	SDK_PROCAMP_LINE_START_TIME,              // 29. Start time (frames)
-	SDK_PROCAMP_LINE_DURATION,                // 30. Duration (frames)
-	SDK_PROCAMP_LINE_DEPTH_STRENGTH,          // 31. Depth strength
-	SDK_PROCAMP_CENTER_GAP,                   // 32. Center gap
-	SDK_PROCAMP_ORIGIN_OFFSET_X,              // 33. Origin Offset X (px)
-	SDK_PROCAMP_ORIGIN_OFFSET_Y,              // 34. Origin Offset Y (px)
-	SDK_PROCAMP_LINE_SPAWN_SCALE_X,           // 35. Spawn area scale X (%)
-	SDK_PROCAMP_LINE_SPAWN_SCALE_Y,           // 36. Spawn area scale Y (%)
-	SDK_PROCAMP_LINE_SPAWN_ROTATION,          // 37. Spawn area rotation (degrees)
-	SDK_PROCAMP_LINE_SHOW_SPAWN_AREA,         // 38. Show spawn area preview
-	SDK_PROCAMP_LINE_SPAWN_AREA_COLOR,        // 39. Spawn area color
-	SDK_PROCAMP_POSITION_TOPIC_END,           // 40. Line origin topic end
+	SDK_PROCAMP_POSITION_HEADER,              // 30. Line origin topic start
+	SDK_PROCAMP_SPAWN_SOURCE,                 // 31. Spawn source (Full Frame / Element Bounds)
+	SDK_PROCAMP_LINE_ALPHA_THRESH,            // 32. Alpha threshold
+	SDK_PROCAMP_LINE_ORIGIN_MODE,             // 33. Wind origin mode
+	SDK_PROCAMP_ANIM_PATTERN,                 // 34. Animation pattern (direction)
+	SDK_PROCAMP_LINE_START_TIME,              // 35. Start time (frames)
+	SDK_PROCAMP_LINE_DURATION,                // 36. Duration (frames)
+	SDK_PROCAMP_LINE_DEPTH_STRENGTH,          // 37. Depth strength
+	SDK_PROCAMP_CENTER_GAP,                   // 38. Center gap
+	SDK_PROCAMP_ORIGIN_OFFSET_X,              // 39. Origin Offset X (px)
+	SDK_PROCAMP_ORIGIN_OFFSET_Y,              // 40. Origin Offset Y (px)
+	SDK_PROCAMP_LINE_SPAWN_SCALE_X,           // 41. Spawn area scale X (%)
+	SDK_PROCAMP_LINE_SPAWN_SCALE_Y,           // 42. Spawn area scale Y (%)
+	SDK_PROCAMP_LINE_SPAWN_ROTATION,          // 43. Spawn area rotation (degrees)
+	SDK_PROCAMP_LINE_SHOW_SPAWN_AREA,         // 44. Show spawn area preview
+	SDK_PROCAMP_LINE_SPAWN_AREA_COLOR,        // 45. Spawn area color
+	SDK_PROCAMP_POSITION_TOPIC_END,           // 46. Line origin topic end
 	
 	// ▼ Shadow - Topic group
-	SDK_PROCAMP_SHADOW_HEADER,                // 41. Shadow topic start
-	SDK_PROCAMP_SHADOW_ENABLE,                // 42. Shadow on/off
-	SDK_PROCAMP_SHADOW_COLOR,                 // 43. Shadow color
-	SDK_PROCAMP_SHADOW_OFFSET_X,              // 44. Shadow offset X (px)
-	SDK_PROCAMP_SHADOW_OFFSET_Y,              // 45. Shadow offset Y (px)
-	SDK_PROCAMP_SHADOW_OPACITY,               // 46. Shadow opacity (0-1)
-	SDK_PROCAMP_SHADOW_TOPIC_END,             // 47. Shadow topic end
+	SDK_PROCAMP_SHADOW_HEADER,                // 47. Shadow topic start
+	SDK_PROCAMP_SHADOW_ENABLE,                // 48. Shadow on/off
+	SDK_PROCAMP_SHADOW_COLOR,                 // 49. Shadow color
+	SDK_PROCAMP_SHADOW_OFFSET_X,              // 50. Shadow offset X (px)
+	SDK_PROCAMP_SHADOW_OFFSET_Y,              // 51. Shadow offset Y (px)
+	SDK_PROCAMP_SHADOW_OPACITY,               // 52. Shadow opacity (0-1)
+	SDK_PROCAMP_SHADOW_TOPIC_END,             // 53. Shadow topic end
 	
 	// ▼ Motion Blur - Topic group
-	SDK_PROCAMP_MOTION_BLUR_HEADER,           // 48. Motion blur topic start
-	SDK_PROCAMP_MOTION_BLUR_ENABLE,           // 49. Motion blur on/off
-	SDK_PROCAMP_MOTION_BLUR_SAMPLES,          // 50. Motion blur quality (samples)
-	SDK_PROCAMP_MOTION_BLUR_STRENGTH,         // 51. Motion blur strength
-	SDK_PROCAMP_MOTION_BLUR_TOPIC_END,        // 52. Motion blur topic end
+	SDK_PROCAMP_MOTION_BLUR_HEADER,           // 54. Motion blur topic start
+	SDK_PROCAMP_MOTION_BLUR_ENABLE,           // 55. Motion blur on/off
+	SDK_PROCAMP_MOTION_BLUR_SAMPLES,          // 56. Motion blur quality (samples)
+	SDK_PROCAMP_MOTION_BLUR_STRENGTH,         // 57. Motion blur strength
+	SDK_PROCAMP_MOTION_BLUR_TOPIC_END,        // 58. Motion blur topic end
 	
 	// ▼ Advanced - Topic group
-	SDK_PROCAMP_ADVANCED_HEADER,              // 53. Advanced topic start
-	SDK_PROCAMP_LINE_AA,                      // 54. Anti-aliasing
-	SDK_PROCAMP_HIDE_ELEMENT,                 // 55. Hide original element (lines only)
-	SDK_PROCAMP_BLEND_MODE,                   // 56. Blend mode with element
-	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 57. Advanced topic end
-	
-	// ▼ Linkage - Topic group
-	SDK_PROCAMP_LINKAGE_HEADER,               // 58. Linkage topic start
-	SDK_PROCAMP_LENGTH_LINKAGE,               // 59. Length linkage (Off/Width/Height)
-	SDK_PROCAMP_LENGTH_LINKAGE_RATE,          // 60. Length linkage rate (%)
-	SDK_PROCAMP_THICKNESS_LINKAGE,            // 61. Thickness linkage (Off/Width/Height)
-	SDK_PROCAMP_THICKNESS_LINKAGE_RATE,       // 62. Thickness linkage rate (%)
-	SDK_PROCAMP_TRAVEL_LINKAGE,               // 63. Travel distance linkage (Off/Width/Height)
-	SDK_PROCAMP_TRAVEL_LINKAGE_RATE,          // 64. Travel distance linkage rate (%)
-	SDK_PROCAMP_LINKAGE_TOPIC_END,            // 65. Linkage topic end
+	SDK_PROCAMP_ADVANCED_HEADER,              // 59. Advanced topic start
+	SDK_PROCAMP_LINE_AA,                      // 60. Anti-aliasing
+	SDK_PROCAMP_HIDE_ELEMENT,                 // 61. Hide original element (lines only)
+	SDK_PROCAMP_BLEND_MODE,                   // 62. Blend mode with element
+	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 63. Advanced topic end
 	
 	// Hidden params (for backwards compatibility)
-	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 66. (hidden)
-	SDK_PROCAMP_LINE_COLOR_R,                 // 67. (hidden)
-	SDK_PROCAMP_LINE_COLOR_G,                 // 68. (hidden)
-	SDK_PROCAMP_LINE_COLOR_B,                 // 69. (hidden)
+	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 64. (hidden)
+	SDK_PROCAMP_LINE_COLOR_R,                 // 65. (hidden)
+	SDK_PROCAMP_LINE_COLOR_G,                 // 66. (hidden)
+	SDK_PROCAMP_LINE_COLOR_B,                 // 67. (hidden)
 	
 	SDK_PROCAMP_NUM_PARAMS
 };
