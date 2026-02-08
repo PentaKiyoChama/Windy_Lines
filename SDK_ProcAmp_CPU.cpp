@@ -2057,8 +2057,9 @@ static PF_Err Render(
 	const float perpLen = sqrtf(perpX * perpX + perpY * perpY);
 	if (perpLen > 0.00001f)
 	{
-		perpX /= perpLen;
-		perpY /= perpLen;
+		const float invPerpLen = 1.0f / perpLen;
+		perpX *= invPerpLen;
+		perpY *= invPerpLen;
 	}
 	
 	for (int i = 0; lineState && i < lineState->lineCount; ++i)
@@ -2269,15 +2270,18 @@ static PF_Err Render(
 		const int tileCountY = (output->height + tileSize - 1) / tileSize;
 		const int tileCount = tileCountX * tileCountY;
 		
+		// Optimization: Pre-compute inverse of tileSize to convert division to multiplication
+		const float invTileSize = 1.0f / (float)tileSize;
+		
 		// Pre-compute tile boundaries for each line (optimization: avoid redundant calculation)
 		for (int i = 0; i < lineState->lineCount; ++i)
 		{
 			LineDerived& ld = lineState->lineDerived[i];
 			const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
-			int minX = (int)((ld.centerX - radius) / tileSize);
-			int maxX = (int)((ld.centerX + radius) / tileSize);
-			int minY = (int)((ld.centerY - radius) / tileSize);
-			int maxY = (int)((ld.centerY + radius) / tileSize);
+			int minX = (int)((ld.centerX - radius) * invTileSize);
+			int maxX = (int)((ld.centerX + radius) * invTileSize);
+			int minY = (int)((ld.centerY - radius) * invTileSize);
+			int maxY = (int)((ld.centerY + radius) * invTileSize);
 			
 			// Clamp to tile grid bounds
 			ld.tileMinX = (minX < 0) ? 0 : ((minX >= tileCountX) ? (tileCountX - 1) : minX);

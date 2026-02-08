@@ -1428,6 +1428,9 @@ public:
 		params.mTileCountX = tileCountX;
 		params.mTileCountY = tileCountY;
 		params.mTileSize = tileSize;
+		
+		// Optimization: Pre-compute inverse of tileSize for faster division
+		const float invTileSize = 1.0f / (float)tileSize;
 
 		const float lineCenterOffsetX = lineCenterX - (float)params.mWidth * 0.5f;
 		const float lineCenterOffsetY = lineCenterY - (float)params.mHeight * 0.5f;
@@ -1924,8 +1927,9 @@ public:
 			const float perpLen = sqrtf(perpX * perpX + perpY * perpY);
 			if (perpLen > 0.00001f)
 			{
-				perpX /= perpLen;
-				perpY /= perpLen;
+				const float invPerpLen = 1.0f / perpLen;
+				perpX *= invPerpLen;
+				perpY *= invPerpLen;
 			}
 			const float sideValue = (rx - 0.5f) * perpX + (ry - 0.5f) * perpY;
 			
@@ -2025,10 +2029,10 @@ public:
 			// Use direct indexing instead of push_back (faster)
 			lineBounds[outputIndex] = bounds;
 
-			const int minTileX = bounds.minX / tileSize;
-			const int maxTileX = bounds.maxX / tileSize;
-			const int minTileY = bounds.minY / tileSize;
-			const int maxTileY = bounds.maxY / tileSize;
+			const int minTileX = (int)((float)bounds.minX * invTileSize);
+			const int maxTileX = (int)((float)bounds.maxX * invTileSize);
+			const int minTileY = (int)((float)bounds.minY * invTileSize);
+			const int maxTileY = (int)((float)bounds.maxY * invTileSize);
 
 			for (int ty = minTileY; ty <= maxTileY; ++ty)
 			{
@@ -2063,10 +2067,10 @@ public:
 		for (int i = 0; i < (int)lineBounds.size(); ++i)
 		{
 			const LineBinBounds& bounds = lineBounds[i];
-			const int minTileX = bounds.minX / tileSize;
-			const int maxTileX = bounds.maxX / tileSize;
-			const int minTileY = bounds.minY / tileSize;
-			const int maxTileY = bounds.maxY / tileSize;
+			const int minTileX = (int)((float)bounds.minX * invTileSize);
+			const int maxTileX = (int)((float)bounds.maxX * invTileSize);
+			const int minTileY = (int)((float)bounds.minY * invTileSize);
+			const int maxTileY = (int)((float)bounds.maxY * invTileSize);
 			for (int ty = minTileY; ty <= maxTileY; ++ty)
 			{
 				for (int tx = minTileX; tx <= maxTileX; ++tx)
