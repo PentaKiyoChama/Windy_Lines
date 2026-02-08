@@ -527,6 +527,9 @@
 						if (aa > 0.0f) {
 							float tt = fmin(fmax((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
 							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
+						} else {
+							// No anti-aliasing: simple distance test (optimized)
+							coverage = (dist <= 0.0f) ? (tailFade * depthAlpha) : 0.0f;
 						}
 						
 						// Shadow: same calculation with offset position
@@ -555,6 +558,9 @@
 							if (aa > 0.0f) {
 								float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
 								shadowCoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * depthAlpha;
+							} else {
+								// No anti-aliasing: simple distance test (optimized)
+								shadowCoverage = (sdist <= 0.0f) ? (stailFade * depthAlpha) : 0.0f;
 							}
 						}
 					

@@ -326,7 +326,7 @@ struct EffectPreset
 #define	LINE_AA_MAX_VALUE			5
 #define	LINE_AA_MIN_SLIDER			0
 #define	LINE_AA_MAX_SLIDER			5
-#define	LINE_AA_DFLT				1
+#define	LINE_AA_DFLT				0
 
 #define	LINE_ALPHA_THRESH_MIN_VALUE	0
 #define	LINE_ALPHA_THRESH_MAX_VALUE	1
@@ -361,7 +361,7 @@ struct EffectPreset
 #define	LINE_SEED_MAX_SLIDER		1000000
 #define	LINE_SEED_DFLT				1
 
-#define	LINE_EASING_DFLT			1
+#define	LINE_EASING_DFLT			2
 
 #define	LINE_TRAVEL_MIN_VALUE		0
 #define	LINE_TRAVEL_MAX_VALUE		5000
@@ -379,7 +379,7 @@ struct EffectPreset
 #define	LINE_DEPTH_MAX_VALUE		10
 #define	LINE_DEPTH_MIN_SLIDER		0
 #define	LINE_DEPTH_MAX_SLIDER		10
-#define	LINE_DEPTH_DFLT				0.6
+#define	LINE_DEPTH_DFLT				3
 
 #define	LINE_ALLOW_MIDPLAY_DFLT		1
 
@@ -390,14 +390,14 @@ struct EffectPreset
 #define	LINE_COLOR_CH_DFLT			1
 
 // Default values for color parameters
-#define COLOR_MODE_DFLT         1   // Single
+#define COLOR_MODE_DFLT         2   // 
 #define COLOR_PRESET_DFLT       1   // Rainbow
 
 // Line Cap default
 #define LINE_CAP_DFLT           1   // Round (1=Flat, 2=Round)
 
 // Spawn Source default
-#define SPAWN_SOURCE_DFLT       1   // Full Frame (1=Full Frame, 2=Element)
+#define SPAWN_SOURCE_DFLT       2   // Full Frame (1=Full Frame, 2=Element)
 
 // Shadow parameters
 #define SHADOW_ENABLE_DFLT      0       // Off by default
@@ -464,7 +464,7 @@ struct EffectPreset
 #define	LINE_START_TIME_MAX_VALUE	36000
 #define	LINE_START_TIME_MIN_SLIDER	-300
 #define	LINE_START_TIME_MAX_SLIDER	300
-#define	LINE_START_TIME_DFLT		0  // Start immediately (0 = no mid-play)
+#define	LINE_START_TIME_DFLT		-300  // Start immediately (0 = no mid-play)
 
 // Duration (frames) - 0 = infinite
 #define	LINE_DURATION_MIN_VALUE		0
@@ -499,7 +499,7 @@ struct EffectPreset
 #define	LINKAGE_RATE_MAX_VALUE			500.0
 #define	LINKAGE_RATE_MIN_SLIDER			0.0
 #define	LINKAGE_RATE_MAX_SLIDER			200.0
-#define	LINKAGE_RATE_DFLT				100.0	// 100% = 1:1 ratio
+#define	LINKAGE_RATE_DFLT				2.0	// 100% = 1:1 ratio
 
 // Preset colors count (8 colors per preset)
 #define PRESET_COLORS_COUNT     8

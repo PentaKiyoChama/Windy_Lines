@@ -10461,6 +10461,9 @@ static __inline__ float saturate(float inX)
 						if (aa > 0.0f) {
 							float tt = fmin(fmax((dist - aa) / (0.0f - aa), 0.0f), 1.0f);
 							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * depthAlpha;
+						} else {
+							
+							coverage = (dist <= 0.0f) ? (tailFade * depthAlpha) : 0.0f;
 						}
 						
 						
@@ -10489,6 +10492,9 @@ static __inline__ float saturate(float inX)
 							if (aa > 0.0f) {
 								float tt = fmin(fmax((sdist - aa) / (0.0f - aa), 0.0f), 1.0f);
 								shadowCoverage = tt * tt * (3.0f - 2.0f * tt) * stailFade * depthAlpha;
+							} else {
+								
+								shadowCoverage = (sdist <= 0.0f) ? (stailFade * depthAlpha) : 0.0f;
 							}
 						}
 					
@@ -10666,7 +10672,7 @@ static __inline__ float saturate(float inX)
 
 
 
-#line 736 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 742 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
 		
 		
 		
@@ -10675,5 +10681,5 @@ static __inline__ float saturate(float inX)
 	}
 }
 
-#line 745 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
-#line 746 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 751 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"
+#line 752 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\SDK_ProcAmp.cl"

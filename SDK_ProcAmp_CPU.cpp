@@ -2620,6 +2620,11 @@ static PF_Err Render(
 									const float tt = saturate((distSample - aa) / (0.0f - aa));
 									sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
 								}
+								else
+								{
+									// No anti-aliasing: simple distance test (optimized)
+									sampleCoverage = (distSample <= 0.0f) ? tailFade : 0.0f;
+								}
 
 								accumA += sampleCoverage;
 							}
