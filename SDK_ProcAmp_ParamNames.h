@@ -146,7 +146,7 @@ namespace ParamNames
     constexpr const char* ANGLE             = "線の角度";
     constexpr const char* AA                = "アンチエイリアス";
     constexpr const char* TAIL_FADE         = "テールフェード";
-    constexpr const char* POSITION_HEADER   = "線の起点";
+    constexpr const char* POSITION_HEADER   = "起点と描画範囲";
     constexpr const char* ORIGIN_MODE       = "起点モード";      
     constexpr const char* INTERVAL          = "インターバル(fps)";  
     constexpr const char* SPAWN_SCALE_X     = "スケールX(%)";    
@@ -209,7 +209,7 @@ namespace ParamNames
         "エラスティックイン|エラスティックアウト|エラスティックインアウト|"
         "バウンスイン|バウンスアウト|バウンスインアウト"; 
     constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ";
-    constexpr const char* LINKAGE_MODE_MENU = "オフ|要素の幅|要素の高さ";
+    constexpr const char* LINKAGE_MODE_MENU = "直接入力|範囲の幅に連動|範囲の高さに連動";
 }
 
 // ========================================
