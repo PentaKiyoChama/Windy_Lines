@@ -16,7 +16,7 @@
  **************************************************************************/
 
 // DEBUG RENDER MARKERS for HLSL/DirectX (must match SDK_ProcAmp.h)
-#define ENABLE_DEBUG_RENDER_MARKERS 1
+#define ENABLE_DEBUG_RENDER_MARKERS 0
 
  /*
   * Buffers associated with the shader
@@ -596,8 +596,9 @@ void main(uint3 inXY : SV_DispatchThreadID)
 			// Triangle: y >= 0, y < 30, x >= 0, x < (30 - y) creates right triangle
 			if (tx >= 0 && ty >= 0 && ty < 30 && tx < (30 - ty))
 			{
+				// Set blue color (DirectX handles format internally)
 				pixel.x = 0.0f;   // R = 0
-				pixel.y = 0.0f;   // G = 0
+				pixel.y = 0.0f;   // G = 0  
 				pixel.z = 1.0f;   // B = 1 (Blue for HLSL)
 				pixel.w = 1.0f;   // A = 1
 			}

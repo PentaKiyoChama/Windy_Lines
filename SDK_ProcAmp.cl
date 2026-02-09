@@ -2,7 +2,7 @@
 #define SDK_PROC_AMP
 
 // DEBUG RENDER MARKERS for OpenCL/Metal (must match SDK_ProcAmp.h)
-#define ENABLE_DEBUG_RENDER_MARKERS 1
+#define ENABLE_DEBUG_RENDER_MARKERS 0
 
 #include "PrGPU/KernelSupport/KernelCore.h" //includes KernelWrapper.h
 #include "PrGPU/KernelSupport/KernelMemory.h"
@@ -735,10 +735,21 @@
 					int absDy = dy < 0 ? -dy : dy;
 					if (absDx + absDy <= 15)
 					{
-						pixel.x = 1.0f;   // R = 1 (Orange)
-						pixel.y = 0.5f;   // G = 0.5
-						pixel.z = 0.0f;   // B = 0
-						pixel.w = 1.0f;   // A = 1
+						// Set orange color (handle BGRA format if needed)
+						if (inIsBGRA)
+						{
+							pixel.x = 0.0f;   // B = 0 (BGRA: x=B)
+							pixel.y = 0.5f;   // G = 0.5 (BGRA: y=G) 
+							pixel.z = 1.0f;   // R = 1 (BGRA: z=R, Orange)
+							pixel.w = 1.0f;   // A = 1 (BGRA: w=A)
+						}
+						else
+						{
+							pixel.x = 1.0f;   // R = 1 (RGBA: x=R, Orange)
+							pixel.y = 0.5f;   // G = 0.5 (RGBA: y=G)
+							pixel.z = 0.0f;   // B = 0 (RGBA: z=B)
+							pixel.w = 1.0f;   // A = 1 (RGBA: w=A)
+						}
 					}
 				}
 #endif

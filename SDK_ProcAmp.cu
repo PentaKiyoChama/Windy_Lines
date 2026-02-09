@@ -2,7 +2,7 @@
 #define SDK_PROCAMP_CU
 
 // DEBUG RENDER MARKERS for CUDA (must match SDK_ProcAmp.h)
-#define ENABLE_DEBUG_RENDER_MARKERS 1
+#define ENABLE_DEBUG_RENDER_MARKERS 0
 
 #if __CUDACC_VER_MAJOR__ >= 9
 	#include <cuda_fp16.h>
@@ -715,9 +715,10 @@
 			// Shape: Square (CUDA = NVIDIA)
 			if (inXY.x >= 5 && inXY.x < 35 && inXY.y >= 5 && inXY.y < 35)
 			{
-				pixel.x = 0.0f;   // R = 0
+				// Set green color (handle potential format differences)
+				pixel.x = 0.0f;   // R = 0 (or B if BGRA)
 				pixel.y = 1.0f;   // G = 1 (Green for CUDA)
-				pixel.z = 0.0f;   // B = 0
+				pixel.z = 0.0f;   // B = 0 (or R if BGRA)
 				pixel.w = 1.0f;   // A = 1
 			}
 #endif
