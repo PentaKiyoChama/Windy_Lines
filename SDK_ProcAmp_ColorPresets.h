@@ -208,6 +208,12 @@ namespace ColorPresets {
 		{255, 255, 255, 255}, {255, 240, 240, 240}, {255, 211, 211, 211}, {255, 169, 169, 169},
 		{255, 128, 128, 128}, {255, 105, 105, 105}, {255, 64, 64, 64}, {255, 0, 0, 0}
 	};
+
+	// テストカラー (test_color)
+	const PresetColor ktest_color[8] = {
+		{255, 255, 0, 0}, {255, 255, 128, 0}, {255, 255, 255, 0}, {255, 0, 255, 0},
+		{255, 0, 0, 255}, {255, 74, 0, 130}, {255, 140, 0, 255}, {255, 255, 0, 255}
+	};
 }
 
 // Preset color lookup table
@@ -246,6 +252,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		case 31: return ColorPresets::kLavaFlow;
 		case 32: return ColorPresets::kGold;
 		case 33: return ColorPresets::kMonochrome;
+		case 34: return ColorPresets::ktest_color;
 		default: return ColorPresets::kRainbow;  // Fallback to first preset
 	}
 }
