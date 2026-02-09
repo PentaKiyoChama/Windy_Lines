@@ -79,6 +79,28 @@ def generate_lookup_function(presets):
     
     return cpp
 
+def generate_enum(presets):
+    """Generate ColorPreset enum"""
+    cpp = '// Color preset enum - auto-generated from TSV\n'
+    cpp += 'enum ColorPreset\n'
+    cpp += '{\n'
+    
+    for i, preset in enumerate(presets):
+        name_en = preset['name_en']
+        # Convert to uppercase with underscores (e.g., "test_color" -> "TEST_COLOR")
+        enum_name = 'COLOR_PRESET_' + name_en.upper()
+        
+        if i == 0:
+            # First preset starts at 1
+            cpp += f'\t{enum_name} = 1,\n'
+        else:
+            cpp += f'\t{enum_name},\n'
+    
+    cpp += '\tCOLOR_PRESET_COUNT\n'
+    cpp += '};\n'
+    
+    return cpp
+
 def generate_cpp_header(presets):
     """Generate complete C++ header file"""
     # Header guard and comments
@@ -86,6 +108,10 @@ def generate_cpp_header(presets):
     cpp += '// Edit color_presets.tsv and run color_preset_converter.py to regenerate\n\n'
     cpp += '#ifndef SDK_PROCAMP_COLOR_PRESETS_H\n'
     cpp += '#define SDK_PROCAMP_COLOR_PRESETS_H\n\n'
+    
+    # Enum definition
+    cpp += generate_enum(presets)
+    cpp += '\n'
     
     # PresetColor struct definition
     cpp += '// Color structure (ARGB format)\n'
