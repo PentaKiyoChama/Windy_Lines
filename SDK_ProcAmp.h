@@ -59,14 +59,23 @@ static void WriteLog(const char* format, ...)
 	FILE* fp = nullptr;
 	for (int i = 0; i < 2; ++i)
 	{
+#ifdef _WIN32
 		errno_t err = fopen_s(&fp, paths[i], "a");
 		if (err == 0 && fp)
+#else
+		fp = fopen(paths[i], "a");
+		if (fp)
+#endif
 		{
 			// Time stamp
 			time_t now = time(nullptr);
 			char timeStr[64];
 			struct tm timeInfo;
+#ifdef _WIN32
 			localtime_s(&timeInfo, &now);
+#else
+			localtime_r(&now, &timeInfo);
+#endif
 			strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeInfo);
 			fprintf(fp, "[%s] ", timeStr);
 			

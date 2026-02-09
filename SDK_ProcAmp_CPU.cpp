@@ -25,7 +25,6 @@
 #include "SDK_ProcAmp_Version.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
-#include <algorithm>
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
@@ -76,7 +75,6 @@ static int NormalizePopupValue(int value, int maxValue)
 
 // Define shared static variables for CPU-GPU clip start sharing
 std::unordered_map<csSDK_int64, csSDK_int64> SharedClipData::clipStartMap;
-std::unordered_map<csSDK_int64, ElementBounds> SharedClipData::elementBoundsMap;
 std::mutex SharedClipData::mapMutex;
 
 // ========================================================================
@@ -395,11 +393,8 @@ struct alignas(64) LineDerived
 	float lineVelocity;    // Instantaneous velocity for motion blur
 	int colorIndex;        // Palette color index (0-7)
 	
-	// Pre-computed tile boundaries (optimization: avoid redundant calculation)
-	int tileMinX;
-	int tileMinY;
-	int tileMaxX;
-	int tileMaxY;
+	// Padding to align to cache line boundary (offset 56-63)
+	int _padding;
 };
 
 struct LineInstanceState
@@ -414,10 +409,6 @@ struct LineInstanceState
 	int lineSeed = 0;
 	float lineDepthStrength = 0.0f;
 	int lineInterval = 0;
-	
-	// Memory pool optimization: track reserved capacity
-	int maxLineCapacity = 0;
-	int maxTileCapacity = 0;
 };
 
 struct ClipTimeState
@@ -517,10 +508,6 @@ static void UpdateAlphaThresholdVisibility(PF_InData* in_data, PF_ParamDef* para
 	{
 		return;
 	}
-	
-	// Get raw popup value (1-based), convert to 0-based: 1->0, 2->1
-	const int rawValue = params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value;
-	const int spawnSource = (rawValue > 0) ? rawValue - 1 : 0;  // 0=Full, 1=Element
 }
 
 static float ApplyEasing(float t, int easing)
@@ -806,30 +793,6 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(SDK_PROCAMP_LINE_COLOR, true);
 	setVisible(SDK_PROCAMP_COLOR_PRESET, true);
 
-	// ========================================
-	// Linkage Settings: Conditional visibility based on linkage mode
-	// When linkage = "Off" (1): Show actual value, hide linkage rate
-	// When linkage = "On" (2 or 3): Hide actual value, show linkage rate
-	// ========================================
-	
-	// Thickness Linkage
-	const int thicknessLinkage = params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value;
-	const bool thicknessIsLinked = (thicknessLinkage == 2 || thicknessLinkage == 3); // 2=Width, 3=Height
-	setVisible(SDK_PROCAMP_LINE_THICKNESS, !thicknessIsLinked);         // Show actual value when Off
-	setVisible(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, thicknessIsLinked);  // Show rate when linked
-
-	// Length Linkage
-	const int lengthLinkage = params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value;
-	const bool lengthIsLinked = (lengthLinkage == 2 || lengthLinkage == 3); // 2=Width, 3=Height
-	setVisible(SDK_PROCAMP_LINE_LENGTH, !lengthIsLinked);         // Show actual value when Off
-	setVisible(SDK_PROCAMP_LENGTH_LINKAGE_RATE, lengthIsLinked);  // Show rate when linked
-
-	// Travel Distance Linkage
-	const int travelLinkage = params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value;
-	const bool travelIsLinked = (travelLinkage == 2 || travelLinkage == 3); // 2=Width, 3=Height
-	setVisible(SDK_PROCAMP_LINE_TRAVEL, !travelIsLinked);         // Show actual value when Off
-	setVisible(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, travelIsLinked);  // Show rate when linked
-
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
 }
 
@@ -932,14 +895,6 @@ static void ApplyEffectPreset(
 	updatePopup(SDK_PROCAMP_COLOR_MODE, preset.colorMode);
 	updatePopup(SDK_PROCAMP_COLOR_PRESET, preset.colorPreset);
 	updatePopup(SDK_PROCAMP_SPAWN_SOURCE, preset.spawnSource);
-	
-	// Linkage parameters
-	updatePopup(SDK_PROCAMP_LENGTH_LINKAGE, preset.lengthLinkage);
-	updateFloat(SDK_PROCAMP_LENGTH_LINKAGE_RATE, preset.lengthLinkageRate);
-	updatePopup(SDK_PROCAMP_THICKNESS_LINKAGE, preset.thicknessLinkage);
-	updateFloat(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, preset.thicknessLinkageRate);
-	updatePopup(SDK_PROCAMP_TRAVEL_LINKAGE, preset.travelLinkage);
-	updateFloat(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, preset.travelLinkageRate);
 	
 	auto updateCheckbox = [&](int paramId, bool value)
 	{
@@ -1130,7 +1085,21 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_LINE_INTERVAL);
 
-	// Easing
+	// Travel Distance
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_TRAVEL,
+		LINE_TRAVEL_MIN_VALUE,
+		LINE_TRAVEL_MAX_VALUE,
+		LINE_TRAVEL_MIN_SLIDER,
+		LINE_TRAVEL_MAX_SLIDER,
+		LINE_TRAVEL_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		SDK_PROCAMP_LINE_TRAVEL);
+
+	// Easing (moved here, after Travel Distance)
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_POPUP(
 		P_EASING,
@@ -1192,71 +1161,9 @@ static PF_Err ParamsSetup(
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_COLOR(P_CUSTOM_8, 255, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_8);
 
-	// Travel Distance Linkage
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_TRAVEL_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_TRAVEL_LINKAGE);
-
-	// Travel Distance Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_TRAVEL_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_TRAVEL_LINKAGE_RATE);
-
-	// Travel Distance
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_TRAVEL,
-		LINE_TRAVEL_MIN_VALUE,
-		LINE_TRAVEL_MAX_VALUE,
-		LINE_TRAVEL_MIN_SLIDER,
-		LINE_TRAVEL_MAX_SLIDER,
-		LINE_TRAVEL_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LINE_TRAVEL);
-
 	// ============================================================
 	// Appearance
 	// ============================================================
-
-	// Line Thickness Linkage
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_THICKNESS_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_THICKNESS_LINKAGE);
-
-	// Line Thickness Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_THICKNESS_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_THICKNESS_LINKAGE_RATE);
 
 	// Line Thickness
 	AEFX_CLR_STRUCT(def);
@@ -1271,30 +1178,6 @@ static PF_Err ParamsSetup(
 		0,
 		0,
 		SDK_PROCAMP_LINE_THICKNESS);
-
-	// Line Length Linkage
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_LENGTH_LINKAGE,
-		3,
-		LINKAGE_MODE_DFLT,
-		PM_LINKAGE_MODE,
-		SDK_PROCAMP_LENGTH_LINKAGE);
-
-	// Line Length Linkage Rate
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_FLOAT_SLIDERX(
-		P_LENGTH_LINKAGE_RATE,
-		LINKAGE_RATE_MIN_VALUE,
-		LINKAGE_RATE_MAX_VALUE,
-		LINKAGE_RATE_MIN_SLIDER,
-		LINKAGE_RATE_MAX_SLIDER,
-		LINKAGE_RATE_DFLT,
-		PF_Precision_TENTHS,
-		0,
-		0,
-		SDK_PROCAMP_LENGTH_LINKAGE_RATE);
 
 	// Line Length
 	AEFX_CLR_STRUCT(def);
@@ -1314,7 +1197,7 @@ static PF_Err ParamsSetup(
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_ANGLE(
 		P_ANGLE,
-		180,
+		0,
 		SDK_PROCAMP_LINE_ANGLE);
 
 	// Line Cap
@@ -1797,16 +1680,17 @@ static PF_Err Render(
 		const float lineYVal = paletteY[0];
 		const float lineUVal = paletteU[0];
 		const float lineVVal = paletteV[0];
+	(void)lineR; (void)lineG; (void)lineB;
+	(void)lineYVal; (void)lineUVal; (void)lineVVal;
 
 	const float lineThickness = (float)params[SDK_PROCAMP_LINE_THICKNESS]->u.fs_d.value;
 	const float lineLength = (float)params[SDK_PROCAMP_LINE_LENGTH]->u.fs_d.value;
 	const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
 	const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
-		const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
-		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
-		
-		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
-		const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
+	const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
+	
+	// Spawn Source: if "Full Frame" selected, ignore alpha threshold
+	const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
 		float lineAlphaThreshold = (float)params[SDK_PROCAMP_LINE_ALPHA_THRESH]->u.fs_d.value;
 		if (spawnSource == SPAWN_SOURCE_FULL_FRAME) {
 			lineAlphaThreshold = 1.0f;  // Full frame: ignore alpha, spawn everywhere
@@ -1816,16 +1700,8 @@ static PF_Err Render(
 		const float dsy = (in_data->downsample_y.den != 0) ? ((float)in_data->downsample_y.num / (float)in_data->downsample_y.den) : 1.0f;
 		const float dsMax = dsx > dsy ? dsx : dsy;
 		const float dsScale = dsMax >= 1.0f ? (1.0f / dsMax) : (dsMax > 0.0f ? dsMax : 1.0f);
-		
-		// Linkage parameters (read but will be applied after bounding box calculation)
-		const int lengthLinkage = normalizePopup(params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value, 3);
-		const float lengthLinkageRate = (float)params[SDK_PROCAMP_LENGTH_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		const int thicknessLinkage = normalizePopup(params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value, 3);
-		const float thicknessLinkageRate = (float)params[SDK_PROCAMP_THICKNESS_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		const int travelLinkage = normalizePopup(params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value, 3);
-		const float travelLinkageRate = (float)params[SDK_PROCAMP_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		
-		// Temporarily use base values (linkage will be applied after bounding box calculation)
+		const float lineThicknessScaled = lineThickness * dsScale;
+		const float lineLengthScaled = lineLength * dsScale;
 		const float lineAAScaled = lineAA * dsScale;
 		const float effectiveAA = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
 		// Center is now controlled by Origin Offset X/Y only
@@ -1834,7 +1710,8 @@ static PF_Err Render(
 		const float lineInterval = (float)params[SDK_PROCAMP_LINE_INTERVAL]->u.fs_d.value;
 		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
 		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
-		// Note: lineLengthScaled, lineThicknessScaled, lineTravelScaled will be calculated after bounding box
+		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
+		const float lineTravelScaled = lineTravel * dsScale;
 		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
 		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
 	// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored
@@ -1916,111 +1793,12 @@ static PF_Err Render(
 		const int clampedLineCount = (int)fminf(fmaxf((float)lineCount, 1.0f), 5000.0f);
 		const int intervalFrames = lineInterval < 0.5f ? 0 : (int)(lineInterval + 0.5f);
 		
-		const float life = lineLifetime > 1.0f ? lineLifetime : 1.0f;
-		const float interval = intervalFrames > 0 ? (float)intervalFrames : 0.0f;
-		const float period = life + interval;
-		// No center offset - use Origin Offset X/Y instead
-		const float centerOffsetX = 0.0f;
-		const float centerOffsetY = 0.0f;
-		const int alphaStride = 4;
-		
-		// Calculate spawn area bounding box (範囲ソース)
-		int alphaMinX = output->width;
-		int alphaMinY = output->height;
-		int alphaMaxX = -1;
-		int alphaMaxY = -1;
-		
-		const float alphaThreshold = lineAlphaThreshold; // Spawn area threshold (respects spawnSource)
-		
-		for (int y = 0; y < output->height; y += alphaStride)
-		{
-			const float* row = (const float*)(srcData + y * src->rowbytes);
-			for (int x = 0; x < output->width; x += alphaStride)
-			{
-				const float aSample = row[x * 4 + 3];
-				
-				// Update spawn area bounding box
-				if (aSample > alphaThreshold)
-				{
-					if (x < alphaMinX) alphaMinX = x;
-					if (y < alphaMinY) alphaMinY = y;
-					if (x > alphaMaxX) alphaMaxX = x;
-					if (y > alphaMaxY) alphaMaxY = y;
-				}
-			}
-		}
-		if (alphaMaxX < alphaMinX || alphaMaxY < alphaMinY)
-		{
-			alphaMinX = 0;
-			alphaMinY = 0;
-			alphaMaxX = output->width > 0 ? (output->width - 1) : 0;
-			alphaMaxY = output->height > 0 ? (output->height - 1) : 0;
-		}
-		const float alphaBoundsMinX = (float)alphaMinX + centerOffsetX;
-		const float alphaBoundsMinY = (float)alphaMinY + centerOffsetY;
-		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
-		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
-		
-		// Cache element bounds for GPU renderer using clipStartFrame as key
-		if (clipStartFrame > 0)
-		{
-			ElementBounds bounds(alphaMinX, alphaMinY, alphaMaxX, alphaMaxY);
-			SharedClipData::SetElementBounds(clipStartFrame, bounds);
-		}
-		
-		// Apply linkage to parameters using spawn bounds (範囲ソース)
-		// Note: alphaBoundsWidth/Height are in downsampled pixels.
-		// When linkage is OFF, user input is in full-resolution pixels, so we need dsScale.
-		// When linkage is ON (WIDTH/HEIGHT), bounds are already downsampled, so no dsScale needed.
-		float finalLineLength = lineLength;
-		float finalLineThickness = lineThickness;
-		float finalLineTravel = lineTravel;
-		
-		// Length linkage (use bounds directly - they represent actual visible size)
-		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineLength = alphaBoundsWidth * lengthLinkageRate;
-		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineLength = alphaBoundsHeight * lengthLinkageRate;
-		}
-		
-		// Thickness linkage (use bounds directly - they represent actual visible size)
-		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineThickness = alphaBoundsWidth * thicknessLinkageRate;
-		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineThickness = alphaBoundsHeight * thicknessLinkageRate;
-		}
-		
-		// Travel linkage (use bounds directly - they represent actual visible size)
-		if (travelLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineTravel = alphaBoundsWidth * travelLinkageRate;
-		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineTravel = alphaBoundsHeight * travelLinkageRate;
-		}
-		
-		// Apply dsScale only when linkage is OFF (user input is full-resolution)
-		// When linkage is ON, values are already in downsampled space
-		const float lineThicknessScaled = (thicknessLinkage == LINKAGE_MODE_OFF) ? (finalLineThickness * dsScale) : finalLineThickness;
-		const float lineLengthScaled = (lengthLinkage == LINKAGE_MODE_OFF) ? (finalLineLength * dsScale) : finalLineLength;
-		const float lineTravelScaled = (travelLinkage == LINKAGE_MODE_OFF) ? (finalLineTravel * dsScale) : finalLineTravel;
-		
-		// Generate line params locally each frame for stateless rendering (after linkage applied)
+		// Generate line params locally each frame for stateless rendering
 		lineState->lineCount = clampedLineCount;
 		lineState->lineSeed = lineSeed;
 		lineState->lineDepthStrength = lineDepthStrength;
 		lineState->lineInterval = intervalFrames;
-		
-		// Memory pool optimization: reserve capacity on first allocation or when growing
-		if (clampedLineCount > lineState->maxLineCapacity)
-		{
-			const int newCapacity = clampedLineCount * 3 / 2;  // 50% over-allocation
-			lineState->lineParams.reserve(newCapacity);
-			lineState->lineDerived.reserve(newCapacity);
-			lineState->lineActive.reserve(newCapacity);
-			lineState->maxLineCapacity = newCapacity;
-		}
-		
-		// Use resize instead of assign (faster when capacity is already reserved)
-		lineState->lineParams.resize(clampedLineCount);
+		lineState->lineParams.assign(clampedLineCount, {});
 		for (int i = 0; i < clampedLineCount; ++i)
 		{
 			const csSDK_uint32 base = (csSDK_uint32)(lineSeed * 1315423911u) + (csSDK_uint32)i * 2654435761u;
@@ -2036,6 +1814,9 @@ static PF_Err Render(
 			lp.baseLen = lineLengthScaled * depthScale;
 			lp.baseThick = lineThicknessScaled * depthScale;
 			lp.angle = lineAngle;
+			const float life = lineLifetime > 1.0f ? lineLifetime : 1.0f;
+			const float interval = intervalFrames > 0 ? (float)intervalFrames : 0.0f;
+			const float period = life + interval;
 			float startFrame = rstart * period; // Sequence-time based, no offset
 			lp.startFrame = startFrame;
 			lp.depthScale = depthScale;
@@ -2043,8 +1824,48 @@ static PF_Err Render(
 			lineState->lineParams[i] = lp;
 		}
 
-		lineState->lineDerived.resize(lineState->lineCount);
-		lineState->lineActive.resize(lineState->lineCount);
+		lineState->lineDerived.assign(lineState->lineCount, {});
+		lineState->lineActive.assign(lineState->lineCount, 0);
+
+		const float life = lineLifetime > 1.0f ? lineLifetime : 1.0f;
+		const float interval = intervalFrames > 0 ? (float)intervalFrames : 0.0f;
+		const float period = life + interval;
+		// No center offset - use Origin Offset X/Y instead
+		const float centerOffsetX = 0.0f;
+		const float centerOffsetY = 0.0f;
+		const float alphaThreshold = lineAlphaThreshold;
+		const int alphaStride = 4;
+		int alphaMinX = output->width;
+		int alphaMinY = output->height;
+		int alphaMaxX = -1;
+		int alphaMaxY = -1;
+		for (int y = 0; y < output->height; y += alphaStride)
+		{
+			const float* row = (const float*)(srcData + y * src->rowbytes);
+			for (int x = 0; x < output->width; x += alphaStride)
+			{
+				const float aSample = row[x * 4 + 3];
+				if (aSample > alphaThreshold)
+				{
+					if (x < alphaMinX) alphaMinX = x;
+					if (y < alphaMinY) alphaMinY = y;
+					if (x > alphaMaxX) alphaMaxX = x;
+					if (y > alphaMaxY) alphaMaxY = y;
+				}
+
+			}
+		}
+		if (alphaMaxX < alphaMinX || alphaMaxY < alphaMinY)
+		{
+			alphaMinX = 0;
+			alphaMinY = 0;
+			alphaMaxX = output->width > 0 ? (output->width - 1) : 0;
+			alphaMaxY = output->height > 0 ? (output->height - 1) : 0;
+		}
+		const float alphaBoundsMinX = (float)alphaMinX + centerOffsetX;
+		const float alphaBoundsMinY = (float)alphaMinY + centerOffsetY;
+		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
+		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
 	
 	// Start Time + Duration: control when lines spawn
 	const float lineStartTime = (float)params[SDK_PROCAMP_LINE_START_TIME]->u.fs_d.value;
@@ -2063,22 +1884,6 @@ static PF_Err Render(
 	// Animation Pattern (1=Simple, 2=Half Reverse, 3=Split)
 	const int animPattern = params[SDK_PROCAMP_ANIM_PATTERN]->u.pd.value;
 	const float centerGap = (float)params[SDK_PROCAMP_CENTER_GAP]->u.fs_d.value;
-	
-	// Pre-compute perpendicular vector (optimization: avoid redundant calculation in line loop)
-	// All lines share the same perpendicular axis for center gap and Split pattern
-	const float invW = alphaBoundsWidth > 0.0f ? (1.0f / alphaBoundsWidth) : 1.0f;
-	const float invH = alphaBoundsHeight > 0.0f ? (1.0f / alphaBoundsHeight) : 1.0f;
-	const float dirX = lineCos * invW;
-	const float dirY = lineSin * invH;
-	float perpX = -dirY;  // Perpendicular to movement direction
-	float perpY = dirX;
-	const float perpLen = sqrtf(perpX * perpX + perpY * perpY);
-	if (perpLen > 0.00001f)
-	{
-		const float invPerpLen = 1.0f / perpLen;
-		perpX *= invPerpLen;
-		perpY *= invPerpLen;
-	}
 	
 	for (int i = 0; lineState && i < lineState->lineCount; ++i)
 		{
@@ -2114,6 +1919,7 @@ static PF_Err Render(
 			}
 		const float t = age / life;
 		const float tMove = ApplyEasingLUT(t, lineEasing);
+		(void)tMove;  // Unused, kept for compatibility
 		const float maxLen = lp.baseLen;
 		const float travelRange = lineTravelScaled * lp.depthScale;
 		
@@ -2204,7 +2010,19 @@ static PF_Err Render(
 		float adjustedPosY = lp.posY;
 		float adjustedAngle = lineAngle;
 		
-		// Use pre-computed perpendicular vector (optimization)
+		// Calculate perpendicular axis for center gap and Split pattern (aspect-corrected)
+		const float invW = alphaBoundsWidth > 0.0f ? (1.0f / alphaBoundsWidth) : 1.0f;
+		const float invH = alphaBoundsHeight > 0.0f ? (1.0f / alphaBoundsHeight) : 1.0f;
+		const float dirX = lineCos * invW;
+		const float dirY = lineSin * invH;
+		float perpX = -dirY;  // Perpendicular to movement direction
+		float perpY = dirX;
+		const float perpLen = sqrtf(perpX * perpX + perpY * perpY);
+		if (perpLen > 0.00001f)
+		{
+			perpX /= perpLen;
+			perpY /= perpLen;
+		}
 		const float sideValue = (lp.posX - 0.5f) * perpX + (lp.posY - 0.5f) * perpY;
 		
 		// Apply center gap (hide lines in center zone)
@@ -2279,6 +2097,7 @@ static PF_Err Render(
 		ld.depthAlpha = 0.05f + 0.95f * depthFadeT;
 		const float denom = (2.0f * ld.halfLen) > 0.0001f ? (2.0f * ld.halfLen) : 0.0001f;
 		ld.invDenom = 1.0f / denom;
+		ld._padding = 0;  // Initialize padding for clean memory
 		
 		lineState->lineDerived[i] = ld;
 	}
@@ -2287,45 +2106,10 @@ static PF_Err Render(
 		const int tileCountX = (output->width + tileSize - 1) / tileSize;
 		const int tileCountY = (output->height + tileSize - 1) / tileSize;
 		const int tileCount = tileCountX * tileCountY;
-		
-		// Optimization: Pre-compute inverse of tileSize to convert division to multiplication
-		const float invTileSize = 1.0f / (float)tileSize;
-		
-		// Pre-compute tile boundaries for each line (optimization: avoid redundant calculation)
-		for (int i = 0; i < lineState->lineCount; ++i)
-		{
-			LineDerived& ld = lineState->lineDerived[i];
-			const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
-			int minX = (int)((ld.centerX - radius) * invTileSize);
-			int maxX = (int)((ld.centerX + radius) * invTileSize);
-			int minY = (int)((ld.centerY - radius) * invTileSize);
-			int maxY = (int)((ld.centerY + radius) * invTileSize);
-			
-			// Clamp to tile grid bounds
-			ld.tileMinX = (minX < 0) ? 0 : ((minX >= tileCountX) ? (tileCountX - 1) : minX);
-			ld.tileMaxX = (maxX < 0) ? 0 : ((maxX >= tileCountX) ? (tileCountX - 1) : maxX);
-			ld.tileMinY = (minY < 0) ? 0 : ((minY >= tileCountY) ? (tileCountY - 1) : minY);
-			ld.tileMaxY = (maxY < 0) ? 0 : ((maxY >= tileCountY) ? (tileCountY - 1) : maxY);
-		}
 
 		if (lineState)
 		{
-			// Memory pool optimization: reserve capacity for tile data
-			if (tileCount > lineState->maxTileCapacity)
-			{
-				const int newTileCapacity = tileCount * 3 / 2;  // 50% over-allocation
-				lineState->tileCounts.reserve(newTileCapacity);
-				lineState->tileOffsets.reserve(newTileCapacity + 1);
-				// tileIndices needs dynamic sizing, estimated at lineCount * tileCount / 4
-				const int estimatedIndices = lineState->lineCount * tileCount / 4;
-				lineState->tileIndices.reserve(estimatedIndices);
-				lineState->maxTileCapacity = newTileCapacity;
-			}
-			
-			// Use resize instead of assign (faster when capacity is already reserved)
-			lineState->tileCounts.resize(tileCount);
-			// Clear to zero explicitly since resize doesn't initialize
-			std::fill(lineState->tileCounts.begin(), lineState->tileCounts.end(), 0);
+			lineState->tileCounts.assign(tileCount, 0);
 		}
 		for (int i = 0; lineState && i < lineState->lineCount; ++i)
 		{
@@ -2334,10 +2118,18 @@ static PF_Err Render(
 				continue;
 			}
 			const LineDerived& ld = lineState->lineDerived[i];
-			// Use pre-computed tile boundaries (optimization)
-			for (int ty = ld.tileMinY; ty <= ld.tileMaxY; ++ty)
+			const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
+			int minX = (int)((ld.centerX - radius) / tileSize);
+			int maxX = (int)((ld.centerX + radius) / tileSize);
+			int minY = (int)((ld.centerY - radius) / tileSize);
+			int maxY = (int)((ld.centerY + radius) / tileSize);
+			if (minX < 0) minX = 0;
+			if (minY < 0) minY = 0;
+			if (maxX >= tileCountX) maxX = tileCountX - 1;
+			if (maxY >= tileCountY) maxY = tileCountY - 1;
+			for (int ty = minY; ty <= maxY; ++ty)
 			{
-				for (int tx = ld.tileMinX; tx <= ld.tileMaxX; ++tx)
+				for (int tx = minX; tx <= maxX; ++tx)
 				{
 					lineState->tileCounts[ty * tileCountX + tx] += 1;
 				}
@@ -2346,8 +2138,7 @@ static PF_Err Render(
 
 		if (lineState)
 		{
-			lineState->tileOffsets.resize(tileCount + 1);
-			lineState->tileOffsets[0] = 0;
+			lineState->tileOffsets.assign(tileCount + 1, 0);
 			for (int i = 0; i < tileCount; ++i)
 			{
 				lineState->tileOffsets[i + 1] = lineState->tileOffsets[i] + lineState->tileCounts[i];
@@ -2355,12 +2146,8 @@ static PF_Err Render(
 		}
 		if (lineState)
 		{
-			const int totalIndices = lineState->tileOffsets[tileCount];
-			lineState->tileIndices.resize(totalIndices);
-			// Avoid vector copy by resizing and copying separately
-			std::vector<int> tileCursor;
-			tileCursor.resize(lineState->tileOffsets.size());
-			std::copy(lineState->tileOffsets.begin(), lineState->tileOffsets.end(), tileCursor.begin());
+			lineState->tileIndices.assign(lineState->tileOffsets[tileCount], 0);
+			std::vector<int> tileCursor = lineState->tileOffsets;
 			for (int i = 0; i < lineState->lineCount; ++i)
 			{
 				if (!lineState->lineActive[i])
@@ -2368,10 +2155,18 @@ static PF_Err Render(
 					continue;
 				}
 				const LineDerived& ld = lineState->lineDerived[i];
-				// Use pre-computed tile boundaries (optimization)
-				for (int ty = ld.tileMinY; ty <= ld.tileMaxY; ++ty)
+				const float radius = fabsf(ld.segCenterX) + ld.halfLen + ld.halfThick + lineAAScaled;
+				int minX = (int)((ld.centerX - radius) / tileSize);
+				int maxX = (int)((ld.centerX + radius) / tileSize);
+				int minY = (int)((ld.centerY - radius) / tileSize);
+				int maxY = (int)((ld.centerY + radius) / tileSize);
+				if (minX < 0) minX = 0;
+				if (minY < 0) minY = 0;
+				if (maxX >= tileCountX) maxX = tileCountX - 1;
+				if (maxY >= tileCountY) maxY = tileCountY - 1;
+				for (int ty = minY; ty <= maxY; ++ty)
 				{
-					for (int tx = ld.tileMinX; tx <= ld.tileMaxX; ++tx)
+					for (int tx = minX; tx <= maxX; ++tx)
 					{
 						const int idx = ty * tileCountX + tx;
 						lineState->tileIndices[tileCursor[idx]++] = i;
@@ -2386,13 +2181,6 @@ static PF_Err Render(
 #endif
 		for (int y = 0; y < output->height; ++y, srcData += src->rowbytes, destData += dest->rowbytes)
 		{
-			// Tile optimization: compute tile info once per row, update only when X crosses tile boundary
-			const int currentTileY = y / tileSize;
-			int lastTileX = -1;
-			int tileIndex = 0;
-			int start = 0;
-			int count = 0;
-			
 			for (int x = 0; x < output->width; ++x)
 			{
 				float v, u, luma, a;
@@ -2429,20 +2217,22 @@ static PF_Err Render(
 				// Track line-only alpha for Alpha XOR mode (blend mode 3)
 				float lineOnlyAlpha = 0.0f;
 
-				// Tile optimization: only update when crossing tile boundary
-				const int currentTileX = x / tileSize;
-				if (currentTileX != lastTileX)
-				{
-					tileIndex = currentTileY * tileCountX + currentTileX;
-					start = lineState ? lineState->tileOffsets[tileIndex] : 0;
-					count = lineState ? lineState->tileCounts[tileIndex] : 0;
-					lastTileX = currentTileX;
-				}
+				const int tileX = x / tileSize;
+				const int tileY = y / tileSize;
+				const int tileIndex = tileY * tileCountX + tileX;
+				const int start = lineState ? lineState->tileOffsets[tileIndex] : 0;
+				const int count = lineState ? lineState->tileCounts[tileIndex] : 0;
 				// Main line pass (with shadow drawn first for each line)
 				for (int i = 0; i < count; ++i)
 				{
 					const LineDerived& ld = lineState->lineDerived[lineState->tileIndices[start + i]];
 					const float depthAlpha = ld.depthAlpha;  // Use pre-computed
+
+					// === STEP 1-4: Skip extremely tiny lines (< 1 pixel thick) ===
+					if (ld.halfThick < 0.5f)
+					{
+						continue;  // Invisible line - skip all processing
+					}
 
 					// === STEP 2: Early skip optimization ===
 					// Check if pixel is outside line bounding box (with shadow offset margin)
@@ -2476,9 +2266,6 @@ static PF_Err Render(
 						const float blurRange = effectiveVelocity * shutterFraction;
 						if (blurRange > 0.5f)
 						{
-							// Pre-compute rotation for shadow (optimization)
-							const float spx_rotated = sdx * ld.cosA + sdy * ld.sinA;
-							const float spy_rotated = -sdx * ld.sinA + sdy * ld.cosA;
 							float saccumA = 0.0f;
 
 							for (int s = 0; s < samples; ++s)
@@ -2486,9 +2273,9 @@ static PF_Err Render(
 								const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
 								const float sampleOffset = blurRange * t;
 
-								// Use pre-computed rotation, only apply offset
-								const float spxSample = spx_rotated - (ld.segCenterX + sampleOffset);
-								const float spySample = spy_rotated;
+								float spxSample = sdx * ld.cosA + sdy * ld.sinA;
+								const float spySample = -sdx * ld.sinA + sdy * ld.cosA;
+								spxSample -= (ld.segCenterX + sampleOffset);
 
 								float sdistSample = (lineCap == 0)
 									? SDFBox(spxSample, spySample, ld.halfLen, ld.halfThick)
@@ -2593,9 +2380,6 @@ static PF_Err Render(
 						if (blurRange > 0.5f)
 						{
 							// Multi-sample motion blur with uniform averaging
-							// Pre-compute rotation (optimization: avoid redundant calculation in loop)
-							const float px_rotated = dx * ld.cosA + dy * ld.sinA;
-							const float py_rotated = -dx * ld.sinA + dy * ld.cosA;
 							float accumA = 0.0f;
 
 							for (int s = 0; s < samples; ++s)
@@ -2603,9 +2387,9 @@ static PF_Err Render(
 								const float t = (float)s / fmaxf((float)(samples - 1), 1.0f);
 								const float sampleOffset = blurRange * t;
 
-								// Use pre-computed rotation, only apply offset
-								const float pxSample = px_rotated - (ld.segCenterX + sampleOffset);
-								const float pySample = py_rotated;
+								float pxSample = dx * ld.cosA + dy * ld.sinA;
+								const float pySample = -dx * ld.sinA + dy * ld.cosA;
+								pxSample -= (ld.segCenterX + sampleOffset);
 
 								float distSample = (lineCap == 0)
 									? SDFBox(pxSample, pySample, ld.halfLen, ld.halfThick)
@@ -2619,11 +2403,6 @@ static PF_Err Render(
 								{
 									const float tt = saturate((distSample - aa) / (0.0f - aa));
 									sampleCoverage = tt * tt * (3.0f - 2.0f * tt) * tailFade;
-								}
-								else
-								{
-									// No anti-aliasing: simple distance test (optimized)
-									sampleCoverage = (distSample <= 0.0f) ? tailFade : 0.0f;
 								}
 
 								accumA += sampleCoverage;
@@ -2671,11 +2450,6 @@ static PF_Err Render(
 							const float tt = saturate((dist - aa) / (0.0f - aa));
 							coverage = tt * tt * (3.0f - 2.0f * tt) * tailFade * ld.focusAlpha * depthAlpha;
 						}
-						else
-						{
-							// No anti-aliasing: simple distance test (optimized)
-							coverage = (dist <= 0.0f) ? (tailFade * ld.focusAlpha * depthAlpha) : 0.0f;
-						}
 					}
 					if (coverage > 0.001f)
 					{
@@ -2683,6 +2457,7 @@ static PF_Err Render(
 						
 						// Save alpha before this line's contribution
 						const float prevAlpha = a;
+						(void)prevAlpha;  // Unused, kept for future use
 						
 						// Apply blend mode
 						if (blendMode == 0)  // Back (behind element)
@@ -2866,25 +2641,41 @@ extern "C" DllExport PF_Err EffectMain(
 	{
 		PF_UserChangedParamExtra* changedExtra = reinterpret_cast<PF_UserChangedParamExtra*>(extra);
 		
+		WriteLog("USER_CHANGED_PARAM: changedExtra=%p, param_index=%d", 
+			changedExtra, changedExtra ? changedExtra->param_index : -1);
+		
 		// Effect Preset: apply preset parameters or defaults
 		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_EFFECT_PRESET)
 		{
 			const int presetValue = params[SDK_PROCAMP_EFFECT_PRESET]->u.pd.value;
+			WriteLog("Effect Preset changed: presetValue=%d (1=Default, 2+=Preset[n-2])", presetValue);
+			
 			if (presetValue == 1)
 			{
+				WriteLog("Applying default effect params...");
 				ApplyDefaultEffectParams(in_data, out_data, params);
+				WriteLog("Default effect params applied.");
 			}
 			else if (presetValue > 1)
 			{
 				// Debounce: ignore double-fire within 200ms
 				const uint32_t currentTime = GetCurrentTimeMs();
 				const uint32_t lastTime = sLastPresetClickTime.load();
+				WriteLog("Debounce check: currentTime=%u, lastTime=%u, diff=%u, threshold=%u",
+					currentTime, lastTime, currentTime - lastTime, kPresetDebounceMs);
 				if (currentTime - lastTime < kPresetDebounceMs)
 				{
+					WriteLog("DEBOUNCE: Ignoring duplicate event");
 					break;  // Ignore duplicate event
 				}
 				sLastPresetClickTime.store(currentTime);
+				WriteLog("Applying effect preset index=%d...", presetValue - 2);
 				ApplyEffectPreset(in_data, out_data, params, presetValue - 2);
+				WriteLog("Effect preset applied.");
+			}
+			else
+			{
+				WriteLog("presetValue <= 0, no action taken");
 			}
 		}
 		
@@ -2920,15 +2711,6 @@ extern "C" DllExport PF_Err EffectMain(
 				}
 				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 			}
-		}
-		
-		// Linkage Parameters: update visibility when linkage mode changes
-		if (changedExtra && (changedExtra->param_index == SDK_PROCAMP_THICKNESS_LINKAGE ||
-		                     changedExtra->param_index == SDK_PROCAMP_LENGTH_LINKAGE ||
-		                     changedExtra->param_index == SDK_PROCAMP_TRAVEL_LINKAGE))
-		{
-			UpdatePseudoGroupVisibility(in_data, params);
-			out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 		}
 		
 		// Spawn Source: enable/disable Alpha Threshold based on selection
