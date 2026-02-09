@@ -1,5 +1,5 @@
 name	count	lifetime	travel	thickness	length	angle	tailFade	aa	originMode	spawnScaleX	spawnScaleY	originOffsetX	originOffsetY	interval	animPattern	centerGap	easing	startTime	duration	blendMode	depthStrength	lineCap	colorMode	colorPreset	spawnSource	hideElement	lengthLinkage	lengthLinkageRate	thicknessLinkage	thicknessLinkageRate	travelLinkage	travelLinkageRate
-そよ風TEST	200	120	200	2	80	0	0.3	1	1	100	100	0	0	0	1	0	3	0	0	4	3	1	1	1	1	0	0	100	0	100	0	100
+そよ風	180	150	180	1.5	100	5	0.4	1	1	100	100	0	0	1	1	0	3	0	0	4	2	1	1	1	1	0	0	100	0	100	0	100
 嵐	200	30	400	3	60	15	0.7	1	2	120	120	0	0	0	1	0	1	0	0	1	5	1	1	1	1	0	0	100	0	100	0	100
 雨	150	25	600	2	150	90	0.3	1	2	100	100	0	0	0	1	0	0	0	0	3	0.7	1	1	1	1	0	0	100	0	100	0	100
 スパークル	100	45	150	3	50	45	0.5	1	1	150	150	0	0	2	1	0	4	0	0	2	0.5	1	1	1	1	0	0	100	0	100	0	100
@@ -15,3 +15,4 @@ name	count	lifetime	travel	thickness	length	angle	tailFade	aa	originMode	spawnSc
 シネマダスト	25	150	80	2	20	90	0	1	1	100	100	0	0	8	1	0	0	0	0	2	0.2	1	1	1	1	0	0	100	0	100	0	100
 エナジーバースト	120	12	900	5	400	0	0.1	1	1	60	100	0	0	0	3	0.3	7	0	0	2	0.7	1	1	1	1	0	0	100	0	100	0	100
 ゆっくり背景	50	600	100	16	300	-35	0	1	1	120	120	0	0	600	2	0	2	-300	0	1	10	2	2	2	1	1	0	100	0	100	0	100
+ゆっくり背景対流	80	480	120	12	280	90	0.1	1	2	120	120	0	0	480	2	0	1	-240	0	1	8	2	2	2	1	1	0	100	0	100	0	100
