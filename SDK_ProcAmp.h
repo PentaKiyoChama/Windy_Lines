@@ -533,18 +533,21 @@ struct EffectPreset
 */
 #ifdef __cplusplus
 
-// ========== 新しい色プリセットシステム（テスト中）==========
-// Step 1: 新ヘッダーを追加（まだ無効化状態）
-#if 0  // まだ有効化しない（テストのみ）
+// ========== 新しい色プリセットシステム（有効化）==========
+// Step 2: 新システムを有効化（既存定義はコメントアウト）
 #include "SDK_ProcAmp_ColorPresets.h"
-#endif
 // ========================================================
 
+// ========== 既存の定義（コメントアウト - Step 2）==========
+// Step 3で完全に削除予定
+/*
 // Color structure for presets (ARGB format)
 struct PresetColor {
 	unsigned char a, r, g, b;
 };
+*/
 
+/*
 // Preset color palettes (8 colors each)
 namespace ColorPresets {
 	// Rainbow
@@ -713,7 +716,10 @@ namespace ColorPresets {
 		{255, 128, 128, 128}, {255, 105, 105, 105}, {255, 64, 64, 64}, {255, 0, 0, 0}
 	};
 }
+*/
+// ========================================================
 
+/*
 // Preset color lookup table
 inline const PresetColor* GetPresetPalette(int presetIndex) {
 	switch (presetIndex) {
@@ -753,6 +759,8 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		default:                          return ColorPresets::kRainbow;
 	}
 }
+*/
+// ========================================================
 
 #endif // __cplusplus
 
