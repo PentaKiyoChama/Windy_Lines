@@ -533,6 +533,13 @@ struct EffectPreset
 */
 #ifdef __cplusplus
 
+// ========== 新しい色プリセットシステム（テスト中）==========
+// Step 1: 新ヘッダーを追加（まだ無効化状態）
+#if 0  // まだ有効化しない（テストのみ）
+#include "SDK_ProcAmp_ColorPresets.h"
+#endif
+// ========================================================
+
 // Color structure for presets (ARGB format)
 struct PresetColor {
 	unsigned char a, r, g, b;
