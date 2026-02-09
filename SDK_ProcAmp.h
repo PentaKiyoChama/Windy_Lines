@@ -92,7 +92,12 @@ static void WriteLog(const char* format, ...)
 	}
 }
 
-#define DebugLog WriteLog
+// Release builds disable logging for performance and security
+#ifdef _DEBUG
+    #define DebugLog WriteLog
+#else
+    #define DebugLog(...)  // No-op in release builds
+#endif
 // ===========================================
 
 
