@@ -32,7 +32,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"win_風を感じるライン"
+			"win_WindyShapes"
 		},
 		/* [3] */
 		Category {
