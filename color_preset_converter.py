@@ -132,6 +132,21 @@ def generate_cpp_header(presets):
     
     # Lookup function
     cpp += generate_lookup_function(presets)
+    cpp += '\n'
+    
+    # Preset count constant (for dynamic UI generation)
+    cpp += f'// Total number of color presets (for UI generation)\n'
+    cpp += f'static const int kColorPresetCount = {len(presets)};\n\n'
+    
+    # Preset names array (for UI labels)
+    cpp += '// Preset names (Japanese) for UI labels\n'
+    cpp += 'static const char* kColorPresetNames[] = {\n'
+    for i, preset in enumerate(presets):
+        cpp += f'\t"{preset["name"]}"'
+        if i < len(presets) - 1:
+            cpp += ','
+        cpp += f'  // {preset["name_en"]}\n'
+    cpp += '};\n'
     
     # Footer
     cpp += '\n#endif // SDK_PROCAMP_COLOR_PRESETS_H\n'

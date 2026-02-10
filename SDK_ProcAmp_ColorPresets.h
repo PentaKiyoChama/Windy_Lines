@@ -305,4 +305,46 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 	}
 }
 
+// Total number of color presets (for UI generation)
+static const int kColorPresetCount = 35;
+
+// Preset names (Japanese) for UI labels
+static const char* kColorPresetNames[] = {
+	"レインボー",  // Rainbow
+	"パステルレインボー",  // RainbowPastel
+	"森",  // Forest
+	"サイバー",  // Cyber
+	"警告",  // Hazard
+	"桜",  // Sakura
+	"砂漠",  // Desert
+	"星屑",  // StarDust
+	"若葉",  // Wakaba
+	"危険地帯",  // DangerZone
+	"妖艶",  // Yoen
+	"爽快",  // Sokai
+	"夢幻の風",  // DreamyWind
+	"夕焼け",  // Sunset
+	"海",  // Ocean
+	"秋",  // Autumn
+	"雪",  // Snow
+	"深海",  // DeepSea
+	"朝露",  // MorningDew
+	"夜空",  // NightSky
+	"炎",  // Flame
+	"大地",  // Earth
+	"宝石",  // Jewel
+	"パステル2",  // Pastel2
+	"夜の街",  // CityNight
+	"月光",  // Moonlight
+	"眩光",  // DazzlingLight
+	"ネオンブラスト",  // NeonBlast
+	"毒沼",  // ToxicSwamp
+	"宇宙嵐",  // CosmicStorm
+	"溶岩流",  // LavaFlow
+	"金",  // Gold
+	"モノクロ",  // Monochrome
+	"テストカラー",  // test_color
+	"test_two"  // test_two
+};
+
 #endif // SDK_PROCAMP_COLOR_PRESETS_H
