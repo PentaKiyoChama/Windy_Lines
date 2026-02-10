@@ -41,13 +41,15 @@ def update_gpu_file(file_path, value):
 
 def main():
     script_dir = get_script_dir()
+    # Project root is one level up from scripts directory
+    project_root = os.path.dirname(script_dir)
     
-    # Files to sync
-    h_file = os.path.join(script_dir, 'SDK_ProcAmp.h')
+    # Files to sync (SDK files are in project root)
+    h_file = os.path.join(project_root, 'SDK_ProcAmp.h')
     gpu_files = [
-        os.path.join(script_dir, 'SDK_ProcAmp.cu'),
-        os.path.join(script_dir, 'SDK_ProcAmp.cl'),
-        os.path.join(script_dir, 'SDK_ProcAmp.hlsl')
+        os.path.join(project_root, 'SDK_ProcAmp.cu'),
+        os.path.join(project_root, 'SDK_ProcAmp.cl'),
+        os.path.join(project_root, 'SDK_ProcAmp.hlsl')
     ]
     
     try:
