@@ -50,11 +50,27 @@ static void WriteLog(const char* format, ...)
 {
 	std::lock_guard<std::mutex> lock(sLogMutex);
 	
-	// Try C:\Temp first, then Desktop
+	// Platform-specific log paths
+#ifdef _WIN32
 	const char* paths[] = {
 		"C:\\Temp\\SDK_ProcAmp_Log.txt",
 		"C:\\Users\\Owner\\Desktop\\SDK_ProcAmp_Log.txt"
 	};
+#else
+	// Mac/Unix paths
+	const char* paths[] = {
+		"/tmp/SDK_ProcAmp_Log.txt",
+		"~/Desktop/SDK_ProcAmp_Log.txt"
+	};
+	// Expand ~ for home directory on Unix
+	char expandedPath[512];
+	if (paths[1][0] == '~') {
+		const char* home = getenv("HOME");
+		if (home) {
+			snprintf(expandedPath, sizeof(expandedPath), "%s%s", home, paths[1] + 1);
+		}
+	}
+#endif
 	
 	FILE* fp = nullptr;
 	for (int i = 0; i < 2; ++i)
@@ -63,7 +79,9 @@ static void WriteLog(const char* format, ...)
 		errno_t err = fopen_s(&fp, paths[i], "a");
 		if (err == 0 && fp)
 #else
-		fp = fopen(paths[i], "a");
+		// Use expanded path for home directory
+		const char* logPath = (i == 1 && paths[1][0] == '~') ? expandedPath : paths[i];
+		fp = fopen(logPath, "a");
 		if (fp)
 #endif
 		{
