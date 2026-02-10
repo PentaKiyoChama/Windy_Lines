@@ -10,6 +10,7 @@ This document describes the file organization in the repository.
 プラグインの主要ソースファイルが配置されています。
 - `SDK_ProcAmp.*` - プラグインのメインソースコード（C++、HLSL、CUDA、OpenCLなど）
 - `SDK_ProcAmp_*.h` / `SDK_ProcAmp_*.cpp` - ヘッダーファイルと実装ファイル
+- `presets.tsv` - エフェクトプリセット定義（頻繁に使用するデータファイル）
 - `RCa18532`, `RCb18532` - リソースファイル
 - `readme.txt` - DirectX関連のビルド手順
 - `.gitattributes`, `.gitignore` - Git設定ファイル
@@ -30,11 +31,10 @@ This document describes the file organization in the repository.
 - `test_bezier` - テスト用実行ファイル
 
 ### `LEGACY/` ディレクトリ
-古いバックアップファイルや生成済みファイル、未使用のヘッダーファイルが保存されています（全5ファイル）。
+古いバックアップファイルや生成済みファイル、未使用のヘッダーファイルが保存されています（全4ファイル）。
 - `SDK_ProcAmp.cu.backup_20260205_182402` - CUDAファイルのバックアップ
 - `SDK_ProcAmp_Strings.h` - 未使用のプラグイン名定義ヘッダー
 - `SDK_ProcAmp_Version.h` - 未使用のバージョン管理ヘッダー
-- `presets.tsv` - プリセットデータ
 - `presets_generated.cpp` - 生成済みのプリセットコード
 
 ### `Mac/` ディレクトリ

@@ -84,13 +84,14 @@ def generate_cpp_array(presets):
     return cpp
 
 def main():
-    # デフォルトで同じディレクトリの presets.tsv を使用
+    # デフォルトでプロジェクトルートの presets.tsv を使用
     if len(sys.argv) >= 2:
         tsv_file = sys.argv[1]
     else:
-        # スクリプトと同じディレクトリの presets.tsv を使用
+        # プロジェクトルート（スクリプトの親ディレクトリ）の presets.tsv を使用
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        tsv_file = os.path.join(script_dir, 'presets.tsv')
+        project_root = os.path.dirname(script_dir)
+        tsv_file = os.path.join(project_root, 'presets.tsv')
     
     try:
         presets = parse_tsv(tsv_file)
