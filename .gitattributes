@@ -22,7 +22,6 @@
 *.rc text
 *.rcp text
 *.prml text
-*.aps text
 
 # Windows-specific files
 *.bat text eol=crlf
@@ -30,6 +29,7 @@
 
 # Binary files
 *.aex binary
+*.aps binary
 *.obj binary
 *.pdb binary
 *.lib binary
