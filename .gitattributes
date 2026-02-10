@@ -1,0 +1,41 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.cpp text
+*.h text
+*.c text
+*.cu text
+*.cl text
+*.hlsl text
+*.metal text
+*.air text
+*.py text
+*.sh text eol=lf
+*.md text
+*.json text
+*.txt text
+*.tsv text
+
+# Resource files
+*.r text
+*.rc text
+*.rcp text
+*.prml text
+*.aps text
+
+# Windows-specific files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.aex binary
+*.obj binary
+*.pdb binary
+*.lib binary
+*.exp binary
+*.bsc binary
+*.sbr binary
+*.res binary
+*.rr binary
+*.dSYM binary
