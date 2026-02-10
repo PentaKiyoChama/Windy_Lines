@@ -58,17 +58,25 @@ static void WriteLog(const char* format, ...)
 	};
 #else
 	// Mac/Unix paths
-	const char* paths[] = {
+	const char* pathTemplates[] = {
 		"/tmp/SDK_ProcAmp_Log.txt",
 		"~/Desktop/SDK_ProcAmp_Log.txt"
 	};
 	// Expand ~ for home directory on Unix
-	char expandedPath[512];
-	if (paths[1][0] == '~') {
+	char expandedPath[512] = "";
+	const char* paths[2];
+	paths[0] = pathTemplates[0];
+	
+	if (pathTemplates[1][0] == '~') {
 		const char* home = getenv("HOME");
 		if (home) {
-			snprintf(expandedPath, sizeof(expandedPath), "%s%s", home, paths[1] + 1);
+			snprintf(expandedPath, sizeof(expandedPath), "%s%s", home, pathTemplates[1] + 1);
+			paths[1] = expandedPath;
+		} else {
+			paths[1] = pathTemplates[1];  // Fallback to unexpanded path
 		}
+	} else {
+		paths[1] = pathTemplates[1];
 	}
 #endif
 	
@@ -79,9 +87,7 @@ static void WriteLog(const char* format, ...)
 		errno_t err = fopen_s(&fp, paths[i], "a");
 		if (err == 0 && fp)
 #else
-		// Use expanded path for home directory
-		const char* logPath = (i == 1 && paths[1][0] == '~') ? expandedPath : paths[i];
-		fp = fopen(logPath, "a");
+		fp = fopen(paths[i], "a");
 		if (fp)
 #endif
 		{
