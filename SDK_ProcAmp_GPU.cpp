@@ -21,7 +21,6 @@
 
 
 #include "SDK_ProcAmp.h"
-#include "SDK_ProcAmp_Version.h"
 #include "PrGPUFilterModule.h"
 #include "PrSDKVideoSegmentProperties.h"
 

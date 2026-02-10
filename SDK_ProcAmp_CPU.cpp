@@ -22,7 +22,6 @@
 
 #include "SDK_ProcAmp.h"
 #include "SDK_ProcAmp_ParamNames.h"
-#include "SDK_ProcAmp_Version.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
 #include <atomic>
