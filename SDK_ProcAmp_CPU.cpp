@@ -1140,14 +1140,23 @@ static PF_Err ParamsSetup(
 		LINE_COLOR_DFLT_B8,
 		SDK_PROCAMP_LINE_COLOR);
 
-	// Color Preset
+	// Color Preset (dynamically generated from TSV)
 	AEFX_CLR_STRUCT(def);
+	std::string colorPresetLabels = "";
+	for (int i = 0; i < kColorPresetCount; ++i)
+	{
+		colorPresetLabels += kColorPresetNames[i];
+		if (i < kColorPresetCount - 1)
+		{
+			colorPresetLabels += "|";
+		}
+	}
 	def.flags = PF_ParamFlag_SUPERVISE;
 	PF_ADD_POPUP(
 		P_COLOR_PRESET,
-		33,
+		kColorPresetCount,
 		COLOR_PRESET_DFLT,
-		PM_COLOR_PRESET,
+		colorPresetLabels.c_str(),
 		SDK_PROCAMP_COLOR_PRESET);
 
 	// Custom Colors 1-8
@@ -1707,7 +1716,11 @@ static PF_Err Render(
 		// Color Mode and Palette Setup
 		// normalizePopup returns 0-based: 0=Single, 1=Preset, 2=Custom
 		const int colorMode = normalizePopup(params[SDK_PROCAMP_COLOR_MODE]->u.pd.value, 3);
-		const int presetIndex = normalizePopup(params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, 33);
+		const int presetIndex = normalizePopup(params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, kColorPresetCount);
+		
+		// Debug logging for color preset selection
+		DebugLog("[ColorPreset] Raw popup value: %d, Normalized index: %d, Mode: %d, Will call GetPresetPalette(%d)",
+			params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, presetIndex, colorMode, presetIndex + 1);
 		
 		// Build color palette (8 colors, RGB normalized)
 		float colorPalette[8][3];
@@ -1725,17 +1738,22 @@ static PF_Err Render(
 				colorPalette[i][1] = singleG;
 				colorPalette[i][2] = singleB;
 			}
+			DebugLog("[ColorPreset] Single color mode: R=%.2f G=%.2f B=%.2f", singleR, singleG, singleB);
 		}
 		else if (colorMode == 1)  // Preset (0-based)
 		{
 			// Preset mode: load from preset palette (presetIndex is 0-based)
 			const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
+			DebugLog("[ColorPreset] Preset mode: Loading preset #%d, First color: R=%d G=%d B=%d",
+				presetIndex + 1, preset[0].r, preset[0].g, preset[0].b);
 			for (int i = 0; i < 8; ++i)
 			{
 				colorPalette[i][0] = preset[i].r / 255.0f;
 				colorPalette[i][1] = preset[i].g / 255.0f;
 				colorPalette[i][2] = preset[i].b / 255.0f;
 			}
+			DebugLog("[ColorPreset] Loaded 8 colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
+				colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
 		}
 		else  // Custom (colorMode == 2, 0-based)
 		{
