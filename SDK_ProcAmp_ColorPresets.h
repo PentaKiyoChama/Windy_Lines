@@ -42,6 +42,7 @@ enum ColorPreset
 	COLOR_PRESET_MONOCHROME,
 	COLOR_PRESET_TEST_COLOR,
 	COLOR_PRESET_TEST_TWO,
+	COLOR_PRESET_TEST_THREE,
 	COLOR_PRESET_COUNT
 };
 
@@ -261,6 +262,12 @@ namespace ColorPresets {
 		{255, 76, 25, 102}, {255, 76, 25, 103}, {255, 76, 25, 104}, {255, 76, 25, 105},
 		{255, 76, 25, 106}, {255, 76, 25, 107}, {255, 76, 25, 108}, {255, 76, 25, 109}
 	};
+
+	// test_3 (test_three)
+	const PresetColor ktest_three[8] = {
+		{255, 102, 229, 128}, {255, 153, 242, 204}, {255, 51, 178, 229}, {255, 178, 255, 178},
+		{255, 102, 204, 255}, {255, 76, 204, 102}, {255, 153, 204, 255}, {255, 204, 255, 229}
+	};
 }
 
 // Preset color lookup table
@@ -301,12 +308,13 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		case 33: return ColorPresets::kMonochrome;
 		case 34: return ColorPresets::ktest_color;
 		case 35: return ColorPresets::ktest_two;
+		case 36: return ColorPresets::ktest_three;
 		default: return ColorPresets::kRainbow;  // Fallback to first preset
 	}
 }
 
 // Total number of color presets (for UI generation)
-static const int kColorPresetCount = 35;
+static const int kColorPresetCount = 36;
 
 // Preset names (Japanese) for UI labels
 static const char* kColorPresetNames[] = {
@@ -344,7 +352,8 @@ static const char* kColorPresetNames[] = {
 	"金",  // Gold
 	"モノクロ",  // Monochrome
 	"テストカラー",  // test_color
-	"test_two"  // test_two
+	"test_two",  // test_two
+	"test_3"  // test_three
 };
 
 #endif // SDK_PROCAMP_COLOR_PRESETS_H

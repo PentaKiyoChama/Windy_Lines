@@ -17,25 +17,32 @@ def parse_tsv(filepath):
     presets = []
     with open(filepath, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f, delimiter='\t')
-        for row in reader:
-            preset = {
-                'id': int(row['id']),
-                'name': row['name'],
-                'name_en': row['name_en'],
-                'colors': []
-            }
-            # Parse 8 colors
-            for i in range(1, 9):
-                color_str = row[f'color{i}']
-                parts = color_str.split(',')
-                if len(parts) != 4:
-                    raise ValueError(f"Invalid color format in preset {preset['name']}: {color_str}")
-                a, r, g, b = map(int, parts)
-                # Validate range
-                if not all(0 <= v <= 255 for v in [a, r, g, b]):
-                    raise ValueError(f"Color values must be 0-255 in preset {preset['name']}: {color_str}")
-                preset['colors'].append((a, r, g, b))
-            presets.append(preset)
+        for row_num, row in enumerate(reader, start=2):  # start=2 because line 1 is header
+            # Skip empty rows (no id field)
+            if not row.get('id') or not row['id'].strip():
+                continue
+            
+            try:
+                preset = {
+                    'id': int(row['id']),
+                    'name': row['name'],
+                    'name_en': row['name_en'],
+                    'colors': []
+                }
+                # Parse 8 colors
+                for i in range(1, 9):
+                    color_str = row[f'color{i}']
+                    parts = color_str.split(',')
+                    if len(parts) != 4:
+                        raise ValueError(f"Invalid color format in preset {preset['name']}: {color_str}")
+                    a, r, g, b = map(int, parts)
+                    # Validate range
+                    if not all(0 <= v <= 255 for v in [a, r, g, b]):
+                        raise ValueError(f"Color values must be 0-255 in preset {preset['name']}: {color_str}")
+                    preset['colors'].append((a, r, g, b))
+                presets.append(preset)
+            except (ValueError, KeyError) as e:
+                raise ValueError(f"Error at row {row_num}: {e}")
     return presets
 
 def format_preset_cpp(preset):
