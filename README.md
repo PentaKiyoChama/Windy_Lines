@@ -10,7 +10,6 @@ This document describes the file organization in the repository.
 プラグインの主要ソースファイルが配置されています。
 - `SDK_ProcAmp.*` - プラグインのメインソースコード（C++、HLSL、CUDA、OpenCLなど）
 - `SDK_ProcAmp_*.h` / `SDK_ProcAmp_*.cpp` - ヘッダーファイルと実装ファイル
-- `presets.tsv` - エフェクトプリセット定義（頻繁に使用するデータファイル）
 - `RCa18532`, `RCb18532` - リソースファイル
 - `readme.txt` - DirectX関連のビルド手順
 - `.gitattributes`, `.gitignore` - Git設定ファイル
@@ -25,10 +24,15 @@ This document describes the file organization in the repository.
 - その他のドキュメント
 
 ### `scripts/` ディレクトリ
-開発用のスクリプトとツールが整理されています（全11ファイル）。
-- `*.py` - Pythonスクリプト（プリセット変換、最適化適用など）
+開発用のスクリプトとツールが整理されています（全10ファイル）。
+- `*.py` - Pythonスクリプト（最適化適用、マクロ生成など）
 - `*.sh` - シェルスクリプト（マクロ生成、検証など）
 - `test_bezier` - テスト用実行ファイル
+
+### `presets/` ディレクトリ
+エフェクトプリセット関連のファイルが整理されています（全2ファイル）。
+- `presets.tsv` - エフェクトプリセット定義データ（16種類のプリセット）
+- `preset_converter.py` - TSVからC++コードを生成するスクリプト
 
 ### `LEGACY/` ディレクトリ
 古いバックアップファイルや生成済みファイル、未使用のヘッダーファイルが保存されています（全4ファイル）。

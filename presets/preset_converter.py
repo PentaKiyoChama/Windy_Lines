@@ -84,20 +84,20 @@ def generate_cpp_array(presets):
     return cpp
 
 def main():
-    # デフォルトでプロジェクトルートの presets.tsv を使用
+    # デフォルトで同じディレクトリの presets.tsv を使用
     if len(sys.argv) >= 2:
         tsv_file = sys.argv[1]
     else:
-        # プロジェクトルート（スクリプトの親ディレクトリ）の presets.tsv を使用
+        # スクリプトと同じディレクトリの presets.tsv を使用
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(script_dir)
-        tsv_file = os.path.join(project_root, 'presets.tsv')
+        tsv_file = os.path.join(script_dir, 'presets.tsv')
     
     try:
         presets = parse_tsv(tsv_file)
         cpp_code = generate_cpp_array(presets)
         
         # Save to header file in project root (where other SDK headers are)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(script_dir)
         output_file = os.path.join(project_root, 'SDK_ProcAmp_Presets.h')
         
