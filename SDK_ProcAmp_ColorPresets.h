@@ -41,6 +41,7 @@ enum ColorPreset
 	COLOR_PRESET_GOLD,
 	COLOR_PRESET_MONOCHROME,
 	COLOR_PRESET_TEST_COLOR,
+	COLOR_PRESET_TEST_TWO,
 	COLOR_PRESET_COUNT
 };
 
@@ -254,6 +255,12 @@ namespace ColorPresets {
 		{255, 255, 0, 0}, {255, 255, 128, 0}, {255, 255, 255, 0}, {255, 0, 255, 0},
 		{255, 0, 0, 255}, {255, 74, 0, 130}, {255, 140, 0, 255}, {255, 255, 0, 255}
 	};
+
+	// test_two (test_two)
+	const PresetColor ktest_two[8] = {
+		{255, 76, 25, 102}, {255, 76, 25, 103}, {255, 76, 25, 104}, {255, 76, 25, 105},
+		{255, 76, 25, 106}, {255, 76, 25, 107}, {255, 76, 25, 108}, {255, 76, 25, 109}
+	};
 }
 
 // Preset color lookup table
@@ -293,6 +300,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		case 32: return ColorPresets::kGold;
 		case 33: return ColorPresets::kMonochrome;
 		case 34: return ColorPresets::ktest_color;
+		case 35: return ColorPresets::ktest_two;
 		default: return ColorPresets::kRainbow;  // Fallback to first preset
 	}
 }
