@@ -115,6 +115,7 @@ def generate_cpp_header(presets):
     cpp += '// Edit color_presets.tsv and run color_preset_converter.py to regenerate\n\n'
     cpp += '#ifndef SDK_PROCAMP_COLOR_PRESETS_H\n'
     cpp += '#define SDK_PROCAMP_COLOR_PRESETS_H\n\n'
+    cpp += '#include <string>\n\n'
     
     # Enum definition
     cpp += generate_enum(presets)
@@ -145,6 +146,12 @@ def generate_cpp_header(presets):
     cpp += f'// Total number of color presets (for UI generation)\n'
     cpp += f'static const int kColorPresetCount = {len(presets)};\n\n'
     
+    # Unified preset count: Single(1) + Sep(1) + Custom(1) + Sep(1) + Presets(N)
+    # Note: Separators (-|) are displayed as items in the menu but are not selectable
+    cpp += f'// Total number of menu items including separators\n'
+    cpp += f'// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets={len(presets)} = {1 + 1 + 1 + 1 + len(presets)}\n'
+    cpp += f'static const int kUnifiedPresetCount = {1 + 1 + 1 + 1 + len(presets)};\n\n'
+    
     # Preset names array (for UI labels)
     cpp += '// Preset names (Japanese) for UI labels\n'
     cpp += 'static const char* kColorPresetNames[] = {\n'
@@ -153,7 +160,63 @@ def generate_cpp_header(presets):
         if i < len(presets) - 1:
             cpp += ','
         cpp += f'  // {preset["name_en"]}\n'
-    cpp += '};\n'
+    cpp += '};\n\n'
+    
+    # Unified menu string generator
+    cpp += '// Generate unified preset menu string (Single|(-|Custom|(-|Preset1|Preset2|...)\n'
+    cpp += 'inline const char* GetUnifiedPresetMenuString() {\n'
+    cpp += '\tstatic std::string menuStr;\n'
+    cpp += '\tif (menuStr.empty()) {\n'
+    cpp += '\t\tmenuStr = "単色|(-|カスタム|(-";\n'
+    cpp += '\t\tfor (int i = 0; i < kColorPresetCount; ++i) {\n'
+    cpp += '\t\t\tmenuStr += "|";\n'
+    cpp += '\t\t\tmenuStr += kColorPresetNames[i];\n'
+    cpp += '\t\t}\n'
+    cpp += '\t}\n'
+    cpp += '\treturn menuStr.c_str();\n'
+    cpp += '}\n\n'
+    
+    # Index conversion functions
+    # Note: Separators (-|) ARE included in menu numbering
+    # Menu display: Single|(-|Custom|(-|Rainbow|Pastel|Forest|...
+    # UI values (1-based): 1=Single, 2=Sep, 3=Custom, 4=Sep, 5=Rainbow, 6=Pastel, 7=Forest, ...
+    # After normalization (0-based): 0=Single, 1=Sep, 2=Custom, 3=Sep, 4=Rainbow, 5=Pastel, 6=Forest, ...
+    cpp += '// Convert unified preset index (0-based after normalization) to color mode and preset index\n'
+    cpp += '// Note: Separators (-|) ARE included in menu numbering\n'
+    cpp += '// UI values: 1=Single, 2=Sep, 3=Custom, 4=Sep, 5=Rainbow, 6=Pastel, ...\n'
+    cpp += 'inline void UnifiedIndexToColorModeAndPreset(int unifiedIndex, int& outColorMode, int& outPresetIndex) {\n'
+    cpp += '\tif (unifiedIndex == 0) {\n'
+    cpp += '\t\toutColorMode = 0;  // Single\n'
+    cpp += '\t\toutPresetIndex = 0;\n'
+    cpp += '\t} else if (unifiedIndex == 1 || unifiedIndex == 3) {\n'
+    cpp += '\t\t// Separator (not selectable, but treat as first preset to avoid errors)\n'
+    cpp += '\t\toutColorMode = 2;\n'
+    cpp += '\t\toutPresetIndex = 0;\n'
+    cpp += '\t} else if (unifiedIndex == 2) {\n'
+    cpp += '\t\toutColorMode = 1;  // Custom\n'
+    cpp += '\t\toutPresetIndex = 0;\n'
+    cpp += '\t} else if (unifiedIndex >= 4 && unifiedIndex < 4 + ' + str(len(presets)) + ') {\n'
+    cpp += '\t\toutColorMode = 2;  // Preset\n'
+    cpp += '\t\toutPresetIndex = unifiedIndex - 4;  // 0-based preset index\n'
+    cpp += '\t} else {\n'
+    cpp += '\t\t// Out of range - default to first preset\n'
+    cpp += '\t\toutColorMode = 2;\n'
+    cpp += '\t\toutPresetIndex = 0;\n'
+    cpp += '\t}\n'
+    cpp += '}\n\n'
+    
+    # Reverse conversion function
+    cpp += '// Convert color mode and preset index back to unified index\n'
+    cpp += 'inline int ColorModeAndPresetToUnifiedIndex(int colorMode, int presetIndex) {\n'
+    cpp += '\tif (colorMode == 0) return 0;  // Single\n'
+    cpp += '\tif (colorMode == 1) return 2;  // Custom\n'
+    cpp += '\tif (colorMode == 2) {  // Preset\n'
+    cpp += '\t\tint idx = presetIndex + 4;  // Skip Single, Sep, Custom, Sep\n'
+    cpp += '\t\tif (idx >= 4 && idx < 4 + ' + str(len(presets)) + ') return idx;\n'
+    cpp += '\t\treturn 4;  // Default to first preset\n'
+    cpp += '\t}\n'
+    cpp += '\treturn 0;  // Default to Single\n'
+    cpp += '}\n'
     
     # Footer
     cpp += '\n#endif // SDK_PROCAMP_COLOR_PRESETS_H\n'

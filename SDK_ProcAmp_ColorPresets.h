@@ -4,6 +4,8 @@
 #ifndef SDK_PROCAMP_COLOR_PRESETS_H
 #define SDK_PROCAMP_COLOR_PRESETS_H
 
+#include <string>
+
 // Color preset enum - auto-generated from TSV
 enum ColorPreset
 {
@@ -43,6 +45,7 @@ enum ColorPreset
 	COLOR_PRESET_TEST_COLOR,
 	COLOR_PRESET_TEST_TWO,
 	COLOR_PRESET_TEST_THREE,
+	COLOR_PRESET_ALL_YELLOW,
 	COLOR_PRESET_COUNT
 };
 
@@ -268,6 +271,12 @@ namespace ColorPresets {
 		{255, 102, 229, 128}, {255, 153, 242, 204}, {255, 51, 178, 229}, {255, 178, 255, 178},
 		{255, 102, 204, 255}, {255, 76, 204, 102}, {255, 153, 204, 255}, {255, 204, 255, 229}
 	};
+
+	// 全部黄色 (all_yellow)
+	const PresetColor kall_yellow[8] = {
+		{255, 255, 215, 0}, {255, 255, 215, 1}, {255, 255, 215, 2}, {255, 255, 215, 3},
+		{255, 255, 215, 4}, {255, 255, 215, 5}, {255, 255, 215, 6}, {255, 255, 215, 7}
+	};
 }
 
 // Preset color lookup table
@@ -309,12 +318,17 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		case 34: return ColorPresets::ktest_color;
 		case 35: return ColorPresets::ktest_two;
 		case 36: return ColorPresets::ktest_three;
+		case 37: return ColorPresets::kall_yellow;
 		default: return ColorPresets::kRainbow;  // Fallback to first preset
 	}
 }
 
 // Total number of color presets (for UI generation)
-static const int kColorPresetCount = 36;
+static const int kColorPresetCount = 37;
+
+// Total number of menu items including separators
+// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets=37 = 41
+static const int kUnifiedPresetCount = 41;
 
 // Preset names (Japanese) for UI labels
 static const char* kColorPresetNames[] = {
@@ -353,7 +367,57 @@ static const char* kColorPresetNames[] = {
 	"モノクロ",  // Monochrome
 	"テストカラー",  // test_color
 	"test_two",  // test_two
-	"test_3"  // test_three
+	"test_3",  // test_three
+	"全部黄色"  // all_yellow
 };
+
+// Generate unified preset menu string (Single|(-|Custom|(-|Preset1|Preset2|...)
+inline const char* GetUnifiedPresetMenuString() {
+	static std::string menuStr;
+	if (menuStr.empty()) {
+		menuStr = "単色|(-|カスタム|(-";
+		for (int i = 0; i < kColorPresetCount; ++i) {
+			menuStr += "|";
+			menuStr += kColorPresetNames[i];
+		}
+	}
+	return menuStr.c_str();
+}
+
+// Convert unified preset index (0-based after normalization) to color mode and preset index
+// Note: Separators (-|) ARE included in menu numbering
+// UI values: 1=Single, 2=Sep, 3=Custom, 4=Sep, 5=Rainbow, 6=Pastel, ...
+inline void UnifiedIndexToColorModeAndPreset(int unifiedIndex, int& outColorMode, int& outPresetIndex) {
+	if (unifiedIndex == 0) {
+		outColorMode = 0;  // Single
+		outPresetIndex = 0;
+	} else if (unifiedIndex == 1 || unifiedIndex == 3) {
+		// Separator (not selectable, but treat as first preset to avoid errors)
+		outColorMode = 2;
+		outPresetIndex = 0;
+	} else if (unifiedIndex == 2) {
+		outColorMode = 1;  // Custom
+		outPresetIndex = 0;
+	} else if (unifiedIndex >= 4 && unifiedIndex < 4 + 37) {
+		outColorMode = 2;  // Preset
+		outPresetIndex = unifiedIndex - 4;  // 0-based preset index
+	} else {
+		// Out of range - default to first preset
+		outColorMode = 2;
+		outPresetIndex = 0;
+	}
+}
+
+// Convert color mode and preset index back to unified index
+inline int ColorModeAndPresetToUnifiedIndex(int colorMode, int presetIndex) {
+	if (colorMode == 0) return 0;  // Single
+	if (colorMode == 1) return 2;  // Custom
+	if (colorMode == 2) {  // Preset
+		int idx = presetIndex + 4;  // Skip Single, Sep, Custom, Sep
+		if (idx >= 4 && idx < 4 + 37) return idx;
+		return 4;  // Default to first preset
+	}
+	return 0;  // Default to Single
+}
 
 #endif // SDK_PROCAMP_COLOR_PRESETS_H

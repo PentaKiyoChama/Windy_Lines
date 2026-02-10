@@ -285,8 +285,7 @@ struct EffectPreset
 	float depthStrength;
 	// New fields
 	int lineCap;          // 0=Flat, 1=Round
-	int colorMode;        // 1=Single, 2=Preset, 3=Custom
-	int colorPreset;      // 1-33
+	int unifiedPresetIndex;  // 0=単色, 1=カスタム, 2=separator, 3+=color presets (0-based)
 	int spawnSource;      // 1=Full Frame, 2=Element
 	bool hideElement;     // Hide original element
 	// Linkage fields
@@ -389,8 +388,8 @@ struct EffectPreset
 #define	LINE_COLOR_CH_DFLT			1
 
 // Default values for color parameters
-#define COLOR_MODE_DFLT         2   // 
-#define COLOR_PRESET_DFLT       1   // Rainbow
+#define COLOR_MODE_DFLT         1   // Deprecated: now unified with COLOR_PRESET
+#define COLOR_PRESET_DFLT       5   // Rainbow (UI values: 1=単色, 2=Sep, 3=カスタム, 4=Sep, 5=Rainbow, ...)
 
 // Line Cap default
 #define LINE_CAP_DFLT           1   // Round (1=Flat, 2=Round)
