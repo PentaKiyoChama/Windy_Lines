@@ -15,8 +15,8 @@ BEGIN
 	"MIB8",
 	"eman",/* 'name' PINameProperty */
 	RSCS32(0),
-	RSCS32(20),
-	"\x10•—‚ðŠ´‚¶‚éƒ‰ƒCƒ“\0\0\0", 
+	RSCS32(24),
+	"\x14win_•—‚ðŠ´‚¶‚éƒ‰ƒCƒ“\0\0\0", 
 
 	"MIB8",
 	"gtac", /* 'catg' PICategoryProperty */

@@ -43,16 +43,18 @@
     </CustomBuild>
     <CustomBuild Include="..\SDK_ProcAmp.cl" />
     <CustomBuild Include="..\SDK_ProcAmp.cu" />
-    <CustomBuild Include="..\SDK_ProcAmp_Alpha.hlsl" />
+    <!-- HLSL: Not used for Premiere Pro (moved to legacy/) -->
+    <!-- <CustomBuild Include="..\SDK_ProcAmp_Alpha.hlsl" /> -->
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\SDK_ProcAmp.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
-  <ItemGroup>
+  <!-- HLSL: Not used for Premiere Pro (moved to legacy/) -->
+  <!-- <ItemGroup>
     <CustomBuild Include="..\SDK_ProcAmp.hlsl" />
-  </ItemGroup>
+  </ItemGroup> -->
   <ItemGroup>
     <Text Include="..\readme.txt" />
   </ItemGroup>

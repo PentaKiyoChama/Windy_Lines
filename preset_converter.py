@@ -18,6 +18,27 @@ def parse_tsv(filepath):
             presets.append(row)
     return presets
 
+def convert_to_unified_preset_index(colorMode, presetIndex):
+    """
+    Convert old colorMode + presetIndex to unified preset index
+    TSV colorMode values are 1-based (UI values):
+      1 = 単色 (Single) → unified index 0
+      2 = カスタム (Custom) → unified index 2
+      3 = プリセット (Preset) → unified index 4 + presetIndex
+    New structure: 単色|(-|カスタム|(-|preset1|preset2|...
+    Note: Separators (-|) ARE included in menu numbering
+    UI values: 1=Single, 2=Sep, 3=Custom, 4=Sep, 5=Rainbow, 6=Pastel, ...
+    After normalization (0-based): 0=Single, 1=Sep, 2=Custom, 3=Sep, 4=Rainbow, 5=Pastel, ...
+    """
+    if colorMode == 1:
+        return 0  # 単色
+    elif colorMode == 2:
+        return 2  # カスタム
+    elif colorMode == 3:
+        return 4 + presetIndex  # セパレーター(1,3)をスキップしてプリセット開始
+    else:
+        return 0  # Default to 単色 for invalid values
+
 def format_preset_cpp(preset):
     """Convert a preset dictionary to C++ struct initializer"""
     # Parse values
@@ -46,6 +67,10 @@ def format_preset_cpp(preset):
     lineCap = int(float(preset['lineCap']))
     colorMode = int(float(preset['colorMode']))
     colorPreset = int(float(preset['colorPreset']))
+    
+    # Convert to unified preset index
+    unifiedPresetIndex = convert_to_unified_preset_index(colorMode, colorPreset)
+    
     spawnSource = int(float(preset['spawnSource']))
     hideElement = int(float(preset['hideElement'])) != 0
     lengthLinkage = int(float(preset['lengthLinkage']))
@@ -63,7 +88,7 @@ def format_preset_cpp(preset):
     cpp += f'\t  {originMode}, {spawnScaleX}f, {spawnScaleY}f, {originOffsetX}f, {originOffsetY}f, {interval}f,\n'
     cpp += f'\t  {animPattern}, {centerGap}f, {easing}, {startTime}f, {duration}f,\n'
     cpp += f'\t  {blendMode}, {depthStrength}f,\n'
-    cpp += f'\t  {lineCap}, {colorMode}, {colorPreset}, {spawnSource}, {"true" if hideElement else "false"},\n'
+    cpp += f'\t  {lineCap}, {unifiedPresetIndex}, {spawnSource}, {"true" if hideElement else "false"},\n'
     cpp += f'\t  {lengthLinkage}, {lengthLinkageRate}f, {thicknessLinkage}, {thicknessLinkageRate}f, {travelLinkage}, {travelLinkageRate}f\n'
     cpp += '\t}'
     

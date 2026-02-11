@@ -2,7 +2,7 @@
 #define SDK_PROC_AMP
 
 // DEBUG RENDER MARKERS for OpenCL/Metal (must match SDK_ProcAmp.h)
-#define ENABLE_DEBUG_RENDER_MARKERS 0
+#define ENABLE_DEBUG_RENDER_MARKERS 1
 
 #include "PrGPU/KernelSupport/KernelCore.h" //includes KernelWrapper.h
 #include "PrGPU/KernelSupport/KernelMemory.h"
@@ -725,30 +725,30 @@
 				}
 				
 #if ENABLE_DEBUG_RENDER_MARKERS
-				// DEBUG: Draw ORANGE DIAMOND in top-left corner to indicate OpenCL is being used
-				// Shape: Diamond (OpenCL = cross-platform)
+				// DEBUG: Draw "CL" text in top-left corner (5x7 bitmap font, 4x scale)
 				{
-					int dx = (int)inXY.x - 20;
-					int dy = (int)inXY.y - 20;
-					// Diamond shape: |dx| + |dy| <= 15
-					int absDx = dx < 0 ? -dx : dx;
-					int absDy = dy < 0 ? -dy : dy;
-					if (absDx + absDy <= 15)
+					const uint fontC[7] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
+					const uint fontL[7] = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F};
+					const int scale = 4;
+					const int baseX = 5, baseY = 5;
+					int px = ((int)inXY.x - baseX) / scale;
+					int py = ((int)inXY.y - baseY) / scale;
+					if (py >= 0 && py < 7)
 					{
-						// Set orange color (handle BGRA format if needed)
-						if (inIsBGRA)
+						uint fonts[2] = {0, 0};
+						int charPos = -1;
+						if (px >= 0 && px < 5) { fonts[0] = fontC[py]; charPos = 0; }
+						else if (px >= 6 && px < 11) { fonts[1] = fontL[py]; charPos = 1; px -= 6; }
+						if (charPos >= 0 && ((fonts[charPos] >> (4 - px)) & 1))
 						{
-							pixel.x = 0.0f;   // B = 0 (BGRA: x=B)
-							pixel.y = 0.5f;   // G = 0.5 (BGRA: y=G) 
-							pixel.z = 1.0f;   // R = 1 (BGRA: z=R, Orange)
-							pixel.w = 1.0f;   // A = 1 (BGRA: w=A)
-						}
-						else
-						{
-							pixel.x = 1.0f;   // R = 1 (RGBA: x=R, Orange)
-							pixel.y = 0.5f;   // G = 0.5 (RGBA: y=G)
-							pixel.z = 0.0f;   // B = 0 (RGBA: z=B)
-							pixel.w = 1.0f;   // A = 1 (RGBA: w=A)
+							if (inIsBGRA)
+							{
+								pixel.x = 0.2f; pixel.y = 0.5f; pixel.z = 1.0f; pixel.w = 1.0f; // Orange (BGRA)
+							}
+							else
+							{
+								pixel.x = 1.0f; pixel.y = 0.5f; pixel.z = 0.2f; pixel.w = 1.0f; // Orange (RGBA)
+							}
 						}
 					}
 				}

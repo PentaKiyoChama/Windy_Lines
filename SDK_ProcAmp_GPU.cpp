@@ -684,13 +684,11 @@ static float ApplyEasingDerivative(float t, int easingType)
 
 static int NormalizePopupValue(int value, int maxValue)
 {
+	// Premiere Pro GPU GetParam() returns 0-based popup values
+	// Just clamp to valid range [0, maxValue-1]
 	if (value >= 0 && value < maxValue)
 	{
 		return value;
-	}
-	if (value >= 1 && value <= maxValue)
-	{
-		return value - 1;
 	}
 	return 0;
 }
@@ -879,6 +877,9 @@ public:
 		}
 #if HAS_DIRECTX
 		// DirectX/HLSL enabled - CUDA disabled
+		// NOTE: HLSL/DirectX path is NOT used by Premiere Pro (After Effects only).
+		// HLSL files have been moved to legacy/ folder.
+		// Premiere Pro uses CUDA or OpenCL only.
 		else if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_DirectX)
 		{
 			if (mDeviceIndex >= sDXContextCache.size())
@@ -1138,92 +1139,123 @@ public:
 	csSDK_int64 frameIndex = mediaFrameIndex - clipStartFrame;
 	if (frameIndex < 0) frameIndex = 0;
 	
-		// Color Mode and Palette Setup
-		// normalizePopup returns 0-based: 0=Single, 1=Preset, 2=Custom
-		const int colorMode = NormalizePopupParam(GetParam(SDK_PROCAMP_COLOR_MODE, inRenderParams->inClipTime), 3);
-		const int presetIndex = NormalizePopupParam(GetParam(SDK_PROCAMP_COLOR_PRESET, inRenderParams->inClipTime), 33);
-		
-		// Build color palette (8 colors)
-		float colorPalette[8][3];  // RGB normalized
-		
-		if (colorMode == 0)  // Single (0-based)
+	// Color Mode and Palette Setup (unified index)
+	// Get unified preset parameter
+	// IMPORTANT: Premiere Pro's GetParam() returns 0-based values for popup params
+	// so we do NOT normalize (no -1 conversion needed)
+	PrParam rawPresetParam = GetParam(SDK_PROCAMP_COLOR_PRESET, inRenderParams->inClipTime);
+	int rawPresetIndex = 0;
+	if (rawPresetParam.mType == kPrParamType_Int32)
+		rawPresetIndex = rawPresetParam.mInt32;
+	else if (rawPresetParam.mType == kPrParamType_Int64)
+		rawPresetIndex = (int)rawPresetParam.mInt64;
+	else if (rawPresetParam.mType == kPrParamType_Float64)
+		rawPresetIndex = (int)(rawPresetParam.mFloat64 + 0.5);
+	
+	// GetParam returns 0-based: 0=単色, 1=Sep, 2=カスタム, 3=Sep, 4=Rainbow, ...
+	// Clamp to valid range
+	const int unifiedPresetIndex = (rawPresetIndex >= 0 && rawPresetIndex < kUnifiedPresetCount) ? rawPresetIndex : 0;
+	
+	// Convert unified index to colorMode and presetIndex
+	int colorMode, presetIndex;
+	UnifiedIndexToColorModeAndPreset(unifiedPresetIndex, colorMode, presetIndex);
+	
+	// Debug logging
+	// 0-based: 0=単色, 1=Sep, 2=カスタム, 3=Sep, 4=Rainbow, 5=Pastel, 6=Forest, ...
+	DebugLog("[GPU ColorPreset] Raw(0-based): %d → colorMode: %d, presetIndex: %d", 
+		rawPresetIndex, colorMode, presetIndex);
+	
+	// Build color palette (8 colors)
+	float colorPalette[8][3];  // RGB normalized
+	
+	if (colorMode == 0)  // Single (0-based)
+	{
+		// Single color mode: all 8 slots have the same color
+		float singleR = 1.0f, singleG = 1.0f, singleB = 1.0f;
+		PrParam lineColorParam = GetParam(SDK_PROCAMP_LINE_COLOR, inRenderParams->inClipTime);
+		if (lineColorParam.mType == kPrParamType_PrMemoryPtr && lineColorParam.mMemoryPtr)
 		{
-			// Single color mode: all 8 slots have the same color
-			float singleR = 1.0f, singleG = 1.0f, singleB = 1.0f;
-			PrParam lineColorParam = GetParam(SDK_PROCAMP_LINE_COLOR, inRenderParams->inClipTime);
-			if (lineColorParam.mType == kPrParamType_PrMemoryPtr && lineColorParam.mMemoryPtr)
-			{
-				const PF_Pixel* color = reinterpret_cast<const PF_Pixel*>(lineColorParam.mMemoryPtr);
-				singleR = color->red / 255.0f;
-				singleG = color->green / 255.0f;
-				singleB = color->blue / 255.0f;
-			}
-			else if (lineColorParam.mType == kPrParamType_Int32)
-			{
-				DecodePackedColor(static_cast<csSDK_uint32>(lineColorParam.mInt32), singleR, singleG, singleB);
-			}
-			else if (lineColorParam.mType == kPrParamType_Int64)
-			{
-				DecodePackedColor64(static_cast<csSDK_uint64>(lineColorParam.mInt64), singleR, singleG, singleB);
-			}
-			for (int i = 0; i < 8; ++i)
-			{
-				colorPalette[i][0] = singleR;
-				colorPalette[i][1] = singleG;
-				colorPalette[i][2] = singleB;
-			}
+			const PF_Pixel* color = reinterpret_cast<const PF_Pixel*>(lineColorParam.mMemoryPtr);
+			singleR = color->red / 255.0f;
+			singleG = color->green / 255.0f;
+			singleB = color->blue / 255.0f;
 		}
-		else if (colorMode == 1)  // Preset (0-based)
+		else if (lineColorParam.mType == kPrParamType_Int32)
 		{
-			// Preset mode: load from preset palette (presetIndex is 0-based)
-			const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
+			DecodePackedColor(static_cast<csSDK_uint32>(lineColorParam.mInt32), singleR, singleG, singleB);
+		}
+		else if (lineColorParam.mType == kPrParamType_Int64)
+		{
+			DecodePackedColor64(static_cast<csSDK_uint64>(lineColorParam.mInt64), singleR, singleG, singleB);
+		}
+		for (int i = 0; i < 8; ++i)
+		{
+			colorPalette[i][0] = singleR;
+			colorPalette[i][1] = singleG;
+			colorPalette[i][2] = singleB;
+		}
+		DebugLog("[GPU ColorPreset] Single color mode: R=%.2f G=%.2f B=%.2f", singleR, singleG, singleB);
+	}
+	else if (colorMode == 1)  // Custom (0-based)
+	{
+		// Custom mode: load from custom color parameters
+		const int customColorParams[8] = {
+			SDK_PROCAMP_CUSTOM_COLOR_1, SDK_PROCAMP_CUSTOM_COLOR_2,
+			SDK_PROCAMP_CUSTOM_COLOR_3, SDK_PROCAMP_CUSTOM_COLOR_4,
+			SDK_PROCAMP_CUSTOM_COLOR_5, SDK_PROCAMP_CUSTOM_COLOR_6,
+			SDK_PROCAMP_CUSTOM_COLOR_7, SDK_PROCAMP_CUSTOM_COLOR_8
+		};
+		for (int i = 0; i < 8; ++i)
+		{
+			float r = 1.0f, g = 1.0f, b = 1.0f;
+			PrParam colorParam = GetParam(customColorParams[i], inRenderParams->inClipTime);
+			if (colorParam.mType == kPrParamType_PrMemoryPtr && colorParam.mMemoryPtr)
+			{
+				const PF_Pixel* color = reinterpret_cast<const PF_Pixel*>(colorParam.mMemoryPtr);
+				r = color->red / 255.0f;
+				g = color->green / 255.0f;
+				b = color->blue / 255.0f;
+			}
+			else if (colorParam.mType == kPrParamType_Int32)
+			{
+				DecodePackedColor(static_cast<csSDK_uint32>(colorParam.mInt32), r, g, b);
+			}
+			else if (colorParam.mType == kPrParamType_Int64)
+			{
+				DecodePackedColor64(static_cast<csSDK_uint64>(colorParam.mInt64), r, g, b);
+			}
+			colorPalette[i][0] = r;
+			colorPalette[i][1] = g;
+			colorPalette[i][2] = b;
+		}
+		DebugLog("[GPU ColorPreset] Custom mode: Loaded 8 custom colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
+			colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
+	}
+	else  // Preset (colorMode == 2, 0-based)
+	{
+		// Preset mode: load from preset palette using presetIndex (already 0-based)
+		const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
+		if (preset)
+		{
 			for (int i = 0; i < 8; ++i)
 			{
 				colorPalette[i][0] = preset[i].r / 255.0f;
 				colorPalette[i][1] = preset[i].g / 255.0f;
 				colorPalette[i][2] = preset[i].b / 255.0f;
 			}
+			DebugLog("[GPU ColorPreset] Preset mode: Loading preset #%d, First color: R=%d G=%d B=%d", 
+				presetIndex + 1, preset[0].r, preset[0].g, preset[0].b);
 		}
-		else  // Custom (colorMode == 2, 0-based)
-		{
-			// Custom mode: load from custom color parameters
-			const int customColorParams[8] = {
-				SDK_PROCAMP_CUSTOM_COLOR_1, SDK_PROCAMP_CUSTOM_COLOR_2,
-				SDK_PROCAMP_CUSTOM_COLOR_3, SDK_PROCAMP_CUSTOM_COLOR_4,
-				SDK_PROCAMP_CUSTOM_COLOR_5, SDK_PROCAMP_CUSTOM_COLOR_6,
-				SDK_PROCAMP_CUSTOM_COLOR_7, SDK_PROCAMP_CUSTOM_COLOR_8
-			};
-			for (int i = 0; i < 8; ++i)
-			{
-				float r = 1.0f, g = 1.0f, b = 1.0f;
-				PrParam colorParam = GetParam(customColorParams[i], inRenderParams->inClipTime);
-				if (colorParam.mType == kPrParamType_PrMemoryPtr && colorParam.mMemoryPtr)
-				{
-					const PF_Pixel* color = reinterpret_cast<const PF_Pixel*>(colorParam.mMemoryPtr);
-					r = color->red / 255.0f;
-					g = color->green / 255.0f;
-					b = color->blue / 255.0f;
-				}
-				else if (colorParam.mType == kPrParamType_Int32)
-				{
-					DecodePackedColor(static_cast<csSDK_uint32>(colorParam.mInt32), r, g, b);
-				}
-				else if (colorParam.mType == kPrParamType_Int64)
-				{
-					DecodePackedColor64(static_cast<csSDK_uint64>(colorParam.mInt64), r, g, b);
-				}
-				colorPalette[i][0] = r;
-				colorPalette[i][1] = g;
-				colorPalette[i][2] = b;
-			}
-		}
-		
-		// Default line color (for compatibility, use first palette color)
-		float lineR = colorPalette[0][0];
-		float lineG = colorPalette[0][1];
-		float lineB = colorPalette[0][2];
+		DebugLog("[GPU ColorPreset] Loaded 8 colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
+			colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
+	}
+	
+	// Default line color (for compatibility, use first palette color)
+	float lineR = colorPalette[0][0];
+	float lineG = colorPalette[0][1];
+	float lineB = colorPalette[0][2];
 
-		bool isBGRA = true;
+	bool isBGRA = true;
 #if defined(PrPixelFormat_GPU_VUYA_4444_32f)
 		if (pixelFormat == PrPixelFormat_GPU_VUYA_4444_32f)
 		{
@@ -1893,14 +1925,18 @@ public:
 			
 			// Wind Origin: adjust spawn area position (overall atmosphere, not per-line animation)
 			// Apply offset in the direction of line angle (both X and Y components)
+			// Use maxLen*0.5 (max possible halfLen) for conservative compensation
+			// Note: some minor protrusion is inherent in head/tail animation
+			// since each line is at a different phase with different extent
+			const float maxHalfLen = maxLen * 0.5f;
 			float originOffset = 0.0f;
 			if (lineOriginMode == 1)  // Forward
 			{
-				originOffset = 0.5f * travelScaled;
+				originOffset = 0.5f * travelScaled + maxHalfLen;
 			}
 			else if (lineOriginMode == 2)  // Backward
 			{
-				originOffset = -0.5f * travelScaled;
+				originOffset = -(0.5f * travelScaled + maxHalfLen);
 			}
 			
 			// Animation Pattern adjustments
@@ -1971,83 +2007,90 @@ public:
 			const float centerX = alphaCenterX + rotatedSpawnX + originOffset * lineCos + originOffsetXScaled;
 			const float centerY = alphaCenterY + rotatedSpawnY + originOffset * lineSin + originOffsetYScaled;
 
-			// Select color from palette: Simple mode uses 0, Preset/Custom uses random based on seed
-			int colorIndex = 0;
-			if (colorMode != 0)  // Preset or Custom mode
-			{
-				// Use existing seed + line index for random color selection
-				const csSDK_uint32 colorBase = (csSDK_uint32)(seed * 1315423911u) + (csSDK_uint32)i * 2654435761u + 12345u;
-				colorIndex = (int)(Rand01(colorBase) * 8.0f);
-				if (colorIndex > 7) colorIndex = 7;
-			}
-			
-			// Get line color from palette and convert to output color space
-			float outColor0, outColor1, outColor2;
-			if (isBGRA)
-			{
-				// BGRA format: pixel[0]=B, pixel[1]=G, pixel[2]=R
-				outColor0 = colorPalette[colorIndex][2]; // B
-				outColor1 = colorPalette[colorIndex][1]; // G
-				outColor2 = colorPalette[colorIndex][0]; // R
-			}
-			else
-			{
-				// VUYA conversion: pixel[0]=V, pixel[1]=U, pixel[2]=Y
-				const float r = colorPalette[colorIndex][0];
-				const float g = colorPalette[colorIndex][1];
-				const float b = colorPalette[colorIndex][2];
-				outColor0 = r * 0.5f + g * -0.418688f + b * -0.081312f; // V
-				outColor1 = r * -0.168736f + g * -0.331264f + b * 0.5f; // U
-				outColor2 = r * 0.299f + g * 0.587f + b * 0.114f;       // Y
-			}
-			
-			Float4 d0 = { centerX, centerY, lineCos, lineSin };
-			Float4 d1 = { halfLen, halfThick, segCenterX, depth };  // Store depth value for blend mode
-			Float4 d2 = { outColor0, outColor1, outColor2, instantVelocity };  // Line color + velocity
-			Float4 d3 = { 1.0f, 0.0f, 0.0f, 0.0f };  // Reserved for future use
-			
-			// Use direct indexing instead of push_back (faster)
-			lineData[outputIndex * 4 + 0] = d0;
-			lineData[outputIndex * 4 + 1] = d1;
-			lineData[outputIndex * 4 + 2] = d2;
-			lineData[outputIndex * 4 + 3] = d3;
+		// Select color from palette: Simple mode uses 0, Preset/Custom uses random based on seed
+		int colorIndex = 0;
+		if (colorMode != 0)  // Preset or Custom mode
+		{
+			// Use existing seed + line index for random color selection
+			const csSDK_uint32 colorBase = (csSDK_uint32)(seed * 1315423911u) + (csSDK_uint32)i * 2654435761u + 12345u;
+			colorIndex = (int)(Rand01(colorBase) * 8.0f);
+			if (colorIndex > 7) colorIndex = 7;
+		}
+		
+		// Debug: log first few lines' color selection
+		if (i < 3) {
+			DebugLog("[GPU ColorSelect] Line %d: colorMode=%d, colorIndex=%d, RGB=(%.2f,%.2f,%.2f)", 
+				i, colorMode, colorIndex, 
+				colorPalette[colorIndex][0], colorPalette[colorIndex][1], colorPalette[colorIndex][2]);
+		}
+		
+		// Get line color from palette and convert to output color space
+		float outColor0, outColor1, outColor2;
+		if (isBGRA)
+		{
+			// BGRA format: pixel[0]=B, pixel[1]=G, pixel[2]=R
+			outColor0 = colorPalette[colorIndex][2]; // B
+			outColor1 = colorPalette[colorIndex][1]; // G
+			outColor2 = colorPalette[colorIndex][0]; // R
+		}
+		else
+		{
+			// VUYA conversion: pixel[0]=V, pixel[1]=U, pixel[2]=Y
+			const float r = colorPalette[colorIndex][0];
+			const float g = colorPalette[colorIndex][1];
+			const float b = colorPalette[colorIndex][2];
+			outColor0 = r * 0.5f + g * -0.418688f + b * -0.081312f; // V
+			outColor1 = r * -0.168736f + g * -0.331264f + b * 0.5f; // U
+			outColor2 = r * 0.299f + g * 0.587f + b * 0.114f;       // Y
+		}
+		
+		Float4 d0 = { centerX, centerY, lineCos, lineSin };
+		Float4 d1 = { halfLen, halfThick, segCenterX, depth };  // Store depth value for blend mode
+		Float4 d2 = { outColor0, outColor1, outColor2, instantVelocity };  // Line color + velocity
+		Float4 d3 = { 1.0f, 0.0f, 0.0f, 0.0f };  // Reserved for future use
+		
+		// Use direct indexing instead of push_back (faster)
+		lineData[outputIndex * 4 + 0] = d0;
+		lineData[outputIndex * 4 + 1] = d1;
+		lineData[outputIndex * 4 + 2] = d2;
+		lineData[outputIndex * 4 + 3] = d3;
 
-			const float radius = fabsf(segCenterX) + halfLen + halfThick + aa;
-			const float minXf = centerX + segCenterX * lineCos - radius;
-			const float maxXf = centerX + segCenterX * lineCos + radius;
-			const float minYf = centerY + segCenterX * lineSin - radius;
-			const float maxYf = centerY + segCenterX * lineSin + radius;
+		const float radius = fabsf(segCenterX) + halfLen + halfThick + aa;
+		const float minXf = centerX + segCenterX * lineCos - radius;
+		const float maxXf = centerX + segCenterX * lineCos + radius;
+		const float minYf = centerY + segCenterX * lineSin - radius;
+		const float maxYf = centerY + segCenterX * lineSin + radius;
 
-			LineBinBounds bounds;
-			const int maxXClamp = params.mWidth > 0 ? (params.mWidth - 1) : 0;
-			const int maxYClamp = params.mHeight > 0 ? (params.mHeight - 1) : 0;
-			bounds.minX = minXf < 0.0f ? 0 : (minXf > (float)maxXClamp ? maxXClamp : (int)minXf);
-			bounds.maxX = maxXf < 0.0f ? 0 : (maxXf > (float)maxXClamp ? maxXClamp : (int)maxXf);
-			bounds.minY = minYf < 0.0f ? 0 : (minYf > (float)maxYClamp ? maxYClamp : (int)minYf);
-			bounds.maxY = maxYf < 0.0f ? 0 : (maxYf > (float)maxYClamp ? maxYClamp : (int)maxYf);
-			
-			// Use direct indexing instead of push_back (faster)
-			lineBounds[outputIndex] = bounds;
+		LineBinBounds bounds;
+		const int maxXClamp = params.mWidth > 0 ? (params.mWidth - 1) : 0;
+		const int maxYClamp = params.mHeight > 0 ? (params.mHeight - 1) : 0;
+		bounds.minX = minXf < 0.0f ? 0 : (minXf > (float)maxXClamp ? maxXClamp : (int)minXf);
+		bounds.maxX = maxXf < 0.0f ? 0 : (maxXf > (float)maxXClamp ? maxXClamp : (int)maxXf);
+		bounds.minY = minYf < 0.0f ? 0 : (minYf > (float)maxYClamp ? maxYClamp : (int)minYf);
+		bounds.maxY = maxYf < 0.0f ? 0 : (maxYf > (float)maxYClamp ? maxYClamp : (int)maxYf);
+		
+		// Use direct indexing instead of push_back (faster)
+		lineBounds[outputIndex] = bounds;
 
-			const int minTileX = (int)((float)bounds.minX * invTileSize);
-			const int maxTileX = (int)((float)bounds.maxX * invTileSize);
-			const int minTileY = (int)((float)bounds.minY * invTileSize);
-			const int maxTileY = (int)((float)bounds.maxY * invTileSize);
+		const int minTileX = (int)((float)bounds.minX * invTileSize);
+		const int maxTileX = (int)((float)bounds.maxX * invTileSize);
+		const int minTileY = (int)((float)bounds.minY * invTileSize);
+		const int maxTileY = (int)((float)bounds.maxY * invTileSize);
 
-			for (int ty = minTileY; ty <= maxTileY; ++ty)
+		for (int ty = minTileY; ty <= maxTileY; ++ty)
+		{
+			for (int tx = minTileX; tx <= maxTileX; ++tx)
 			{
-				for (int tx = minTileX; tx <= maxTileX; ++tx)
+				const int tileIndex = ty * tileCountX + tx;
+				if (tileIndex >= 0 && tileIndex < tileCount)
 				{
-					const int tileIndex = ty * tileCountX + tx;
-					if (tileIndex >= 0 && tileIndex < tileCount)
-					{
-						tileCounts[tileIndex] += 1;
-					}
+					tileCounts[tileIndex] += 1;
 				}
 			}
-			
-			// Increment output index after successfully adding this line
-			outputIndex++;
+		}
+		
+		// Increment output index after successfully adding this line
+		outputIndex++;
 		}
 		
 		// Resize down to actual number of lines added (removing skipped lines)

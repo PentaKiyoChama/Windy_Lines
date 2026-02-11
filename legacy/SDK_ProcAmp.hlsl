@@ -16,7 +16,7 @@
  **************************************************************************/
 
 // DEBUG RENDER MARKERS for HLSL/DirectX (must match SDK_ProcAmp.h)
-#define ENABLE_DEBUG_RENDER_MARKERS 0
+#define ENABLE_DEBUG_RENDER_MARKERS 1
 
  /*
   * Buffers associated with the shader
@@ -588,19 +588,25 @@ void main(uint3 inXY : SV_DispatchThreadID)
 		}
 
 		#if ENABLE_DEBUG_RENDER_MARKERS
-		// DEBUG: Draw BLUE TRIANGLE in top-left corner to indicate HLSL/DirectX is being used
-		// Shape: Triangle (HLSL = DirectX/Windows)
+		// DEBUG: Draw "HLSL" text in top-left corner (5x7 bitmap font, 4x scale)
+		const uint fontH[7] = {0x11, 0x11, 0x1F, 0x11, 0x11, 0x11, 0x11};
+		const uint fontL[7] = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F};
+		const uint fontS[7] = {0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E};
+		const int scale = 4;
+		const int baseX = 5, baseY = 5;
+		int px = ((int)inXY.x - baseX) / scale;
+		const int py = ((int)inXY.y - baseY) / scale;
+		if (py >= 0 && py < 7)
 		{
-			const int tx = (int)inXY.x - 5;
-			const int ty = (int)inXY.y - 5;
-			// Triangle: y >= 0, y < 30, x >= 0, x < (30 - y) creates right triangle
-			if (tx >= 0 && ty >= 0 && ty < 30 && tx < (30 - ty))
+			uint fonts[4] = {0, 0, 0, 0};
+			int charPos = -1;
+			if (px >= 0 && px < 5) { fonts[0] = fontH[py]; charPos = 0; }
+			else if (px >= 6 && px < 11) { fonts[1] = fontL[py]; charPos = 1; px -= 6; }
+			else if (px >= 12 && px < 17) { fonts[2] = fontS[py]; charPos = 2; px -= 12; }
+			else if (px >= 18 && px < 23) { fonts[3] = fontL[py]; charPos = 3; px -= 18; }
+			if (charPos >= 0 && ((fonts[charPos] >> (4 - px)) & 1))
 			{
-				// Set blue color (DirectX handles format internally)
-				pixel.x = 0.0f;   // R = 0
-				pixel.y = 0.0f;   // G = 0  
-				pixel.z = 1.0f;   // B = 1 (Blue for HLSL)
-				pixel.w = 1.0f;   // A = 1
+				pixel.x = 0.4f; pixel.y = 0.6f; pixel.z = 1.0f; pixel.w = 1.0f; // Light blue
 			}
 		}
 #endif

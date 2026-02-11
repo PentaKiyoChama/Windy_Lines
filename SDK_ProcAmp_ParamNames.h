@@ -130,8 +130,8 @@ namespace ParamNames
     constexpr const char* TRAVEL            = "移動距離(px)";
     constexpr const char* SEED              = "ランダムシード";
     constexpr const char* COLOR_MODE        = "カラーモード";
-    constexpr const char* COLOR             = "色：単色";
-    constexpr const char* COLOR_PRESET      = "色：プリセット";
+    constexpr const char* COLOR             = "単色カラー";
+    constexpr const char* COLOR_PRESET      = "カラープリセット";
     constexpr const char* CUSTOM_1          = "カスタム1";
     constexpr const char* CUSTOM_2          = "カスタム2";
     constexpr const char* CUSTOM_3          = "カスタム3";
@@ -149,8 +149,8 @@ namespace ParamNames
     constexpr const char* POSITION_HEADER   = "起点と描画範囲";
     constexpr const char* ORIGIN_MODE       = "起点モード";      
     constexpr const char* INTERVAL          = "インターバル(fps)";  
-    constexpr const char* SPAWN_SCALE_X     = "スケールX(%)";    
-    constexpr const char* SPAWN_SCALE_Y     = "スケールY(%)";    
+    constexpr const char* SPAWN_SCALE_X     = "範囲スケールX(%)";    
+    constexpr const char* SPAWN_SCALE_Y     = "範囲スケールY(%)";    
     constexpr const char* SPAWN_ROTATION    = "範囲の回転";           
     constexpr const char* SHOW_SPAWN        = "目安の表示";            
     constexpr const char* SPAWN_COLOR       = "目安の色";              
@@ -209,7 +209,7 @@ namespace ParamNames
         "エラスティックイン|エラスティックアウト|エラスティックインアウト|"
         "バウンスイン|バウンスアウト|バウンスインアウト"; 
     constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ";
-    constexpr const char* LINKAGE_MODE_MENU = "直接入力|範囲の幅に連動|範囲の高さに連動";
+    constexpr const char* LINKAGE_MODE_MENU = "オフ（直接入力）|範囲の幅に連動|範囲の高さに連動";
 }
 
 // ========================================

@@ -43,7 +43,7 @@
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
 // Set to 0 to disable completely (zero performance impact)
-#define ENABLE_DEBUG_RENDER_MARKERS 0
+#define ENABLE_DEBUG_RENDER_MARKERS 1
 // ========== DEBUG LOGGING (Common) ==========
 static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)
@@ -140,12 +140,11 @@ enum
 	SDK_PROCAMP_LINE_COUNT,                   // 3. Number of lines
 	SDK_PROCAMP_LINE_LIFETIME,                // 4. Line lifetime (frames)
 	SDK_PROCAMP_LINE_INTERVAL,                // 5. Spawn interval (frames)
-	SDK_PROCAMP_LINE_EASING,                  // 6. Easing function
 	
 	// ▼ Color Settings
-	SDK_PROCAMP_COLOR_MODE,                   // 7. Single/Preset/Custom
-	SDK_PROCAMP_LINE_COLOR,                   // 8. Single color picker
-	SDK_PROCAMP_COLOR_PRESET,                 // 9. Preset selection popup
+	SDK_PROCAMP_COLOR_MODE,                   // 6. Single/Preset/Custom
+	SDK_PROCAMP_COLOR_PRESET,                 // 8. Preset selection popup
+	SDK_PROCAMP_LINE_COLOR,                   // 9. Single color picker
 	SDK_PROCAMP_CUSTOM_COLOR_1,               // 10-17. Custom colors 1-8
 	SDK_PROCAMP_CUSTOM_COLOR_2,
 	SDK_PROCAMP_CUSTOM_COLOR_3,
@@ -154,7 +153,8 @@ enum
 	SDK_PROCAMP_CUSTOM_COLOR_6,
 	SDK_PROCAMP_CUSTOM_COLOR_7,
 	SDK_PROCAMP_CUSTOM_COLOR_8,
-	SDK_PROCAMP_TRAVEL_LINKAGE,               // 18. Travel distance linkage (Off/Width/Height)
+	SDK_PROCAMP_LINE_EASING,                  // Easing function
+	SDK_PROCAMP_TRAVEL_LINKAGE,               // Travel distance linkage (Off/Width/Height)
 	SDK_PROCAMP_TRAVEL_LINKAGE_RATE,          // 19. Travel distance linkage rate (%)
 	SDK_PROCAMP_LINE_TRAVEL,                  // 20. Travel distance (px)
 	
@@ -285,8 +285,7 @@ struct EffectPreset
 	float depthStrength;
 	// New fields
 	int lineCap;          // 0=Flat, 1=Round
-	int colorMode;        // 1=Single, 2=Preset, 3=Custom
-	int colorPreset;      // 1-33
+	int unifiedPresetIndex;  // 0=単色, 1=カスタム, 2=separator, 3+=color presets (0-based)
 	int spawnSource;      // 1=Full Frame, 2=Element
 	bool hideElement;     // Hide original element
 	// Linkage fields
@@ -389,8 +388,8 @@ struct EffectPreset
 #define	LINE_COLOR_CH_DFLT			1
 
 // Default values for color parameters
-#define COLOR_MODE_DFLT         2   // 
-#define COLOR_PRESET_DFLT       1   // Rainbow
+#define COLOR_MODE_DFLT         1   // Deprecated: now unified with COLOR_PRESET
+#define COLOR_PRESET_DFLT       5   // Rainbow (UI values: 1=単色, 2=Sep, 3=カスタム, 4=Sep, 5=Rainbow, ...)
 
 // Line Cap default
 #define LINE_CAP_DFLT           1   // Round (1=Flat, 2=Round)

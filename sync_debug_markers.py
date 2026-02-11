@@ -47,7 +47,8 @@ def main():
     gpu_files = [
         os.path.join(script_dir, 'SDK_ProcAmp.cu'),
         os.path.join(script_dir, 'SDK_ProcAmp.cl'),
-        os.path.join(script_dir, 'SDK_ProcAmp.hlsl')
+        # HLSL not used for Premiere Pro (After Effects only), moved to legacy/
+        # os.path.join(script_dir, 'SDK_ProcAmp.hlsl'),
     ]
     
     try:

@@ -769,16 +769,29 @@ static void UpdatePseudoGroupVisibility(
 	// ========================================
 	// Flat parameters (always visible):
 	// - Basic: LINE_COUNT, LINE_LIFETIME, LINE_TRAVEL, LINE_SEED
-	// - Color: COLOR_MODE, LINE_COLOR, COLOR_PRESET
+	// - Color: COLOR_PRESET (unified dropdown)
 	// - Appearance: LINE_THICKNESS, LINE_LENGTH, LINE_CAP, LINE_ANGLE, LINE_AA, LINE_TAIL_FADE
 	// - Position: LINE_ORIGIN_MODE, LINE_INTERVAL, SPAWN_SCALE_X/Y, SPAWN_ROTATION, 
 	//             SHOW_SPAWN_AREA, SPAWN_AREA_COLOR, ORIGIN_OFFSET_X/Y
 	// - Animation: ANIM_PATTERN, CENTER_GAP, LINE_EASING, LINE_START_TIME, LINE_DURATION
 	// ========================================
 
-	// Custom Colors 1-8: visible only when Color Mode = Custom (value 3)
-	const int colorMode = params[SDK_PROCAMP_COLOR_MODE]->u.pd.value;
-	const bool showCustomColors = (colorMode == 3); // 3 = Custom
+	// Color visibility control based on unified preset selection
+	// Structure: 単色|(-|カスタム|(-|preset1|preset2|...
+	// Note: Separators (-|) ARE included in menu numbering as items 2 and 4
+	// 1-based UI values: 1=単色, 2=Sep, 3=カスタム, 4=Sep, 5=Rainbow, 6=Pastel, ...
+	const int unifiedPresetValue = params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value;  // 1-based
+	
+	DebugLog("[Visibility] unifiedPresetValue = %d", unifiedPresetValue);
+	
+	// Single color: visible only when unified preset = 1 (単色)
+	const bool showSingleColor = (unifiedPresetValue == 1);
+	setVisible(SDK_PROCAMP_LINE_COLOR, showSingleColor);
+	
+	DebugLog("[Visibility] showSingleColor = %s", showSingleColor ? "true" : "false");
+	
+	// Custom Colors 1-8: visible only when unified preset = 3 (カスタム)
+	const bool showCustomColors = (unifiedPresetValue == 3);
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_1, showCustomColors);
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_2, showCustomColors);
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_3, showCustomColors);
@@ -787,6 +800,8 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_6, showCustomColors);
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_7, showCustomColors);
 	setVisible(SDK_PROCAMP_CUSTOM_COLOR_8, showCustomColors);
+	
+	DebugLog("[Visibility] showCustomColors = %s", showCustomColors ? "true" : "false");
 
 	// ========================================
 	// Linkage Parameters Visibility Control
@@ -810,9 +825,7 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(SDK_PROCAMP_LENGTH_LINKAGE_RATE, !lengthLinkageOff); // Show rate when linkage is ON
 	setVisible(SDK_PROCAMP_LINE_LENGTH, lengthLinkageOff);           // Show value when linkage is OFF
 
-	// Single Color and Color Preset: always visible regardless of Color Mode
-	// (User requested these to never be disabled)
-	setVisible(SDK_PROCAMP_LINE_COLOR, true);
+	// Color Preset: always visible
 	setVisible(SDK_PROCAMP_COLOR_PRESET, true);
 
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
@@ -914,8 +927,8 @@ static void ApplyEffectPreset(
 	
 	// New parameters
 	updatePopup(SDK_PROCAMP_LINE_CAP, preset.lineCap);
-	updatePopup(SDK_PROCAMP_COLOR_MODE, preset.colorMode);
-	updatePopup(SDK_PROCAMP_COLOR_PRESET, preset.colorPreset);
+	// Use unified preset index (colorMode hidden, only COLOR_PRESET used)
+	updatePopup(SDK_PROCAMP_COLOR_PRESET, preset.unifiedPresetIndex + 1);  // Convert to 1-based
 	updatePopup(SDK_PROCAMP_SPAWN_SOURCE, preset.spawnSource);
 	
 	auto updateCheckbox = [&](int paramId, bool value)
@@ -1107,28 +1120,31 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_LINE_INTERVAL);
 
-	// Easing (moved here, after Interval)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_EASING,
-		28,
-		LINE_EASING_DFLT,
-		PM_EASING,
-		SDK_PROCAMP_LINE_EASING);
-
 	// ============================================================
 	// Color Settings
 	// ============================================================
 
-	// Color Mode
+	// Color Mode (kept for backward compatibility but hidden)
+	// Now integrated into Color Preset
 	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
+	def.flags = PF_ParamFlag_SUPERVISE | PF_ParamFlag_CANNOT_TIME_VARY;
+	def.ui_flags = PF_PUI_INVISIBLE;  // Hide from UI
 	PF_ADD_POPUP(
 		P_COLOR_MODE,
 		3,
 		COLOR_MODE_DFLT,
 		PM_COLOR_MODE,
 		SDK_PROCAMP_COLOR_MODE);
+
+	// Color Preset (Unified: Single|Custom|-)|Preset1|Preset2|...)
+	AEFX_CLR_STRUCT(def);
+	def.flags = PF_ParamFlag_SUPERVISE;
+	PF_ADD_POPUP(
+		P_COLOR_PRESET,
+		kUnifiedPresetCount,
+		COLOR_PRESET_DFLT,
+		GetUnifiedPresetMenuString(),
+		SDK_PROCAMP_COLOR_PRESET);
 
 	// Single Color
 	AEFX_CLR_STRUCT(def);
@@ -1139,25 +1155,6 @@ static PF_Err ParamsSetup(
 		LINE_COLOR_DFLT_G8,
 		LINE_COLOR_DFLT_B8,
 		SDK_PROCAMP_LINE_COLOR);
-
-	// Color Preset (dynamically generated from TSV)
-	AEFX_CLR_STRUCT(def);
-	std::string colorPresetLabels = "";
-	for (int i = 0; i < kColorPresetCount; ++i)
-	{
-		colorPresetLabels += kColorPresetNames[i];
-		if (i < kColorPresetCount - 1)
-		{
-			colorPresetLabels += "|";
-		}
-	}
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_COLOR_PRESET,
-		kColorPresetCount,
-		COLOR_PRESET_DFLT,
-		colorPresetLabels.c_str(),
-		SDK_PROCAMP_COLOR_PRESET);
 
 	// Custom Colors 1-8
 	AEFX_CLR_STRUCT(def);
@@ -1177,6 +1174,15 @@ static PF_Err ParamsSetup(
 	PF_ADD_COLOR(P_CUSTOM_7, 128, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_7);
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_COLOR(P_CUSTOM_8, 255, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_8);
+
+	// Easing (before Travel Distance Linkage)
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POPUP(
+		P_EASING,
+		28,
+		LINE_EASING_DFLT,
+		PM_EASING,
+		SDK_PROCAMP_LINE_EASING);
 
 	// Travel Distance Linkage (NEW - moved from old Linkage group)
 	AEFX_CLR_STRUCT(def);
@@ -1713,14 +1719,20 @@ static PF_Err Render(
 		const char* srcData = (const char*)src->data;
 		char* destData = (char*)dest->data;
 
-		// Color Mode and Palette Setup
-		// normalizePopup returns 0-based: 0=Single, 1=Preset, 2=Custom
-		const int colorMode = normalizePopup(params[SDK_PROCAMP_COLOR_MODE]->u.pd.value, 3);
-		const int presetIndex = normalizePopup(params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, kColorPresetCount);
+		// Color Mode and Preset (unified index)
+		// Note: Separators (-|) ARE included in menu numbering
+		// Menu display: 単色|(-|カスタム|(-|Rainbow|Pastel|Forest|...
+		// UI 1-based:   1=単色, 2=Sep, 3=カスタム, 4=Sep, 5=Rainbow, 6=Pastel, 7=Forest, ...
+		// After normalization (0-based): 0=単色, 1=Sep, 2=カスタム, 3=Sep, 4=Rainbow, 5=Pastel, 6=Forest, ...
+		const int unifiedPresetIndex = normalizePopup(params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, kUnifiedPresetCount);
+		
+		// Convert unified index to colorMode and presetIndex
+		int colorMode, presetIndex;
+		UnifiedIndexToColorModeAndPreset(unifiedPresetIndex, colorMode, presetIndex);
 		
 		// Debug logging for color preset selection
-		DebugLog("[ColorPreset] Raw popup value: %d, Normalized index: %d, Mode: %d, Will call GetPresetPalette(%d)",
-			params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, presetIndex, colorMode, presetIndex + 1);
+		DebugLog("[CPU ColorPreset] UI value: %d (1-based) → Normalized: %d (0-based) → colorMode: %d, presetIndex: %d",
+			params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, unifiedPresetIndex, colorMode, presetIndex);
 		
 		// Build color palette (8 colors, RGB normalized)
 		float colorPalette[8][3];
@@ -1740,22 +1752,7 @@ static PF_Err Render(
 			}
 			DebugLog("[ColorPreset] Single color mode: R=%.2f G=%.2f B=%.2f", singleR, singleG, singleB);
 		}
-		else if (colorMode == 1)  // Preset (0-based)
-		{
-			// Preset mode: load from preset palette (presetIndex is 0-based)
-			const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
-			DebugLog("[ColorPreset] Preset mode: Loading preset #%d, First color: R=%d G=%d B=%d",
-				presetIndex + 1, preset[0].r, preset[0].g, preset[0].b);
-			for (int i = 0; i < 8; ++i)
-			{
-				colorPalette[i][0] = preset[i].r / 255.0f;
-				colorPalette[i][1] = preset[i].g / 255.0f;
-				colorPalette[i][2] = preset[i].b / 255.0f;
-			}
-			DebugLog("[ColorPreset] Loaded 8 colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
-				colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
-		}
-		else  // Custom (colorMode == 2, 0-based)
+		else if (colorMode == 1)  // Custom (0-based)
 		{
 			// Custom mode: load from custom color parameters
 			const int customColorParams[8] = {
@@ -1771,6 +1768,23 @@ static PF_Err Render(
 				colorPalette[i][1] = customColor.green / 255.0f;
 				colorPalette[i][2] = customColor.blue / 255.0f;
 			}
+			DebugLog("[ColorPreset] Custom mode: Loaded 8 custom colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
+				colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
+		}
+		else  // Preset (colorMode == 2, 0-based)
+		{
+			// Preset mode: load from preset palette (presetIndex is 0-based)
+			const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
+			DebugLog("[ColorPreset] Preset mode: Loading preset #%d, First color: R=%d G=%d B=%d",
+				presetIndex + 1, preset[0].r, preset[0].g, preset[0].b);
+			for (int i = 0; i < 8; ++i)
+			{
+				colorPalette[i][0] = preset[i].r / 255.0f;
+				colorPalette[i][1] = preset[i].g / 255.0f;
+				colorPalette[i][2] = preset[i].b / 255.0f;
+			}
+			DebugLog("[ColorPreset] Loaded 8 colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
+				colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
 		}
 		
 		// Convert color palette to VUYA format for rendering
@@ -1792,17 +1806,17 @@ static PF_Err Render(
 		const float lineYVal = paletteY[0];
 		const float lineUVal = paletteU[0];
 		const float lineVVal = paletteV[0];
-	(void)lineR; (void)lineG; (void)lineB;
-	(void)lineYVal; (void)lineUVal; (void)lineVVal;
+		(void)lineR; (void)lineG; (void)lineB;
+		(void)lineYVal; (void)lineUVal; (void)lineVVal;
 
-	const float lineThickness = (float)params[SDK_PROCAMP_LINE_THICKNESS]->u.fs_d.value;
-	const float lineLength = (float)params[SDK_PROCAMP_LINE_LENGTH]->u.fs_d.value;
-	const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
-	const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
-	const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
-	
-	// Spawn Source: if "Full Frame" selected, ignore alpha threshold
-	const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
+		const float lineThickness = (float)params[SDK_PROCAMP_LINE_THICKNESS]->u.fs_d.value;
+		const float lineLength = (float)params[SDK_PROCAMP_LINE_LENGTH]->u.fs_d.value;
+		const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
+		const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
+		const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
+		
+		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
+		const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
 		float lineAlphaThreshold = (float)params[SDK_PROCAMP_LINE_ALPHA_THRESH]->u.fs_d.value;
 		if (spawnSource == SPAWN_SOURCE_FULL_FRAME) {
 			lineAlphaThreshold = 1.0f;  // Full frame: ignore alpha, spawn everywhere
@@ -1826,47 +1840,47 @@ static PF_Err Render(
 		const float lineTravelScaled = lineTravel * dsScale;
 		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
 		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
-	// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored
-	// const bool allowMidPlay = params[SDK_PROCAMP_LINE_ALLOW_MIDPLAY]->u.bd.value != 0;
-	const bool hideElement = params[SDK_PROCAMP_HIDE_ELEMENT]->u.bd.value != 0;
-	const int blendMode = NormalizePopupValue((int)params[SDK_PROCAMP_BLEND_MODE]->u.pd.value, 4);
-	
-	// Shadow parameters
-	const bool shadowEnable = params[SDK_PROCAMP_SHADOW_ENABLE]->u.bd.value != 0;
-	const float shadowColorR = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.red / 255.0f;
-	const float shadowColorG = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.green / 255.0f;
-	const float shadowColorB = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.blue / 255.0f;
-	// Convert shadow color to YUV
-	const float shadowY = shadowColorR * 0.299f + shadowColorG * 0.587f + shadowColorB * 0.114f;
-	const float shadowU = shadowColorR * -0.168736f + shadowColorG * -0.331264f + shadowColorB * 0.5f;
-	const float shadowV = shadowColorR * 0.5f + shadowColorG * -0.418688f + shadowColorB * -0.081312f;
-	const float shadowOffsetX = (float)params[SDK_PROCAMP_SHADOW_OFFSET_X]->u.fs_d.value * dsScale;
-	const float shadowOffsetY = (float)params[SDK_PROCAMP_SHADOW_OFFSET_Y]->u.fs_d.value * dsScale;
-	const float shadowOpacity = (float)params[SDK_PROCAMP_SHADOW_OPACITY]->u.fs_d.value;
-	
-	// Motion Blur parameters
-	const bool motionBlurEnable = params[SDK_PROCAMP_MOTION_BLUR_ENABLE]->u.bd.value != 0;
-	const int motionBlurSamples = (int)params[SDK_PROCAMP_MOTION_BLUR_SAMPLES]->u.fs_d.value;
-	const float motionBlurStrength = (float)params[SDK_PROCAMP_MOTION_BLUR_STRENGTH]->u.fs_d.value;
-	
-	// Focus (Depth of Field) parameters
-	// Focus parameters removed
-	const float spawnScaleX = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_X]->u.fs_d.value / 100.0f;
-	const float spawnScaleY = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_Y]->u.fs_d.value / 100.0f;
-	const float spawnRotationDeg = (float)params[SDK_PROCAMP_LINE_SPAWN_ROTATION]->u.fs_d.value;
-	const float spawnRotationRad = spawnRotationDeg * 3.14159265f / 180.0f;
-	const float spawnCos = FastCos(spawnRotationRad);
-	const float spawnSin = FastSin(spawnRotationRad);
-	const bool showSpawnArea = params[SDK_PROCAMP_LINE_SHOW_SPAWN_AREA]->u.bd.value != 0;
-	const PF_Pixel spawnAreaColorPx = params[SDK_PROCAMP_LINE_SPAWN_AREA_COLOR]->u.cd.value;
-	const float spawnAreaColorR = spawnAreaColorPx.red / 255.0f;
-	const float spawnAreaColorG = spawnAreaColorPx.green / 255.0f;
-	const float spawnAreaColorB = spawnAreaColorPx.blue / 255.0f;
-	// Convert spawn area color to YUV
-	const float spawnAreaY = spawnAreaColorR * 0.299f + spawnAreaColorG * 0.587f + spawnAreaColorB * 0.114f;
-	const float spawnAreaU = spawnAreaColorR * -0.168736f + spawnAreaColorG * -0.331264f + spawnAreaColorB * 0.5f;
-	const float spawnAreaV = spawnAreaColorR * 0.5f + spawnAreaColorG * -0.418688f + spawnAreaColorB * -0.081312f;
-	// CPU rendering uses current_time which is clip-relative time.
+		// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored
+		// const bool allowMidPlay = params[SDK_PROCAMP_LINE_ALLOW_MIDPLAY]->u.bd.value != 0;
+		const bool hideElement = params[SDK_PROCAMP_HIDE_ELEMENT]->u.bd.value != 0;
+		const int blendMode = NormalizePopupValue((int)params[SDK_PROCAMP_BLEND_MODE]->u.pd.value, 4);
+		
+		// Shadow parameters
+		const bool shadowEnable = params[SDK_PROCAMP_SHADOW_ENABLE]->u.bd.value != 0;
+		const float shadowColorR = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.red / 255.0f;
+		const float shadowColorG = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.green / 255.0f;
+		const float shadowColorB = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.blue / 255.0f;
+		// Convert shadow color to YUV
+		const float shadowY = shadowColorR * 0.299f + shadowColorG * 0.587f + shadowColorB * 0.114f;
+		const float shadowU = shadowColorR * -0.168736f + shadowColorG * -0.331264f + shadowColorB * 0.5f;
+		const float shadowV = shadowColorR * 0.5f + shadowColorG * -0.418688f + shadowColorB * -0.081312f;
+		const float shadowOffsetX = (float)params[SDK_PROCAMP_SHADOW_OFFSET_X]->u.fs_d.value * dsScale;
+		const float shadowOffsetY = (float)params[SDK_PROCAMP_SHADOW_OFFSET_Y]->u.fs_d.value * dsScale;
+		const float shadowOpacity = (float)params[SDK_PROCAMP_SHADOW_OPACITY]->u.fs_d.value;
+		
+		// Motion Blur parameters
+		const bool motionBlurEnable = params[SDK_PROCAMP_MOTION_BLUR_ENABLE]->u.bd.value != 0;
+		const int motionBlurSamples = (int)params[SDK_PROCAMP_MOTION_BLUR_SAMPLES]->u.fs_d.value;
+		const float motionBlurStrength = (float)params[SDK_PROCAMP_MOTION_BLUR_STRENGTH]->u.fs_d.value;
+		
+		// Focus (Depth of Field) parameters
+		// Focus parameters removed
+		const float spawnScaleX = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_X]->u.fs_d.value / 100.0f;
+		const float spawnScaleY = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_Y]->u.fs_d.value / 100.0f;
+		const float spawnRotationDeg = (float)params[SDK_PROCAMP_LINE_SPAWN_ROTATION]->u.fs_d.value;
+		const float spawnRotationRad = spawnRotationDeg * 3.14159265f / 180.0f;
+		const float spawnCos = FastCos(spawnRotationRad);
+		const float spawnSin = FastSin(spawnRotationRad);
+		const bool showSpawnArea = params[SDK_PROCAMP_LINE_SHOW_SPAWN_AREA]->u.bd.value != 0;
+		const PF_Pixel spawnAreaColorPx = params[SDK_PROCAMP_LINE_SPAWN_AREA_COLOR]->u.cd.value;
+		const float spawnAreaColorR = spawnAreaColorPx.red / 255.0f;
+		const float spawnAreaColorG = spawnAreaColorPx.green / 255.0f;
+		const float spawnAreaColorB = spawnAreaColorPx.blue / 255.0f;
+		// Convert spawn area color to YUV
+		const float spawnAreaY = spawnAreaColorR * 0.299f + spawnAreaColorG * 0.587f + spawnAreaColorB * 0.114f;
+		const float spawnAreaU = spawnAreaColorR * -0.168736f + spawnAreaColorG * -0.331264f + spawnAreaColorB * 0.5f;
+		const float spawnAreaV = spawnAreaColorR * 0.5f + spawnAreaColorG * -0.418688f + spawnAreaColorB * -0.081312f;
+		// CPU rendering uses current_time which is clip-relative time.
 		// This ensures cache consistency - same clip frame = same result.
 		const A_long clipTime = in_data->current_time; // Clip-relative time
 		const A_long frameIndex = (in_data->time_step != 0) ? (clipTime / in_data->time_step) : 0;
@@ -2102,14 +2116,17 @@ static PF_Err Render(
 
 		// Wind Origin: adjust spawn area position (overall atmosphere, not per-line animation)
 		// Apply offset in the direction of line angle (both X and Y components)
+		// Use maxLen*0.5 (max possible halfLen) for conservative compensation
+		// Note: some minor protrusion is inherent in head/tail animation
+		const float maxHalfLen = maxLen * 0.5f;
 		float originOffset = 0.0f;
 		if (lineOriginMode == 1)  // Forward
 		{
-			originOffset = 0.5f * travelRange;
+			originOffset = 0.5f * travelRange + maxHalfLen;
 		}
 		else if (lineOriginMode == 2)  // Backward
 		{
-			originOffset = -0.5f * travelRange;
+			originOffset = -(0.5f * travelRange + maxHalfLen);
 		}
 
 		// Animation Pattern adjustments
@@ -2791,37 +2808,21 @@ extern "C" DllExport PF_Err EffectMain(
 			}
 		}
 		
-		// Color Preset: auto-switch Color Mode to "Preset"
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_COLOR_PRESET)
-		{
-			const int currentMode = params[SDK_PROCAMP_COLOR_MODE]->u.pd.value;
-			if (currentMode != COLOR_MODE_PRESET)
-			{
-				params[SDK_PROCAMP_COLOR_MODE]->u.pd.value = COLOR_MODE_PRESET;
-				params[SDK_PROCAMP_COLOR_MODE]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
-				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
-				if (paramUtils.get())
-				{
-					paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_COLOR_MODE, params[SDK_PROCAMP_COLOR_MODE]);
-				}
-				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
-			}
-		}
-		
-		// Single Color: auto-switch Color Mode to "Single"
+		// Single Color changed: auto-switch unified preset to "単色" (value=1)
 		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_LINE_COLOR)
 		{
-			const int currentMode = params[SDK_PROCAMP_COLOR_MODE]->u.pd.value;
-			if (currentMode != COLOR_MODE_SINGLE)
+			const int currentPreset = params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value;
+			if (currentPreset != 1)  // 1 = 単色 (1-based)
 			{
-				params[SDK_PROCAMP_COLOR_MODE]->u.pd.value = COLOR_MODE_SINGLE;
-				params[SDK_PROCAMP_COLOR_MODE]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
+				params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value = 1;
+				params[SDK_PROCAMP_COLOR_PRESET]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
 				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
 				if (paramUtils.get())
 				{
-					paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_COLOR_MODE, params[SDK_PROCAMP_COLOR_MODE]);
+					paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_COLOR_PRESET, params[SDK_PROCAMP_COLOR_PRESET]);
 				}
 				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
+				WriteLog("Single color changed: Auto-switched unified preset to 単色 (value=1)");
 			}
 		}
 		
