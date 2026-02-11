@@ -1922,14 +1922,18 @@ public:
 			
 			// Wind Origin: adjust spawn area position (overall atmosphere, not per-line animation)
 			// Apply offset in the direction of line angle (both X and Y components)
+			// Use maxLen*0.5 (max possible halfLen) for conservative compensation
+			// Note: some minor protrusion is inherent in head/tail animation
+			// since each line is at a different phase with different extent
+			const float maxHalfLen = maxLen * 0.5f;
 			float originOffset = 0.0f;
 			if (lineOriginMode == 1)  // Forward
 			{
-				originOffset = 0.5f * travelScaled;
+				originOffset = 0.5f * travelScaled + maxHalfLen;
 			}
 			else if (lineOriginMode == 2)  // Backward
 			{
-				originOffset = -0.5f * travelScaled;
+				originOffset = -(0.5f * travelScaled + maxHalfLen);
 			}
 			
 			// Animation Pattern adjustments

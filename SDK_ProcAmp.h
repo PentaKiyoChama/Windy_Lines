@@ -43,7 +43,7 @@
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
 // Set to 0 to disable completely (zero performance impact)
-#define ENABLE_DEBUG_RENDER_MARKERS 0
+#define ENABLE_DEBUG_RENDER_MARKERS 1
 // ========== DEBUG LOGGING (Common) ==========
 static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)
@@ -140,12 +140,11 @@ enum
 	SDK_PROCAMP_LINE_COUNT,                   // 3. Number of lines
 	SDK_PROCAMP_LINE_LIFETIME,                // 4. Line lifetime (frames)
 	SDK_PROCAMP_LINE_INTERVAL,                // 5. Spawn interval (frames)
-	SDK_PROCAMP_LINE_EASING,                  // 6. Easing function
 	
 	// ▼ Color Settings
-	SDK_PROCAMP_COLOR_MODE,                   // 7. Single/Preset/Custom
-	SDK_PROCAMP_LINE_COLOR,                   // 8. Single color picker
-	SDK_PROCAMP_COLOR_PRESET,                 // 9. Preset selection popup
+	SDK_PROCAMP_COLOR_MODE,                   // 6. Single/Preset/Custom
+	SDK_PROCAMP_COLOR_PRESET,                 // 8. Preset selection popup
+	SDK_PROCAMP_LINE_COLOR,                   // 9. Single color picker
 	SDK_PROCAMP_CUSTOM_COLOR_1,               // 10-17. Custom colors 1-8
 	SDK_PROCAMP_CUSTOM_COLOR_2,
 	SDK_PROCAMP_CUSTOM_COLOR_3,
@@ -154,7 +153,8 @@ enum
 	SDK_PROCAMP_CUSTOM_COLOR_6,
 	SDK_PROCAMP_CUSTOM_COLOR_7,
 	SDK_PROCAMP_CUSTOM_COLOR_8,
-	SDK_PROCAMP_TRAVEL_LINKAGE,               // 18. Travel distance linkage (Off/Width/Height)
+	SDK_PROCAMP_LINE_EASING,                  // Easing function
+	SDK_PROCAMP_TRAVEL_LINKAGE,               // Travel distance linkage (Off/Width/Height)
 	SDK_PROCAMP_TRAVEL_LINKAGE_RATE,          // 19. Travel distance linkage rate (%)
 	SDK_PROCAMP_LINE_TRAVEL,                  // 20. Travel distance (px)
 	

@@ -825,9 +825,7 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(SDK_PROCAMP_LENGTH_LINKAGE_RATE, !lengthLinkageOff); // Show rate when linkage is ON
 	setVisible(SDK_PROCAMP_LINE_LENGTH, lengthLinkageOff);           // Show value when linkage is OFF
 
-	// Single Color and Color Preset: always visible regardless of Color Mode
-	// (User requested these to never be disabled)
-	setVisible(SDK_PROCAMP_LINE_COLOR, true);
+	// Color Preset: always visible
 	setVisible(SDK_PROCAMP_COLOR_PRESET, true);
 
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
@@ -1122,15 +1120,6 @@ static PF_Err ParamsSetup(
 		0,
 		SDK_PROCAMP_LINE_INTERVAL);
 
-	// Easing (moved here, after Interval)
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_POPUP(
-		P_EASING,
-		28,
-		LINE_EASING_DFLT,
-		PM_EASING,
-		SDK_PROCAMP_LINE_EASING);
-
 	// ============================================================
 	// Color Settings
 	// ============================================================
@@ -1147,16 +1136,6 @@ static PF_Err ParamsSetup(
 		PM_COLOR_MODE,
 		SDK_PROCAMP_COLOR_MODE);
 
-	// Single Color
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_SUPERVISE;
-	PF_ADD_COLOR(
-		P_COLOR,
-		LINE_COLOR_DFLT_R8,
-		LINE_COLOR_DFLT_G8,
-		LINE_COLOR_DFLT_B8,
-		SDK_PROCAMP_LINE_COLOR);
-
 	// Color Preset (Unified: Single|Custom|-)|Preset1|Preset2|...)
 	AEFX_CLR_STRUCT(def);
 	def.flags = PF_ParamFlag_SUPERVISE;
@@ -1166,6 +1145,16 @@ static PF_Err ParamsSetup(
 		COLOR_PRESET_DFLT,
 		GetUnifiedPresetMenuString(),
 		SDK_PROCAMP_COLOR_PRESET);
+
+	// Single Color
+	AEFX_CLR_STRUCT(def);
+	def.flags = PF_ParamFlag_SUPERVISE;
+	PF_ADD_COLOR(
+		P_COLOR,
+		LINE_COLOR_DFLT_R8,
+		LINE_COLOR_DFLT_G8,
+		LINE_COLOR_DFLT_B8,
+		SDK_PROCAMP_LINE_COLOR);
 
 	// Custom Colors 1-8
 	AEFX_CLR_STRUCT(def);
@@ -1185,6 +1174,15 @@ static PF_Err ParamsSetup(
 	PF_ADD_COLOR(P_CUSTOM_7, 128, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_7);
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_COLOR(P_CUSTOM_8, 255, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_8);
+
+	// Easing (before Travel Distance Linkage)
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_POPUP(
+		P_EASING,
+		28,
+		LINE_EASING_DFLT,
+		PM_EASING,
+		SDK_PROCAMP_LINE_EASING);
 
 	// Travel Distance Linkage (NEW - moved from old Linkage group)
 	AEFX_CLR_STRUCT(def);
@@ -2118,14 +2116,17 @@ static PF_Err Render(
 
 		// Wind Origin: adjust spawn area position (overall atmosphere, not per-line animation)
 		// Apply offset in the direction of line angle (both X and Y components)
+		// Use maxLen*0.5 (max possible halfLen) for conservative compensation
+		// Note: some minor protrusion is inherent in head/tail animation
+		const float maxHalfLen = maxLen * 0.5f;
 		float originOffset = 0.0f;
 		if (lineOriginMode == 1)  // Forward
 		{
-			originOffset = 0.5f * travelRange;
+			originOffset = 0.5f * travelRange + maxHalfLen;
 		}
 		else if (lineOriginMode == 2)  // Backward
 		{
-			originOffset = -0.5f * travelRange;
+			originOffset = -(0.5f * travelRange + maxHalfLen);
 		}
 
 		// Animation Pattern adjustments
