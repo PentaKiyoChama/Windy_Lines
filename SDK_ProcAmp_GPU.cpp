@@ -684,13 +684,8 @@ static float ApplyEasingDerivative(float t, int easingType)
 
 static int NormalizePopupValue(int value, int maxValue)
 {
-	// Premiere Pro popup values are 1-based, convert to 0-based
-	// Check 1-based first (most common case)
-	if (value >= 1 && value <= maxValue)
-	{
-		return value - 1;
-	}
-	// Already 0-based or out of range
+	// Premiere Pro GPU GetParam() returns 0-based popup values
+	// Just clamp to valid range [0, maxValue-1]
 	if (value >= 0 && value < maxValue)
 	{
 		return value;

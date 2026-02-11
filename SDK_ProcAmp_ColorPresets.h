@@ -46,6 +46,7 @@ enum ColorPreset
 	COLOR_PRESET_TEST_TWO,
 	COLOR_PRESET_TEST_THREE,
 	COLOR_PRESET_ALL_YELLOW,
+	COLOR_PRESET_RED_AND_BLACK,
 	COLOR_PRESET_COUNT
 };
 
@@ -277,6 +278,12 @@ namespace ColorPresets {
 		{255, 255, 215, 0}, {255, 255, 215, 1}, {255, 255, 215, 2}, {255, 255, 215, 3},
 		{255, 255, 215, 4}, {255, 255, 215, 5}, {255, 255, 215, 6}, {255, 255, 215, 7}
 	};
+
+	// 赤と黒 (red_and_black)
+	const PresetColor kred_and_black[8] = {
+		{255, 0, 0, 0}, {255, 0, 0, 0}, {255, 0, 0, 0}, {255, 0, 0, 0},
+		{255, 255, 0, 0}, {255, 255, 0, 0}, {255, 255, 0, 0}, {255, 255, 0, 0}
+	};
 }
 
 // Preset color lookup table
@@ -319,16 +326,17 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		case 35: return ColorPresets::ktest_two;
 		case 36: return ColorPresets::ktest_three;
 		case 37: return ColorPresets::kall_yellow;
+		case 38: return ColorPresets::kred_and_black;
 		default: return ColorPresets::kRainbow;  // Fallback to first preset
 	}
 }
 
 // Total number of color presets (for UI generation)
-static const int kColorPresetCount = 37;
+static const int kColorPresetCount = 38;
 
 // Total number of menu items including separators
-// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets=37 = 41
-static const int kUnifiedPresetCount = 41;
+// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets=38 = 42
+static const int kUnifiedPresetCount = 42;
 
 // Preset names (Japanese) for UI labels
 static const char* kColorPresetNames[] = {
@@ -368,7 +376,8 @@ static const char* kColorPresetNames[] = {
 	"テストカラー",  // test_color
 	"test_two",  // test_two
 	"test_3",  // test_three
-	"全部黄色"  // all_yellow
+	"全部黄色",  // all_yellow
+	"赤と黒"  // red_and_black
 };
 
 // Generate unified preset menu string (Single|(-|Custom|(-|Preset1|Preset2|...)
@@ -398,7 +407,7 @@ inline void UnifiedIndexToColorModeAndPreset(int unifiedIndex, int& outColorMode
 	} else if (unifiedIndex == 2) {
 		outColorMode = 1;  // Custom
 		outPresetIndex = 0;
-	} else if (unifiedIndex >= 4 && unifiedIndex < 4 + 37) {
+	} else if (unifiedIndex >= 4 && unifiedIndex < 4 + 38) {
 		outColorMode = 2;  // Preset
 		outPresetIndex = unifiedIndex - 4;  // 0-based preset index
 	} else {
@@ -414,7 +423,7 @@ inline int ColorModeAndPresetToUnifiedIndex(int colorMode, int presetIndex) {
 	if (colorMode == 1) return 2;  // Custom
 	if (colorMode == 2) {  // Preset
 		int idx = presetIndex + 4;  // Skip Single, Sep, Custom, Sep
-		if (idx >= 4 && idx < 4 + 37) return idx;
+		if (idx >= 4 && idx < 4 + 38) return idx;
 		return 4;  // Default to first preset
 	}
 	return 0;  // Default to Single

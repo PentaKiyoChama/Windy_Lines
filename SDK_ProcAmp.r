@@ -32,7 +32,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"win_WindyShapes"
+			"mac_WindyShapes"
 		},
 		/* [3] */
 		Category {
