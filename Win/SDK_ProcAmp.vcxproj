@@ -182,6 +182,8 @@ python "..\patch_pipl_japanese.py"
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\Debug/</ObjectFileName>
     </ClCompile>
   </ItemGroup>
+  <!-- HLSL: Not used for Premiere Pro (DirectX path is After Effects only)
+       Files moved to legacy/ folder. Uncomment if After Effects support is needed.
   <ItemGroup>
     <CustomBuild Include="..\SDK_ProcAmp.hlsl">
       <Command> rem Correct compilation is dependant on dxc being installed correctly, from DirectX Shader Compiler
@@ -198,6 +200,7 @@ python "..\patch_pipl_japanese.py"
       <AdditionalInputs>%(AdditionalInputs)</AdditionalInputs>
     </CustomBuild>
   </ItemGroup>
+  -->
   <ItemGroup>
     <CustomBuild Include="..\SDK_ProcAmp.cu">
       <FileType>Document</FileType>

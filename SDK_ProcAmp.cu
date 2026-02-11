@@ -2,7 +2,7 @@
 #define SDK_PROCAMP_CU
 
 // DEBUG RENDER MARKERS for CUDA (must match SDK_ProcAmp.h)
-#define ENABLE_DEBUG_RENDER_MARKERS 0
+#define ENABLE_DEBUG_RENDER_MARKERS 1
 
 #if __CUDACC_VER_MAJOR__ >= 9
 	#include <cuda_fp16.h>
@@ -711,15 +711,27 @@
 			}
 
 #if ENABLE_DEBUG_RENDER_MARKERS
-			// DEBUG: Draw GREEN SQUARE in top-left corner to indicate CUDA is being used
-			// Shape: Square (CUDA = NVIDIA)
-			if (inXY.x >= 5 && inXY.x < 35 && inXY.y >= 5 && inXY.y < 35)
+			// DEBUG: Draw "CUDA" text in top-left corner (5x7 bitmap font, 4x scale)
+			const unsigned int fontC[7] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
+			const unsigned int fontU[7] = {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E};
+			const unsigned int fontD[7] = {0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E};
+			const unsigned int fontA[7] = {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11};
+			const int scale = 4;
+			const int baseX = 5, baseY = 5;
+			int px = (inXY.x - baseX) / scale;
+			int py = (inXY.y - baseY) / scale;
+			if (py >= 0 && py < 7)
 			{
-				// Set green color (handle potential format differences)
-				pixel.x = 0.0f;   // R = 0 (or B if BGRA)
-				pixel.y = 1.0f;   // G = 1 (Green for CUDA)
-				pixel.z = 0.0f;   // B = 0 (or R if BGRA)
-				pixel.w = 1.0f;   // A = 1
+				unsigned int fonts[4] = {0, 0, 0, 0};
+				int charPos = -1;
+				if (px >= 0 && px < 5) { fonts[0] = fontC[py]; charPos = 0; }
+				else if (px >= 6 && px < 11) { fonts[1] = fontU[py]; charPos = 1; px -= 6; }
+				else if (px >= 12 && px < 17) { fonts[2] = fontD[py]; charPos = 2; px -= 12; }
+				else if (px >= 18 && px < 23) { fonts[3] = fontA[py]; charPos = 3; px -= 18; }
+				if (charPos >= 0 && ((fonts[charPos] >> (4 - px)) & 1))
+				{
+					pixel.x = 0.3f; pixel.y = 1.0f; pixel.z = 0.3f; pixel.w = 1.0f; // Bright green (NVIDIA)
+				}
 			}
 #endif
 		

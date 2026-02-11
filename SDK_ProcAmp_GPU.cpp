@@ -877,6 +877,9 @@ public:
 		}
 #if HAS_DIRECTX
 		// DirectX/HLSL enabled - CUDA disabled
+		// NOTE: HLSL/DirectX path is NOT used by Premiere Pro (After Effects only).
+		// HLSL files have been moved to legacy/ folder.
+		// Premiere Pro uses CUDA or OpenCL only.
 		else if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_DirectX)
 		{
 			if (mDeviceIndex >= sDXContextCache.size())
