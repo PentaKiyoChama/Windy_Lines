@@ -22,7 +22,7 @@ JAPANESE_STRINGS = {
 
 # .rcpファイルのパス（このスクリプトと同じフォルダ）
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-RCP_FILE = os.path.join(SCRIPT_DIR, 'SDK_ProcAmp.rcp')
+RCP_FILE = os.path.join(SCRIPT_DIR, 'OST_WindyLines.rcp')
 # ================
 
 def make_pascal_string(text, encoding='shift_jis'):

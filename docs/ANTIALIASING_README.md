@@ -30,7 +30,7 @@
 
 ### For Developers / 開発者向け
 
-- 🔧 **[SDK_ProcAmp_Notes.json](./SDK_ProcAmp_Notes.json)**
+- 🔧 **[OST_WindyLines_Notes.json](./OST_WindyLines_Notes.json)**
   - See section: `ANTIALIASING_VISUAL_THICKNESS_EFFECT`
   - Technical implementation details
   - Code locations
@@ -137,11 +137,11 @@ float coverage = tt * tt * (3.0f - 2.0f * tt);
 
 ### Locations / 場所
 
-- CUDA: `SDK_ProcAmp.cu` lines 504-507, 539-542
-- OpenCL/Metal: `SDK_ProcAmp.cl` lines 527-528, 555-556
-- CPU: `SDK_ProcAmp_CPU.cpp` lines 2600-2602, 2625-2627
-- Host: `SDK_ProcAmp_GPU.cpp` line 2015
-- Parameters: `SDK_ProcAmp.h` lines 329-333
+- CUDA: `OST_WindyLines.cu` lines 504-507, 539-542
+- OpenCL/Metal: `OST_WindyLines.cl` lines 527-528, 555-556
+- CPU: `OST_WindyLines_CPU.cpp` lines 2600-2602, 2625-2627
+- Host: `OST_WindyLines_GPU.cpp` line 2015
+- Parameters: `OST_WindyLines.h` lines 329-333
 
 ---
 
@@ -193,4 +193,4 @@ python3 verify_antialiasing.py
 - [Japanese Summary / 日本語サマリー](./アンチエイリアスと線の太さについて.md)
 - [Technical Analysis / 技術分析](./ANTIALIASING_ANALYSIS.md)
 - [Verification Script / 検証スクリプト](./verify_antialiasing.py)
-- [Implementation Notes / 実装ノート](./SDK_ProcAmp_Notes.json) (see `ANTIALIASING_VISUAL_THICKNESS_EFFECT`)
+- [Implementation Notes / 実装ノート](./OST_WindyLines_Notes.json) (see `ANTIALIASING_VISUAL_THICKNESS_EFFECT`)

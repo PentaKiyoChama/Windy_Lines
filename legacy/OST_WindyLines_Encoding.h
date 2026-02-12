@@ -1,5 +1,5 @@
 /**
- * SDK_ProcAmp_Encoding.h
+ * OST_WindyLines_Encoding.h
  * 
  * Mac/Windows 共通で使用可能な日本語パラメータ名エンコーディングヘルパー
  * Premiere Pro がパラメータ名を Shift_JIS として読み込むため、
@@ -13,8 +13,8 @@
  *   PF_ADD_FLOAT_SLIDERX(PARAM_LINE_COUNT, ...);
  */
 
-#ifndef SDK_PROCAMP_ENCODING_H
-#define SDK_PROCAMP_ENCODING_H
+#ifndef OST_WINDYLINES_ENCODING_H
+#define OST_WINDYLINES_ENCODING_H
 
 // ========================================
 // Shift_JIS バイト列定義 (Mac用)
@@ -313,4 +313,4 @@
     #define PARAM_LINE_CAP_MENU   SJIS_LINE_CAP_MENU
 #endif
 
-#endif // SDK_PROCAMP_ENCODING_H
+#endif // OST_WINDYLINES_ENCODING_H

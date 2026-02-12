@@ -13,7 +13,7 @@
 **ファイル**: `color_presets.tsv`
 
 **アクション**:
-1. `SDK_ProcAmp.h` の行542-708から33個の色プリセット定義を抽出
+1. `OST_WindyLines.h` の行542-708から33個の色プリセット定義を抽出
 2. 以下のTSVフォーマットで保存：
 
 ```tsv
@@ -21,7 +21,7 @@ id	name	name_en	color1	color2	color3	color4	color5	color6	color7	color8
 1	レインボー	Rainbow	255,255,0,0	255,255,128,0	...
 ```
 
-**データソース**: `SDK_ProcAmp.h` 行542-708
+**データソース**: `OST_WindyLines.h` 行542-708
 - 各プリセット: `const PresetColor kXXX[8] = { ... };`
 - 33個のプリセット × 8色 = 264色のデータ
 
@@ -70,19 +70,19 @@ def generate_cpp_header(presets):
     """完全なヘッダーファイルを生成"""
 ```
 
-**出力**: `SDK_ProcAmp_ColorPresets.h`
+**出力**: `OST_WindyLines_ColorPresets.h`
 
 **検証**:
 ```bash
 python color_preset_converter.py
 # 出力確認
-cat SDK_ProcAmp_ColorPresets.h | head -50
+cat OST_WindyLines_ColorPresets.h | head -50
 ```
 
 ---
 
-#### Task 1.3: SDK_ProcAmp.h の修正
-**ファイル**: `SDK_ProcAmp.h`
+#### Task 1.3: OST_WindyLines.h の修正
+**ファイル**: `OST_WindyLines.h`
 
 **アクション**:
 1. 行537-748の色プリセット定義を削除（約211行）
@@ -92,7 +92,7 @@ cat SDK_ProcAmp_ColorPresets.h | head -50
 2. 削除した箇所に以下を追加：
 ```cpp
 // Color presets (auto-generated from color_presets.tsv)
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 ```
 
 **重要**: 
@@ -111,16 +111,16 @@ inline const PresetColor* GetPresetPalette(...) { ... }
 **変更後**:
 ```cpp
 // 色プリセット定義（自動生成）
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 ```
 
 **検証**:
 ```bash
 # includeが正しく追加されたか確認
-grep "SDK_ProcAmp_ColorPresets.h" SDK_ProcAmp.h
+grep "OST_WindyLines_ColorPresets.h" OST_WindyLines.h
 
 # 古い定義が削除されたか確認
-grep "const PresetColor kRainbow" SDK_ProcAmp.h  # 見つからないはず
+grep "const PresetColor kRainbow" OST_WindyLines.h  # 見つからないはず
 ```
 
 ---
@@ -134,17 +134,17 @@ grep "const PresetColor kRainbow" SDK_ProcAmp.h  # 見つからないはず
 3. リンクエラーがないことを確認
 
 **確認ポイント**:
-- `SDK_ProcAmp_ColorPresets.h` がincludeパスに含まれているか
+- `OST_WindyLines_ColorPresets.h` がincludeパスに含まれているか
 - `PresetColor` 構造体の定義が重複していないか
 - `GetPresetPalette()` 関数が正しく解決されるか
 
 **コマンド例**:
 ```bash
 # Windows (Visual Studio)
-MSBuild SDK_ProcAmp.sln /t:Clean,Build /p:Configuration=Debug
+MSBuild OST_WindyLines.sln /t:Clean,Build /p:Configuration=Debug
 
 # Mac (Xcode)
-xcodebuild clean build -project SDK_ProcAmp.xcodeproj -configuration Debug
+xcodebuild clean build -project OST_WindyLines.xcodeproj -configuration Debug
 ```
 
 ---
@@ -192,7 +192,7 @@ if git diff --cached --name-only | grep -q "color_presets.tsv"; then
     
     if [ $? -eq 0 ]; then
         echo "✓ Header regenerated successfully"
-        git add SDK_ProcAmp_ColorPresets.h
+        git add OST_WindyLines_ColorPresets.h
     else
         echo "✗ Error regenerating header"
         exit 1
@@ -238,8 +238,8 @@ jobs:
       
       - name: Check if header is up-to-date
         run: |
-          if ! git diff --quiet SDK_ProcAmp_ColorPresets.h; then
-            echo "Error: SDK_ProcAmp_ColorPresets.h is not up-to-date!"
+          if ! git diff --quiet OST_WindyLines_ColorPresets.h; then
+            echo "Error: OST_WindyLines_ColorPresets.h is not up-to-date!"
             echo "Please run: python color_preset_converter.py"
             exit 1
           fi
@@ -272,7 +272,7 @@ jobs:
 
 3. 生成されたヘッダーを確認
    ```bash
-   cat SDK_ProcAmp_ColorPresets.h
+   cat OST_WindyLines_ColorPresets.h
    ```
 
 4. ビルドしてテスト
@@ -289,7 +289,7 @@ jobs:
 ### 新しいプリセットの追加
 
 1. TSVに新しい行を追加（ID 34以降）
-2. SDK_ProcAmp.h の `enum ColorPreset` に新しい定数を追加
+2. OST_WindyLines.h の `enum ColorPreset` に新しい定数を追加
 3. 変換スクリプトを実行
 4. ビルド
 ```
@@ -297,7 +297,7 @@ jobs:
 ---
 
 #### Task 4.2: 開発者ガイド更新
-**ファイル**: `SDK_ProcAmp_DevGuide.md`
+**ファイル**: `OST_WindyLines_DevGuide.md`
 
 **追加セクション**:
 ```markdown
@@ -309,8 +309,8 @@ jobs:
 ### ファイル構成
 - `color_presets.tsv` - マスターデータ（手動編集）
 - `color_preset_converter.py` - 変換スクリプト
-- `SDK_ProcAmp_ColorPresets.h` - 自動生成（編集禁止）
-- `SDK_ProcAmp.h` - プリセット利用側
+- `OST_WindyLines_ColorPresets.h` - 自動生成（編集禁止）
+- `OST_WindyLines.h` - プリセット利用側
 
 ### 編集ワークフロー
 （省略 - README参照）
@@ -323,8 +323,8 @@ jobs:
 ### Phase 1: 基本実装
 - [ ] `color_presets.tsv` 作成完了（33プリセット）
 - [ ] `color_preset_converter.py` 実装完了
-- [ ] `SDK_ProcAmp_ColorPresets.h` 生成成功
-- [ ] `SDK_ProcAmp.h` 修正完了（include追加、ハードコード削除）
+- [ ] `OST_WindyLines_ColorPresets.h` 生成成功
+- [ ] `OST_WindyLines.h` 修正完了（include追加、ハードコード削除）
 
 ### Phase 2: ビルドとテスト
 - [ ] クリーンビルド成功
@@ -350,8 +350,8 @@ jobs:
 **原因**: `PresetColor`構造体が重複定義されている
 
 **解決策**: 
-- `SDK_ProcAmp.h`内の古い`PresetColor`定義を削除
-- `SDK_ProcAmp_ColorPresets.h`のみで定義されるようにする
+- `OST_WindyLines.h`内の古い`PresetColor`定義を削除
+- `OST_WindyLines_ColorPresets.h`のみで定義されるようにする
 
 ---
 
@@ -359,7 +359,7 @@ jobs:
 **原因**: ヘッダーがincludeされていない
 
 **解決策**:
-- `SDK_ProcAmp.h`に`#include "SDK_ProcAmp_ColorPresets.h"`を追加
+- `OST_WindyLines.h`に`#include "OST_WindyLines_ColorPresets.h"`を追加
 - includeパスが正しく設定されているか確認
 
 ---

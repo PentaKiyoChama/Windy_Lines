@@ -16,7 +16,7 @@
 5. ✅ 実装計画の策定
 
 ### 確認された事実
-- 現在の色プリセット: SDK_ProcAmp.h に**ハードコーディング**（約211行）
+- 現在の色プリセット: OST_WindyLines.h に**ハードコーディング**（約211行）
 - エフェクトプリセット: **TSV + Python**で既に管理されている
 - 同じアーキテクチャを色プリセットにも適用可能
 
@@ -48,7 +48,7 @@ id	name	name_en	color1	color2	...	color8
 - C++ヘッダーファイルを自動生成
 - **動作確認済み** ✓
 
-### 3. 生成されたヘッダー（`SDK_ProcAmp_ColorPresets.h`）
+### 3. 生成されたヘッダー（`OST_WindyLines_ColorPresets.h`）
 ```cpp
 // Auto-generated
 struct PresetColor { unsigned char a, r, g, b; };
@@ -84,7 +84,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) { ... }
 - `color_preset_converter_POC.py` - 変換スクリプト（動作確認済み）
 - `extract_color_presets_POC.py` - 既存データ抽出スクリプト
 - `color_presets_SAMPLE.tsv` - TSVサンプル
-- `SDK_ProcAmp_ColorPresets.h` - 生成結果サンプル
+- `OST_WindyLines_ColorPresets.h` - 生成結果サンプル
 
 ---
 
@@ -93,7 +93,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) { ... }
 ### Phase 1: 基本実装（必須）
 1. 33個の色プリセットをTSVファイルに移行
 2. 変換スクリプト本実装
-3. SDK_ProcAmp.h 修正（211行削除 → 1行のincludeに置き換え）
+3. OST_WindyLines.h 修正（211行削除 → 1行のincludeに置き換え）
 
 ### Phase 2: テスト（必須）
 4. ビルドテスト
@@ -159,7 +159,7 @@ COLOR_PRESET_IMPLEMENTATION_GUIDE.md  - 実装手順書
 color_preset_converter_POC.py         - 変換スクリプトPOC
 extract_color_presets_POC.py          - 抽出スクリプトPOC
 color_presets_SAMPLE.tsv              - TSVサンプル
-SDK_ProcAmp_ColorPresets.h            - 生成ヘッダーサンプル
+OST_WindyLines_ColorPresets.h            - 生成ヘッダーサンプル
 このファイル（SUMMARY.md）              - このサマリー
 ```
 
@@ -167,14 +167,14 @@ SDK_ProcAmp_ColorPresets.h            - 生成ヘッダーサンプル
 ```
 color_presets.tsv                - 本番データ（33プリセット）
 color_preset_converter.py        - 本実装スクリプト
-SDK_ProcAmp_ColorPresets.h       - 自動生成ヘッダー（本番）
+OST_WindyLines_ColorPresets.h       - 自動生成ヘッダー（本番）
 ```
 
 ### 実装時に修正予定のファイル
 ```
-SDK_ProcAmp.h                    - 211行削除、1行追加
+OST_WindyLines.h                    - 211行削除、1行追加
 README.md                        - 使用方法追記
-SDK_ProcAmp_DevGuide.md          - 開発ガイド更新
+OST_WindyLines_DevGuide.md          - 開発ガイド更新
 ```
 
 ---

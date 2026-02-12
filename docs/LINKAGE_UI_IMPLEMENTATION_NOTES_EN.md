@@ -82,12 +82,12 @@ Linkage Settings topic: REMOVED
 
 ### Files Modified
 
-1. **SDK_ProcAmp.h**
+1. **OST_WindyLines.h**
    - Updated parameter enum indices
    - Moved linkage parameters to new positions
    - Removed old linkage topic group definitions
 
-2. **SDK_ProcAmp_CPU.cpp**
+2. **OST_WindyLines_CPU.cpp**
    - Reorganized `ParamsSetup()` function to add linkage parameters before their corresponding value parameters
    - Added conditional visibility logic to `UpdatePseudoGroupVisibility()`
    - Added change handlers in `PF_Cmd_USER_CHANGED_PARAM` for linkage parameters
@@ -97,17 +97,17 @@ Linkage Settings topic: REMOVED
 
 ```cpp
 // UpdatePseudoGroupVisibility() - Added conditional visibility
-const int thicknessLinkage = params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value;
+const int thicknessLinkage = params[OST_WINDYLINES_THICKNESS_LINKAGE]->u.pd.value;
 const bool thicknessIsLinked = (thicknessLinkage == 2 || thicknessLinkage == 3);
-setVisible(SDK_PROCAMP_LINE_THICKNESS, !thicknessIsLinked);
-setVisible(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, thicknessIsLinked);
+setVisible(OST_WINDYLINES_LINE_THICKNESS, !thicknessIsLinked);
+setVisible(OST_WINDYLINES_THICKNESS_LINKAGE_RATE, thicknessIsLinked);
 ```
 
 ```cpp
 // PF_Cmd_USER_CHANGED_PARAM - Added change detection
-if (changedExtra && (changedExtra->param_index == SDK_PROCAMP_THICKNESS_LINKAGE ||
-                     changedExtra->param_index == SDK_PROCAMP_LENGTH_LINKAGE ||
-                     changedExtra->param_index == SDK_PROCAMP_TRAVEL_LINKAGE))
+if (changedExtra && (changedExtra->param_index == OST_WINDYLINES_THICKNESS_LINKAGE ||
+                     changedExtra->param_index == OST_WINDYLINES_LENGTH_LINKAGE ||
+                     changedExtra->param_index == OST_WINDYLINES_TRAVEL_LINKAGE))
 {
     UpdatePseudoGroupVisibility(in_data, params);
     out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
@@ -154,14 +154,14 @@ if (changedExtra && (changedExtra->param_index == SDK_PROCAMP_THICKNESS_LINKAGE 
 ### Windows
 ```bash
 cd Win
-# Open SDK_ProcAmp.sln in Visual Studio
+# Open OST_WindyLines.sln in Visual Studio
 # Build solution
 ```
 
 ### Mac
 ```bash
 cd Mac
-# Open SDK_ProcAmp.xcodeproj in Xcode
+# Open OST_WindyLines.xcodeproj in Xcode
 # Build project
 ```
 
@@ -183,5 +183,5 @@ See `LINKAGE_UI_IMPLEMENTATION_MEMO.md` for detailed Japanese documentation incl
 
 If you encounter issues or have questions about the implementation, please refer to:
 - `LINKAGE_UI_IMPLEMENTATION_MEMO.md` (detailed Japanese documentation)
-- `SDK_ProcAmp_Notes.json` (project-wide technical notes)
-- `SDK_ProcAmp_DevGuide.md` (development guide)
+- `OST_WindyLines_Notes.json` (project-wide technical notes)
+- `OST_WindyLines_DevGuide.md` (development guide)

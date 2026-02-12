@@ -20,9 +20,9 @@
 /*******************************************************************/
 
 
-#include "SDK_ProcAmp.h"
-#include "SDK_ProcAmp_ParamNames.h"
-#include "SDK_ProcAmp_Version.h"
+#include "OST_WindyLines.h"
+#include "OST_WindyLines_ParamNames.h"
+#include "OST_WindyLines_Version.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
 #include <atomic>
@@ -41,7 +41,7 @@
 #include <sys/time.h>
 #endif
 
-// Debug logging function is now in SDK_ProcAmp.h
+// Debug logging function is now in OST_WindyLines.h
 
 // Debounce for preset button double-fire issue
 static std::atomic<uint32_t> sLastPresetClickTime{ 0 };
@@ -471,17 +471,17 @@ static float DepthScale(float depth, float strength)
 
 static void SyncLineColorParams(PF_ParamDef* params[])
 {
-	if (!params || !params[SDK_PROCAMP_LINE_COLOR] ||
-		!params[SDK_PROCAMP_LINE_COLOR_R] ||
-		!params[SDK_PROCAMP_LINE_COLOR_G] ||
-		!params[SDK_PROCAMP_LINE_COLOR_B])
+	if (!params || !params[OST_WINDYLINES_LINE_COLOR] ||
+		!params[OST_WINDYLINES_LINE_COLOR_R] ||
+		!params[OST_WINDYLINES_LINE_COLOR_G] ||
+		!params[OST_WINDYLINES_LINE_COLOR_B])
 	{
 		return;
 	}
-	const PF_Pixel color = params[SDK_PROCAMP_LINE_COLOR]->u.cd.value;
-	params[SDK_PROCAMP_LINE_COLOR_R]->u.fs_d.value = color.red / 255.0f;
-	params[SDK_PROCAMP_LINE_COLOR_G]->u.fs_d.value = color.green / 255.0f;
-	params[SDK_PROCAMP_LINE_COLOR_B]->u.fs_d.value = color.blue / 255.0f;
+	const PF_Pixel color = params[OST_WINDYLINES_LINE_COLOR]->u.cd.value;
+	params[OST_WINDYLINES_LINE_COLOR_R]->u.fs_d.value = color.red / 255.0f;
+	params[OST_WINDYLINES_LINE_COLOR_G]->u.fs_d.value = color.green / 255.0f;
+	params[OST_WINDYLINES_LINE_COLOR_B]->u.fs_d.value = color.blue / 255.0f;
 }
 
 static void HideLineColorParams(PF_InData* in_data)
@@ -494,9 +494,9 @@ static void HideLineColorParams(PF_InData* in_data)
 	AEFX_CLR_STRUCT(def);
 	def.ui_flags = PF_PUI_INVISIBLE;
 	AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
-	paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_LINE_COLOR_R, &def);
-	paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_LINE_COLOR_G, &def);
-	paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_LINE_COLOR_B, &def);
+	paramUtils->PF_UpdateParamUI(in_data->effect_ref, OST_WINDYLINES_LINE_COLOR_R, &def);
+	paramUtils->PF_UpdateParamUI(in_data->effect_ref, OST_WINDYLINES_LINE_COLOR_G, &def);
+	paramUtils->PF_UpdateParamUI(in_data->effect_ref, OST_WINDYLINES_LINE_COLOR_B, &def);
 }
 
 // Hide/Show Alpha Threshold based on Spawn Source selection
@@ -780,26 +780,26 @@ static void UpdatePseudoGroupVisibility(
 	// Structure: 単色|(-|カスタム|(-|preset1|preset2|...
 	// Note: Separators (-|) ARE included in menu numbering as items 2 and 4
 	// 1-based UI values: 1=単色, 2=Sep, 3=カスタム, 4=Sep, 5=Rainbow, 6=Pastel, ...
-	const int unifiedPresetValue = params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value;  // 1-based
+	const int unifiedPresetValue = params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value;  // 1-based
 	
 	DebugLog("[Visibility] unifiedPresetValue = %d", unifiedPresetValue);
 	
 	// Single color: visible only when unified preset = 1 (単色)
 	const bool showSingleColor = (unifiedPresetValue == 1);
-	setVisible(SDK_PROCAMP_LINE_COLOR, showSingleColor);
+	setVisible(OST_WINDYLINES_LINE_COLOR, showSingleColor);
 	
 	DebugLog("[Visibility] showSingleColor = %s", showSingleColor ? "true" : "false");
 	
 	// Custom Colors 1-8: visible only when unified preset = 3 (カスタム)
 	const bool showCustomColors = (unifiedPresetValue == 3);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_1, showCustomColors);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_2, showCustomColors);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_3, showCustomColors);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_4, showCustomColors);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_5, showCustomColors);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_6, showCustomColors);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_7, showCustomColors);
-	setVisible(SDK_PROCAMP_CUSTOM_COLOR_8, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_1, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_2, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_3, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_4, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_5, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_6, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_7, showCustomColors);
+	setVisible(OST_WINDYLINES_CUSTOM_COLOR_8, showCustomColors);
 	
 	DebugLog("[Visibility] showCustomColors = %s", showCustomColors ? "true" : "false");
 
@@ -808,25 +808,25 @@ static void UpdatePseudoGroupVisibility(
 	// ========================================
 	
 	// Travel Distance Linkage: show/hide rate and value based on mode
-	const int travelLinkage = params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value;
+	const int travelLinkage = params[OST_WINDYLINES_TRAVEL_LINKAGE]->u.pd.value;
 	const bool travelLinkageOff = (travelLinkage == 1); // 1 = Off (1-based popup)
-	setVisible(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, !travelLinkageOff); // Show rate when linkage is ON
-	setVisible(SDK_PROCAMP_LINE_TRAVEL, travelLinkageOff);          // Show value when linkage is OFF
+	setVisible(OST_WINDYLINES_TRAVEL_LINKAGE_RATE, !travelLinkageOff); // Show rate when linkage is ON
+	setVisible(OST_WINDYLINES_LINE_TRAVEL, travelLinkageOff);          // Show value when linkage is OFF
 	
 	// Thickness Linkage: show/hide rate and value based on mode
-	const int thicknessLinkage = params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value;
+	const int thicknessLinkage = params[OST_WINDYLINES_THICKNESS_LINKAGE]->u.pd.value;
 	const bool thicknessLinkageOff = (thicknessLinkage == 1); // 1 = Off (1-based popup)
-	setVisible(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, !thicknessLinkageOff); // Show rate when linkage is ON
-	setVisible(SDK_PROCAMP_LINE_THICKNESS, thicknessLinkageOff);           // Show value when linkage is OFF
+	setVisible(OST_WINDYLINES_THICKNESS_LINKAGE_RATE, !thicknessLinkageOff); // Show rate when linkage is ON
+	setVisible(OST_WINDYLINES_LINE_THICKNESS, thicknessLinkageOff);           // Show value when linkage is OFF
 	
 	// Length Linkage: show/hide rate and value based on mode
-	const int lengthLinkage = params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value;
+	const int lengthLinkage = params[OST_WINDYLINES_LENGTH_LINKAGE]->u.pd.value;
 	const bool lengthLinkageOff = (lengthLinkage == 1); // 1 = Off (1-based popup)
-	setVisible(SDK_PROCAMP_LENGTH_LINKAGE_RATE, !lengthLinkageOff); // Show rate when linkage is ON
-	setVisible(SDK_PROCAMP_LINE_LENGTH, lengthLinkageOff);           // Show value when linkage is OFF
+	setVisible(OST_WINDYLINES_LENGTH_LINKAGE_RATE, !lengthLinkageOff); // Show rate when linkage is ON
+	setVisible(OST_WINDYLINES_LINE_LENGTH, lengthLinkageOff);           // Show value when linkage is OFF
 
 	// Color Preset: always visible
-	setVisible(SDK_PROCAMP_COLOR_PRESET, true);
+	setVisible(OST_WINDYLINES_COLOR_PRESET, true);
 
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
 }
@@ -895,41 +895,41 @@ static void ApplyEffectPreset(
 	};
 
 	// Basic settings
-	updateFloat(SDK_PROCAMP_LINE_COUNT, static_cast<float>(preset.count));
-	updateFloat(SDK_PROCAMP_LINE_LIFETIME, preset.lifetime);
-	updateFloat(SDK_PROCAMP_LINE_TRAVEL, preset.travel);
+	updateFloat(OST_WINDYLINES_LINE_COUNT, static_cast<float>(preset.count));
+	updateFloat(OST_WINDYLINES_LINE_LIFETIME, preset.lifetime);
+	updateFloat(OST_WINDYLINES_LINE_TRAVEL, preset.travel);
 	
 	// Appearance
-	updateFloat(SDK_PROCAMP_LINE_THICKNESS, preset.thickness);
-	updateFloat(SDK_PROCAMP_LINE_LENGTH, preset.length);
-	updateAngle(SDK_PROCAMP_LINE_ANGLE, preset.angle);
-	updateFloat(SDK_PROCAMP_LINE_TAIL_FADE, preset.tailFade);
-	updateFloat(SDK_PROCAMP_LINE_AA, preset.aa);
+	updateFloat(OST_WINDYLINES_LINE_THICKNESS, preset.thickness);
+	updateFloat(OST_WINDYLINES_LINE_LENGTH, preset.length);
+	updateAngle(OST_WINDYLINES_LINE_ANGLE, preset.angle);
+	updateFloat(OST_WINDYLINES_LINE_TAIL_FADE, preset.tailFade);
+	updateFloat(OST_WINDYLINES_LINE_AA, preset.aa);
 	
 	// Position & Spawn
-	updatePopup(SDK_PROCAMP_LINE_ORIGIN_MODE, preset.originMode);
-	updateFloat(SDK_PROCAMP_LINE_SPAWN_SCALE_X, preset.spawnScaleX);
-	updateFloat(SDK_PROCAMP_LINE_SPAWN_SCALE_Y, preset.spawnScaleY);
-	updateFloat(SDK_PROCAMP_ORIGIN_OFFSET_X, preset.originOffsetX);
-	updateFloat(SDK_PROCAMP_ORIGIN_OFFSET_Y, preset.originOffsetY);
-	updateFloat(SDK_PROCAMP_LINE_INTERVAL, preset.interval);
+	updatePopup(OST_WINDYLINES_LINE_ORIGIN_MODE, preset.originMode);
+	updateFloat(OST_WINDYLINES_LINE_SPAWN_SCALE_X, preset.spawnScaleX);
+	updateFloat(OST_WINDYLINES_LINE_SPAWN_SCALE_Y, preset.spawnScaleY);
+	updateFloat(OST_WINDYLINES_ORIGIN_OFFSET_X, preset.originOffsetX);
+	updateFloat(OST_WINDYLINES_ORIGIN_OFFSET_Y, preset.originOffsetY);
+	updateFloat(OST_WINDYLINES_LINE_INTERVAL, preset.interval);
 	
 	// Animation
-	updatePopup(SDK_PROCAMP_ANIM_PATTERN, preset.animPattern);
-	updateFloat(SDK_PROCAMP_CENTER_GAP, preset.centerGap);
-	updatePopup(SDK_PROCAMP_LINE_EASING, preset.easing + 1);
-	updateFloat(SDK_PROCAMP_LINE_START_TIME, preset.startTime);
-	updateFloat(SDK_PROCAMP_LINE_DURATION, preset.duration);
+	updatePopup(OST_WINDYLINES_ANIM_PATTERN, preset.animPattern);
+	updateFloat(OST_WINDYLINES_CENTER_GAP, preset.centerGap);
+	updatePopup(OST_WINDYLINES_LINE_EASING, preset.easing + 1);
+	updateFloat(OST_WINDYLINES_LINE_START_TIME, preset.startTime);
+	updateFloat(OST_WINDYLINES_LINE_DURATION, preset.duration);
 	
 	// Advanced
-	updatePopup(SDK_PROCAMP_BLEND_MODE, preset.blendMode);
-	updateFloat(SDK_PROCAMP_LINE_DEPTH_STRENGTH, preset.depthStrength);
+	updatePopup(OST_WINDYLINES_BLEND_MODE, preset.blendMode);
+	updateFloat(OST_WINDYLINES_LINE_DEPTH_STRENGTH, preset.depthStrength);
 	
 	// New parameters
-	updatePopup(SDK_PROCAMP_LINE_CAP, preset.lineCap);
+	updatePopup(OST_WINDYLINES_LINE_CAP, preset.lineCap);
 	// Use unified preset index (colorMode hidden, only COLOR_PRESET used)
-	updatePopup(SDK_PROCAMP_COLOR_PRESET, preset.unifiedPresetIndex + 1);  // Convert to 1-based
-	updatePopup(SDK_PROCAMP_SPAWN_SOURCE, preset.spawnSource);
+	updatePopup(OST_WINDYLINES_COLOR_PRESET, preset.unifiedPresetIndex + 1);  // Convert to 1-based
+	updatePopup(OST_WINDYLINES_SPAWN_SOURCE, preset.spawnSource);
 	
 	auto updateCheckbox = [&](int paramId, bool value)
 	{
@@ -937,7 +937,7 @@ static void ApplyEffectPreset(
 		params[paramId]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
 		paramUtils->PF_UpdateParamUI(in_data->effect_ref, paramId, params[paramId]);
 	};
-	updateCheckbox(SDK_PROCAMP_HIDE_ELEMENT, preset.hideElement);
+	updateCheckbox(OST_WINDYLINES_HIDE_ELEMENT, preset.hideElement);
 
 	// Force UI refresh and re-render
 	out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
@@ -978,41 +978,41 @@ static void ApplyDefaultEffectParams(
 	};
 
 	// Basic settings
-	updateFloat(SDK_PROCAMP_LINE_COUNT, static_cast<float>(LINE_COUNT_DFLT));
-	updateFloat(SDK_PROCAMP_LINE_LIFETIME, static_cast<float>(LINE_LIFETIME_DFLT));
-	updateFloat(SDK_PROCAMP_LINE_TRAVEL, static_cast<float>(LINE_TRAVEL_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_COUNT, static_cast<float>(LINE_COUNT_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_LIFETIME, static_cast<float>(LINE_LIFETIME_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_TRAVEL, static_cast<float>(LINE_TRAVEL_DFLT));
 	
 	// Appearance
-	updateFloat(SDK_PROCAMP_LINE_THICKNESS, static_cast<float>(LINE_THICKNESS_DFLT));
-	updateFloat(SDK_PROCAMP_LINE_LENGTH, static_cast<float>(LINE_LENGTH_DFLT));
-	updateAngle(SDK_PROCAMP_LINE_ANGLE, 0.0f);
-	updateFloat(SDK_PROCAMP_LINE_TAIL_FADE, static_cast<float>(LINE_TAIL_FADE_DFLT));
-	updateFloat(SDK_PROCAMP_LINE_AA, static_cast<float>(LINE_AA_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_THICKNESS, static_cast<float>(LINE_THICKNESS_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_LENGTH, static_cast<float>(LINE_LENGTH_DFLT));
+	updateAngle(OST_WINDYLINES_LINE_ANGLE, 0.0f);
+	updateFloat(OST_WINDYLINES_LINE_TAIL_FADE, static_cast<float>(LINE_TAIL_FADE_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_AA, static_cast<float>(LINE_AA_DFLT));
 	
 	// Position & Spawn
-	updatePopup(SDK_PROCAMP_LINE_ORIGIN_MODE, LINE_ORIGIN_MODE_DFLT);
-	updateFloat(SDK_PROCAMP_LINE_SPAWN_SCALE_X, static_cast<float>(LINE_SPAWN_SCALE_X_DFLT));
-	updateFloat(SDK_PROCAMP_LINE_SPAWN_SCALE_Y, static_cast<float>(LINE_SPAWN_SCALE_Y_DFLT));
-	updateFloat(SDK_PROCAMP_ORIGIN_OFFSET_X, static_cast<float>(ORIGIN_OFFSET_X_DFLT));
-	updateFloat(SDK_PROCAMP_ORIGIN_OFFSET_Y, static_cast<float>(ORIGIN_OFFSET_Y_DFLT));
-	updateFloat(SDK_PROCAMP_LINE_INTERVAL, static_cast<float>(LINE_INTERVAL_DFLT));
+	updatePopup(OST_WINDYLINES_LINE_ORIGIN_MODE, LINE_ORIGIN_MODE_DFLT);
+	updateFloat(OST_WINDYLINES_LINE_SPAWN_SCALE_X, static_cast<float>(LINE_SPAWN_SCALE_X_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_SPAWN_SCALE_Y, static_cast<float>(LINE_SPAWN_SCALE_Y_DFLT));
+	updateFloat(OST_WINDYLINES_ORIGIN_OFFSET_X, static_cast<float>(ORIGIN_OFFSET_X_DFLT));
+	updateFloat(OST_WINDYLINES_ORIGIN_OFFSET_Y, static_cast<float>(ORIGIN_OFFSET_Y_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_INTERVAL, static_cast<float>(LINE_INTERVAL_DFLT));
 	
 	// Animation
-	updatePopup(SDK_PROCAMP_ANIM_PATTERN, ANIM_PATTERN_DFLT);
-	updateFloat(SDK_PROCAMP_CENTER_GAP, static_cast<float>(CENTER_GAP_DFLT));
-	updatePopup(SDK_PROCAMP_LINE_EASING, LINE_EASING_DFLT);
-	updateFloat(SDK_PROCAMP_LINE_START_TIME, static_cast<float>(LINE_START_TIME_DFLT));
-	updateFloat(SDK_PROCAMP_LINE_DURATION, static_cast<float>(LINE_DURATION_DFLT));
+	updatePopup(OST_WINDYLINES_ANIM_PATTERN, ANIM_PATTERN_DFLT);
+	updateFloat(OST_WINDYLINES_CENTER_GAP, static_cast<float>(CENTER_GAP_DFLT));
+	updatePopup(OST_WINDYLINES_LINE_EASING, LINE_EASING_DFLT);
+	updateFloat(OST_WINDYLINES_LINE_START_TIME, static_cast<float>(LINE_START_TIME_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_DURATION, static_cast<float>(LINE_DURATION_DFLT));
 	
 	// Advanced
-	updatePopup(SDK_PROCAMP_BLEND_MODE, BLEND_MODE_DFLT);
-	updateFloat(SDK_PROCAMP_LINE_DEPTH_STRENGTH, static_cast<float>(LINE_DEPTH_DFLT));
+	updatePopup(OST_WINDYLINES_BLEND_MODE, BLEND_MODE_DFLT);
+	updateFloat(OST_WINDYLINES_LINE_DEPTH_STRENGTH, static_cast<float>(LINE_DEPTH_DFLT));
 	
 	// New parameters (use defaults from .h file)
-	updatePopup(SDK_PROCAMP_LINE_CAP, LINE_CAP_DFLT);
-	updatePopup(SDK_PROCAMP_COLOR_MODE, COLOR_MODE_DFLT);
-	updatePopup(SDK_PROCAMP_COLOR_PRESET, COLOR_PRESET_DFLT);
-	updatePopup(SDK_PROCAMP_SPAWN_SOURCE, SPAWN_SOURCE_DFLT);
+	updatePopup(OST_WINDYLINES_LINE_CAP, LINE_CAP_DFLT);
+	updatePopup(OST_WINDYLINES_COLOR_MODE, COLOR_MODE_DFLT);
+	updatePopup(OST_WINDYLINES_COLOR_PRESET, COLOR_PRESET_DFLT);
+	updatePopup(OST_WINDYLINES_SPAWN_SOURCE, SPAWN_SOURCE_DFLT);
 	
 	auto updateCheckbox = [&](int paramId, bool value)
 	{
@@ -1020,7 +1020,7 @@ static void ApplyDefaultEffectParams(
 		params[paramId]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
 		paramUtils->PF_UpdateParamUI(in_data->effect_ref, paramId, params[paramId]);
 	};
-	updateCheckbox(SDK_PROCAMP_HIDE_ELEMENT, HIDE_ELEMENT_DFLT);
+	updateCheckbox(OST_WINDYLINES_HIDE_ELEMENT, HIDE_ELEMENT_DFLT);
 
 	out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
 	out_data->out_flags |= PF_OutFlag_REFRESH_UI;
@@ -1058,7 +1058,7 @@ static PF_Err ParamsSetup(
 		1 + kEffectPresetCount,
 		1,
 		presetLabels.c_str(),
-		SDK_PROCAMP_EFFECT_PRESET);
+		OST_WINDYLINES_EFFECT_PRESET);
 
 	// Random Seed (moved to top, after preset)
 	AEFX_CLR_STRUCT(def);
@@ -1072,7 +1072,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_LINE_SEED);
+		OST_WINDYLINES_LINE_SEED);
 
 	// ============================================================
 	// Basic Settings
@@ -1090,7 +1090,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_LINE_COUNT);
+		OST_WINDYLINES_LINE_COUNT);
 
 	// Line Lifetime (frames)
 	AEFX_CLR_STRUCT(def);
@@ -1104,7 +1104,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_LINE_LIFETIME);
+		OST_WINDYLINES_LINE_LIFETIME);
 
 	// Spawn Interval (moved from Position group)
 	AEFX_CLR_STRUCT(def);
@@ -1118,7 +1118,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_LINE_INTERVAL);
+		OST_WINDYLINES_LINE_INTERVAL);
 
 	// ============================================================
 	// Color Settings
@@ -1134,7 +1134,7 @@ static PF_Err ParamsSetup(
 		3,
 		COLOR_MODE_DFLT,
 		PM_COLOR_MODE,
-		SDK_PROCAMP_COLOR_MODE);
+		OST_WINDYLINES_COLOR_MODE);
 
 	// Color Preset (Unified: Single|Custom|-)|Preset1|Preset2|...)
 	AEFX_CLR_STRUCT(def);
@@ -1144,7 +1144,7 @@ static PF_Err ParamsSetup(
 		kUnifiedPresetCount,
 		COLOR_PRESET_DFLT,
 		GetUnifiedPresetMenuString(),
-		SDK_PROCAMP_COLOR_PRESET);
+		OST_WINDYLINES_COLOR_PRESET);
 
 	// Single Color
 	AEFX_CLR_STRUCT(def);
@@ -1154,26 +1154,26 @@ static PF_Err ParamsSetup(
 		LINE_COLOR_DFLT_R8,
 		LINE_COLOR_DFLT_G8,
 		LINE_COLOR_DFLT_B8,
-		SDK_PROCAMP_LINE_COLOR);
+		OST_WINDYLINES_LINE_COLOR);
 
 	// Custom Colors 1-8
 	AEFX_CLR_STRUCT(def);
 	def.ui_flags = PF_PUI_ECW_SEPARATOR;
-	PF_ADD_COLOR(P_CUSTOM_1, 255, 0, 0, SDK_PROCAMP_CUSTOM_COLOR_1);
+	PF_ADD_COLOR(P_CUSTOM_1, 255, 0, 0, OST_WINDYLINES_CUSTOM_COLOR_1);
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_2, 255, 128, 0, SDK_PROCAMP_CUSTOM_COLOR_2);
+	PF_ADD_COLOR(P_CUSTOM_2, 255, 128, 0, OST_WINDYLINES_CUSTOM_COLOR_2);
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_3, 255, 255, 0, SDK_PROCAMP_CUSTOM_COLOR_3);
+	PF_ADD_COLOR(P_CUSTOM_3, 255, 255, 0, OST_WINDYLINES_CUSTOM_COLOR_3);
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_4, 0, 255, 0, SDK_PROCAMP_CUSTOM_COLOR_4);
+	PF_ADD_COLOR(P_CUSTOM_4, 0, 255, 0, OST_WINDYLINES_CUSTOM_COLOR_4);
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_5, 0, 255, 255, SDK_PROCAMP_CUSTOM_COLOR_5);
+	PF_ADD_COLOR(P_CUSTOM_5, 0, 255, 255, OST_WINDYLINES_CUSTOM_COLOR_5);
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_6, 0, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_6);
+	PF_ADD_COLOR(P_CUSTOM_6, 0, 0, 255, OST_WINDYLINES_CUSTOM_COLOR_6);
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_7, 128, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_7);
+	PF_ADD_COLOR(P_CUSTOM_7, 128, 0, 255, OST_WINDYLINES_CUSTOM_COLOR_7);
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_CUSTOM_8, 255, 0, 255, SDK_PROCAMP_CUSTOM_COLOR_8);
+	PF_ADD_COLOR(P_CUSTOM_8, 255, 0, 255, OST_WINDYLINES_CUSTOM_COLOR_8);
 
 	// Easing (before Travel Distance Linkage)
 	AEFX_CLR_STRUCT(def);
@@ -1182,7 +1182,7 @@ static PF_Err ParamsSetup(
 		28,
 		LINE_EASING_DFLT,
 		PM_EASING,
-		SDK_PROCAMP_LINE_EASING);
+		OST_WINDYLINES_LINE_EASING);
 
 	// Travel Distance Linkage (NEW - moved from old Linkage group)
 	AEFX_CLR_STRUCT(def);
@@ -1192,7 +1192,7 @@ static PF_Err ParamsSetup(
 		3,
 		LINKAGE_MODE_DFLT,
 		PM_LINKAGE_MODE,
-		SDK_PROCAMP_TRAVEL_LINKAGE);
+		OST_WINDYLINES_TRAVEL_LINKAGE);
 
 	// Travel Distance Linkage Rate (NEW - moved from old Linkage group)
 	AEFX_CLR_STRUCT(def);
@@ -1206,7 +1206,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_TRAVEL_LINKAGE_RATE);
+		OST_WINDYLINES_TRAVEL_LINKAGE_RATE);
 
 	// Travel Distance (moved from Basic Settings)
 	AEFX_CLR_STRUCT(def);
@@ -1220,7 +1220,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_TRAVEL);
+		OST_WINDYLINES_LINE_TRAVEL);
 
 	// ============================================================
 	// Appearance
@@ -1234,7 +1234,7 @@ static PF_Err ParamsSetup(
 		3,
 		LINKAGE_MODE_DFLT,
 		PM_LINKAGE_MODE,
-		SDK_PROCAMP_THICKNESS_LINKAGE);
+		OST_WINDYLINES_THICKNESS_LINKAGE);
 
 	// Thickness Linkage Rate (NEW - moved from old Linkage group)
 	AEFX_CLR_STRUCT(def);
@@ -1248,7 +1248,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_THICKNESS_LINKAGE_RATE);
+		OST_WINDYLINES_THICKNESS_LINKAGE_RATE);
 
 	// Line Thickness
 	AEFX_CLR_STRUCT(def);
@@ -1262,7 +1262,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_THICKNESS);
+		OST_WINDYLINES_LINE_THICKNESS);
 
 	// Length Linkage (NEW - moved from old Linkage group)
 	AEFX_CLR_STRUCT(def);
@@ -1272,7 +1272,7 @@ static PF_Err ParamsSetup(
 		3,
 		LINKAGE_MODE_DFLT,
 		PM_LINKAGE_MODE,
-		SDK_PROCAMP_LENGTH_LINKAGE);
+		OST_WINDYLINES_LENGTH_LINKAGE);
 
 	// Length Linkage Rate (NEW - moved from old Linkage group)
 	AEFX_CLR_STRUCT(def);
@@ -1286,7 +1286,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_LENGTH_LINKAGE_RATE);
+		OST_WINDYLINES_LENGTH_LINKAGE_RATE);
 
 	// Line Length
 	AEFX_CLR_STRUCT(def);
@@ -1300,14 +1300,14 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_LENGTH);
+		OST_WINDYLINES_LINE_LENGTH);
 
 	// Line Angle
 	AEFX_CLR_STRUCT(def);
 	PF_ADD_ANGLE(
 		P_ANGLE,
 		0,
-		SDK_PROCAMP_LINE_ANGLE);
+		OST_WINDYLINES_LINE_ANGLE);
 
 	// Line Cap
 	AEFX_CLR_STRUCT(def);
@@ -1316,7 +1316,7 @@ static PF_Err ParamsSetup(
 		2,
 		LINE_CAP_DFLT,
 		PM_LINE_CAP,
-		SDK_PROCAMP_LINE_CAP);
+		OST_WINDYLINES_LINE_CAP);
 
 	// Tail Fade
 	AEFX_CLR_STRUCT(def);
@@ -1330,13 +1330,13 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_TAIL_FADE);
+		OST_WINDYLINES_LINE_TAIL_FADE);
 
 	// ============================================================
 	// Line Origin (線�E起点)
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_POSITION_HEADER, SDK_PROCAMP_POSITION_HEADER);
+	PF_ADD_TOPIC(P_POSITION_HEADER, OST_WINDYLINES_POSITION_HEADER);
 
 	// 1. Spawn Source
 	AEFX_CLR_STRUCT(def);
@@ -1345,7 +1345,7 @@ static PF_Err ParamsSetup(
 		2,
 		SPAWN_SOURCE_DFLT,
 		P_SPAWN_SOURCE_CHOICES,
-		SDK_PROCAMP_SPAWN_SOURCE);
+		OST_WINDYLINES_SPAWN_SOURCE);
 
 	// 2. Alpha Threshold
 	AEFX_CLR_STRUCT(def);
@@ -1359,7 +1359,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_THOUSANDTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_ALPHA_THRESH);
+		OST_WINDYLINES_LINE_ALPHA_THRESH);
 
 	// 3. Wind Origin Mode (moved before Animation Pattern)
 	AEFX_CLR_STRUCT(def);
@@ -1368,7 +1368,7 @@ static PF_Err ParamsSetup(
 		3,
 		LINE_ORIGIN_MODE_DFLT,
 		PM_ORIGIN_MODE,
-		SDK_PROCAMP_LINE_ORIGIN_MODE);
+		OST_WINDYLINES_LINE_ORIGIN_MODE);
 
 	// 4. Animation Pattern (Direction)
 	AEFX_CLR_STRUCT(def);
@@ -1377,7 +1377,7 @@ static PF_Err ParamsSetup(
 		3,
 		ANIM_PATTERN_DFLT,
 		PM_ANIM_PATTERN,
-		SDK_PROCAMP_ANIM_PATTERN);
+		OST_WINDYLINES_ANIM_PATTERN);
 
 	// 5. Start Time
 	AEFX_CLR_STRUCT(def);
@@ -1391,7 +1391,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_LINE_START_TIME);
+		OST_WINDYLINES_LINE_START_TIME);
 
 	// 6. Duration
 	AEFX_CLR_STRUCT(def);
@@ -1405,7 +1405,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_LINE_DURATION);
+		OST_WINDYLINES_LINE_DURATION);
 
 	// 7. Depth Strength (moved from Advanced)
 	AEFX_CLR_STRUCT(def);
@@ -1419,7 +1419,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_DEPTH_STRENGTH);
+		OST_WINDYLINES_LINE_DEPTH_STRENGTH);
 
 	// 8. Center Gap (moved before Offset X)
 	AEFX_CLR_STRUCT(def);
@@ -1433,7 +1433,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_HUNDREDTHS,
 		0,
 		0,
-		SDK_PROCAMP_CENTER_GAP);
+		OST_WINDYLINES_CENTER_GAP);
 
 	// 9. Origin Offset X
 	AEFX_CLR_STRUCT(def);
@@ -1447,7 +1447,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_ORIGIN_OFFSET_X);
+		OST_WINDYLINES_ORIGIN_OFFSET_X);
 
 	// 10. Origin Offset Y
 	AEFX_CLR_STRUCT(def);
@@ -1461,7 +1461,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_ORIGIN_OFFSET_Y);
+		OST_WINDYLINES_ORIGIN_OFFSET_Y);
 
 	// 11. Spawn Scale X
 	AEFX_CLR_STRUCT(def);
@@ -1475,7 +1475,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_SPAWN_SCALE_X);
+		OST_WINDYLINES_LINE_SPAWN_SCALE_X);
 
 	// 12. Spawn Scale Y
 	AEFX_CLR_STRUCT(def);
@@ -1489,7 +1489,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_SPAWN_SCALE_Y);
+		OST_WINDYLINES_LINE_SPAWN_SCALE_Y);
 
 	// 13. Spawn Rotation
 	AEFX_CLR_STRUCT(def);
@@ -1503,28 +1503,28 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_SPAWN_ROTATION);
+		OST_WINDYLINES_LINE_SPAWN_ROTATION);
 
 	// 14. Show Spawn Area
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_SHOW_SPAWN, "", SHOW_SPAWN_AREA_DFLT, 0, SDK_PROCAMP_LINE_SHOW_SPAWN_AREA);
+	PF_ADD_CHECKBOX(P_SHOW_SPAWN, "", SHOW_SPAWN_AREA_DFLT, 0, OST_WINDYLINES_LINE_SHOW_SPAWN_AREA);
 
 	// 16. Spawn Area Color
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_COLOR(P_SPAWN_COLOR, 128, 128, 255, SDK_PROCAMP_LINE_SPAWN_AREA_COLOR);  // Light blue default
+	PF_ADD_COLOR(P_SPAWN_COLOR, 128, 128, 255, OST_WINDYLINES_LINE_SPAWN_AREA_COLOR);  // Light blue default
 
 	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_POSITION_TOPIC_END);
+	PF_END_TOPIC(OST_WINDYLINES_POSITION_TOPIC_END);
 
 	// ============================================================
 	// Shadow
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_SHADOW, SDK_PROCAMP_SHADOW_HEADER);
+	PF_ADD_TOPIC(P_SHADOW, OST_WINDYLINES_SHADOW_HEADER);
 
 	// Shadow Enable
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_SHADOW_ENABLE, "", SHADOW_ENABLE_DFLT, 0, SDK_PROCAMP_SHADOW_ENABLE);
+	PF_ADD_CHECKBOX(P_SHADOW_ENABLE, "", SHADOW_ENABLE_DFLT, 0, OST_WINDYLINES_SHADOW_ENABLE);
 
 	// Shadow Color
 	AEFX_CLR_STRUCT(def);
@@ -1533,7 +1533,7 @@ static PF_Err ParamsSetup(
 	def.u.cd.value.blue = static_cast<A_u_short>(SHADOW_COLOR_B_DFLT * 65535);
 	def.u.cd.value.alpha = 65535;
 	def.u.cd.dephault = def.u.cd.value;
-	PF_ADD_COLOR(P_SHADOW_COLOR, def.u.cd.value.red, def.u.cd.value.green, def.u.cd.value.blue, SDK_PROCAMP_SHADOW_COLOR);
+	PF_ADD_COLOR(P_SHADOW_COLOR, def.u.cd.value.red, def.u.cd.value.green, def.u.cd.value.blue, OST_WINDYLINES_SHADOW_COLOR);
 
 	// Shadow Offset X
 	AEFX_CLR_STRUCT(def);
@@ -1547,7 +1547,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_SHADOW_OFFSET_X);
+		OST_WINDYLINES_SHADOW_OFFSET_X);
 
 	// Shadow Offset Y
 	AEFX_CLR_STRUCT(def);
@@ -1561,7 +1561,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_SHADOW_OFFSET_Y);
+		OST_WINDYLINES_SHADOW_OFFSET_Y);
 
 	// Shadow Opacity
 	AEFX_CLR_STRUCT(def);
@@ -1575,20 +1575,20 @@ static PF_Err ParamsSetup(
 		PF_Precision_HUNDREDTHS,
 		0,
 		0,
-		SDK_PROCAMP_SHADOW_OPACITY);
+		OST_WINDYLINES_SHADOW_OPACITY);
 
 	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_SHADOW_TOPIC_END);
+	PF_END_TOPIC(OST_WINDYLINES_SHADOW_TOPIC_END);
 
 	// ============================================================
 	// Motion Blur
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_MOTION_BLUR, SDK_PROCAMP_MOTION_BLUR_HEADER);
+	PF_ADD_TOPIC(P_MOTION_BLUR, OST_WINDYLINES_MOTION_BLUR_HEADER);
 
 	// Motion Blur Enable
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_MOTION_BLUR, "", MOTION_BLUR_ENABLE_DFLT, 0, SDK_PROCAMP_MOTION_BLUR_ENABLE);
+	PF_ADD_CHECKBOX(P_MOTION_BLUR, "", MOTION_BLUR_ENABLE_DFLT, 0, OST_WINDYLINES_MOTION_BLUR_ENABLE);
 
 	// Motion Blur Samples (Quality)
 	AEFX_CLR_STRUCT(def);
@@ -1602,7 +1602,7 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_MOTION_BLUR_SAMPLES);
+		OST_WINDYLINES_MOTION_BLUR_SAMPLES);
 
 	// Motion Blur Shutter Angle (0-360°)
 	AEFX_CLR_STRUCT(def);
@@ -1616,16 +1616,16 @@ static PF_Err ParamsSetup(
 		PF_Precision_INTEGER,
 		0,
 		0,
-		SDK_PROCAMP_MOTION_BLUR_STRENGTH);
+		OST_WINDYLINES_MOTION_BLUR_STRENGTH);
 
 	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_MOTION_BLUR_TOPIC_END);
+	PF_END_TOPIC(OST_WINDYLINES_MOTION_BLUR_TOPIC_END);
 
 	// ============================================================
 	// Advanced
 	// ============================================================
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_ADVANCED_HEADER, SDK_PROCAMP_ADVANCED_HEADER);
+	PF_ADD_TOPIC(P_ADVANCED_HEADER, OST_WINDYLINES_ADVANCED_HEADER);
 
 	// Anti-Aliasing (moved to Advanced)
 	AEFX_CLR_STRUCT(def);
@@ -1639,11 +1639,11 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS,
 		0,
 		0,
-		SDK_PROCAMP_LINE_AA);
+		OST_WINDYLINES_LINE_AA);
 
 	// Hide Element (lines only)
 	AEFX_CLR_STRUCT(def);
-	PF_ADD_CHECKBOX(P_HIDE_ELEMENT, "", HIDE_ELEMENT_DFLT, 0, SDK_PROCAMP_HIDE_ELEMENT);
+	PF_ADD_CHECKBOX(P_HIDE_ELEMENT, "", HIDE_ELEMENT_DFLT, 0, OST_WINDYLINES_HIDE_ELEMENT);
 
 	// Blend Mode
 	AEFX_CLR_STRUCT(def);
@@ -1652,10 +1652,10 @@ static PF_Err ParamsSetup(
 		4,
 		BLEND_MODE_DFLT,
 		PM_BLEND_MODE,
-		SDK_PROCAMP_BLEND_MODE);
+		OST_WINDYLINES_BLEND_MODE);
 
 	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(SDK_PROCAMP_ADVANCED_TOPIC_END);
+	PF_END_TOPIC(OST_WINDYLINES_ADVANCED_TOPIC_END);
 
 	// ============================================================
 	// Hidden Parameters (for backwards compatibility)
@@ -1663,30 +1663,30 @@ static PF_Err ParamsSetup(
 	AEFX_CLR_STRUCT(def);
 	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
 	def.ui_flags = PF_PUI_INVISIBLE;
-	PF_ADD_CHECKBOX("", "", LINE_ALLOW_MIDPLAY_DFLT, 0, SDK_PROCAMP_LINE_ALLOW_MIDPLAY);
+	PF_ADD_CHECKBOX("", "", LINE_ALLOW_MIDPLAY_DFLT, 0, OST_WINDYLINES_LINE_ALLOW_MIDPLAY);
 
 	AEFX_CLR_STRUCT(def);
 	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
 	def.ui_flags = PF_PUI_INVISIBLE;
 	PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
 		LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
-		PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_R);
+		PF_Precision_TENTHS, 0, 0, OST_WINDYLINES_LINE_COLOR_R);
 
 	AEFX_CLR_STRUCT(def);
 	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
 	def.ui_flags = PF_PUI_INVISIBLE;
 	PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
 		LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
-		PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_G);
+		PF_Precision_TENTHS, 0, 0, OST_WINDYLINES_LINE_COLOR_G);
 
 	AEFX_CLR_STRUCT(def);
 	def.flags = PF_ParamFlag_CANNOT_TIME_VARY;
 	def.ui_flags = PF_PUI_INVISIBLE;
 	PF_ADD_FLOAT_SLIDERX("", LINE_COLOR_CH_MIN_VALUE, LINE_COLOR_CH_MAX_VALUE,
 		LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
-		PF_Precision_TENTHS, 0, 0, SDK_PROCAMP_LINE_COLOR_B);
+		PF_Precision_TENTHS, 0, 0, OST_WINDYLINES_LINE_COLOR_B);
 
-	out_data->num_params = SDK_PROCAMP_NUM_PARAMS;
+	out_data->num_params = OST_WINDYLINES_NUM_PARAMS;
 	return PF_Err_NONE;
 }
 
@@ -1724,7 +1724,7 @@ static PF_Err Render(
 		// Menu display: 単色|(-|カスタム|(-|Rainbow|Pastel|Forest|...
 		// UI 1-based:   1=単色, 2=Sep, 3=カスタム, 4=Sep, 5=Rainbow, 6=Pastel, 7=Forest, ...
 		// After normalization (0-based): 0=単色, 1=Sep, 2=カスタム, 3=Sep, 4=Rainbow, 5=Pastel, 6=Forest, ...
-		const int unifiedPresetIndex = normalizePopup(params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, kUnifiedPresetCount);
+		const int unifiedPresetIndex = normalizePopup(params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value, kUnifiedPresetCount);
 		
 		// Convert unified index to colorMode and presetIndex
 		int colorMode, presetIndex;
@@ -1732,7 +1732,7 @@ static PF_Err Render(
 		
 		// Debug logging for color preset selection
 		DebugLog("[CPU ColorPreset] UI value: %d (1-based) → Normalized: %d (0-based) → colorMode: %d, presetIndex: %d",
-			params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, unifiedPresetIndex, colorMode, presetIndex);
+			params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value, unifiedPresetIndex, colorMode, presetIndex);
 		
 		// Build color palette (8 colors, RGB normalized)
 		float colorPalette[8][3];
@@ -1740,7 +1740,7 @@ static PF_Err Render(
 		if (colorMode == 0)  // Single (0-based)
 		{
 			// Single color mode: all 8 slots have the same color
-			const PF_Pixel singleColor = params[SDK_PROCAMP_LINE_COLOR]->u.cd.value;
+			const PF_Pixel singleColor = params[OST_WINDYLINES_LINE_COLOR]->u.cd.value;
 			const float singleR = singleColor.red / 255.0f;
 			const float singleG = singleColor.green / 255.0f;
 			const float singleB = singleColor.blue / 255.0f;
@@ -1756,10 +1756,10 @@ static PF_Err Render(
 		{
 			// Custom mode: load from custom color parameters
 			const int customColorParams[8] = {
-				SDK_PROCAMP_CUSTOM_COLOR_1, SDK_PROCAMP_CUSTOM_COLOR_2,
-				SDK_PROCAMP_CUSTOM_COLOR_3, SDK_PROCAMP_CUSTOM_COLOR_4,
-				SDK_PROCAMP_CUSTOM_COLOR_5, SDK_PROCAMP_CUSTOM_COLOR_6,
-				SDK_PROCAMP_CUSTOM_COLOR_7, SDK_PROCAMP_CUSTOM_COLOR_8
+				OST_WINDYLINES_CUSTOM_COLOR_1, OST_WINDYLINES_CUSTOM_COLOR_2,
+				OST_WINDYLINES_CUSTOM_COLOR_3, OST_WINDYLINES_CUSTOM_COLOR_4,
+				OST_WINDYLINES_CUSTOM_COLOR_5, OST_WINDYLINES_CUSTOM_COLOR_6,
+				OST_WINDYLINES_CUSTOM_COLOR_7, OST_WINDYLINES_CUSTOM_COLOR_8
 			};
 			for (int i = 0; i < 8; ++i)
 			{
@@ -1809,19 +1809,19 @@ static PF_Err Render(
 		(void)lineR; (void)lineG; (void)lineB;
 		(void)lineYVal; (void)lineUVal; (void)lineVVal;
 
-		const float lineThickness = (float)params[SDK_PROCAMP_LINE_THICKNESS]->u.fs_d.value;
-		const float lineLength = (float)params[SDK_PROCAMP_LINE_LENGTH]->u.fs_d.value;
-		const int lineCap = normalizePopup(params[SDK_PROCAMP_LINE_CAP]->u.pd.value, 2);
-		const float lineAngle = (float)FIX_2_FLOAT(params[SDK_PROCAMP_LINE_ANGLE]->u.ad.value);
-		const float lineAA = (float)params[SDK_PROCAMP_LINE_AA]->u.fs_d.value;
+		const float lineThickness = (float)params[OST_WINDYLINES_LINE_THICKNESS]->u.fs_d.value;
+		const float lineLength = (float)params[OST_WINDYLINES_LINE_LENGTH]->u.fs_d.value;
+		const int lineCap = normalizePopup(params[OST_WINDYLINES_LINE_CAP]->u.pd.value, 2);
+		const float lineAngle = (float)FIX_2_FLOAT(params[OST_WINDYLINES_LINE_ANGLE]->u.ad.value);
+		const float lineAA = (float)params[OST_WINDYLINES_LINE_AA]->u.fs_d.value;
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
-		const int spawnSource = normalizePopup(params[SDK_PROCAMP_SPAWN_SOURCE]->u.pd.value, 2);
-		float lineAlphaThreshold = (float)params[SDK_PROCAMP_LINE_ALPHA_THRESH]->u.fs_d.value;
+		const int spawnSource = normalizePopup(params[OST_WINDYLINES_SPAWN_SOURCE]->u.pd.value, 2);
+		float lineAlphaThreshold = (float)params[OST_WINDYLINES_LINE_ALPHA_THRESH]->u.fs_d.value;
 		if (spawnSource == SPAWN_SOURCE_FULL_FRAME) {
 			lineAlphaThreshold = 1.0f;  // Full frame: ignore alpha, spawn everywhere
 		}
-		const int lineOriginMode = normalizePopup(params[SDK_PROCAMP_LINE_ORIGIN_MODE]->u.pd.value, 3);
+		const int lineOriginMode = normalizePopup(params[OST_WINDYLINES_LINE_ORIGIN_MODE]->u.pd.value, 3);
 		const float dsx = (in_data->downsample_x.den != 0) ? ((float)in_data->downsample_x.num / (float)in_data->downsample_x.den) : 1.0f;
 		const float dsy = (in_data->downsample_y.den != 0) ? ((float)in_data->downsample_y.num / (float)in_data->downsample_y.den) : 1.0f;
 		const float dsMax = dsx > dsy ? dsx : dsy;
@@ -1831,48 +1831,48 @@ static PF_Err Render(
 		const float lineAAScaled = lineAA * dsScale;
 		const float effectiveAA = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
 		// Center is now controlled by Origin Offset X/Y only
-		const int lineCount = (int)params[SDK_PROCAMP_LINE_COUNT]->u.fs_d.value;
-		const float lineLifetime = (float)params[SDK_PROCAMP_LINE_LIFETIME]->u.fs_d.value;
-		const float lineInterval = (float)params[SDK_PROCAMP_LINE_INTERVAL]->u.fs_d.value;
-		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
-		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
-		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
+		const int lineCount = (int)params[OST_WINDYLINES_LINE_COUNT]->u.fs_d.value;
+		const float lineLifetime = (float)params[OST_WINDYLINES_LINE_LIFETIME]->u.fs_d.value;
+		const float lineInterval = (float)params[OST_WINDYLINES_LINE_INTERVAL]->u.fs_d.value;
+		const int lineSeed = (int)params[OST_WINDYLINES_LINE_SEED]->u.fs_d.value;
+		const int lineEasing = normalizePopup(params[OST_WINDYLINES_LINE_EASING]->u.pd.value, 28);
+		const float lineTravel = (float)params[OST_WINDYLINES_LINE_TRAVEL]->u.fs_d.value;
 		// Note: lineTravelScaled will be recalculated after linkage application below
-		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
-		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
+		const float lineTailFade = (float)params[OST_WINDYLINES_LINE_TAIL_FADE]->u.fs_d.value;
+		const float lineDepthStrength = (float)params[OST_WINDYLINES_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
 		// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored
-		// const bool allowMidPlay = params[SDK_PROCAMP_LINE_ALLOW_MIDPLAY]->u.bd.value != 0;
-		const bool hideElement = params[SDK_PROCAMP_HIDE_ELEMENT]->u.bd.value != 0;
-		const int blendMode = NormalizePopupValue((int)params[SDK_PROCAMP_BLEND_MODE]->u.pd.value, 4);
+		// const bool allowMidPlay = params[OST_WINDYLINES_LINE_ALLOW_MIDPLAY]->u.bd.value != 0;
+		const bool hideElement = params[OST_WINDYLINES_HIDE_ELEMENT]->u.bd.value != 0;
+		const int blendMode = NormalizePopupValue((int)params[OST_WINDYLINES_BLEND_MODE]->u.pd.value, 4);
 		
 		// Shadow parameters
-		const bool shadowEnable = params[SDK_PROCAMP_SHADOW_ENABLE]->u.bd.value != 0;
-		const float shadowColorR = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.red / 255.0f;
-		const float shadowColorG = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.green / 255.0f;
-		const float shadowColorB = (float)params[SDK_PROCAMP_SHADOW_COLOR]->u.cd.value.blue / 255.0f;
+		const bool shadowEnable = params[OST_WINDYLINES_SHADOW_ENABLE]->u.bd.value != 0;
+		const float shadowColorR = (float)params[OST_WINDYLINES_SHADOW_COLOR]->u.cd.value.red / 255.0f;
+		const float shadowColorG = (float)params[OST_WINDYLINES_SHADOW_COLOR]->u.cd.value.green / 255.0f;
+		const float shadowColorB = (float)params[OST_WINDYLINES_SHADOW_COLOR]->u.cd.value.blue / 255.0f;
 		// Convert shadow color to YUV
 		const float shadowY = shadowColorR * 0.299f + shadowColorG * 0.587f + shadowColorB * 0.114f;
 		const float shadowU = shadowColorR * -0.168736f + shadowColorG * -0.331264f + shadowColorB * 0.5f;
 		const float shadowV = shadowColorR * 0.5f + shadowColorG * -0.418688f + shadowColorB * -0.081312f;
-		const float shadowOffsetX = (float)params[SDK_PROCAMP_SHADOW_OFFSET_X]->u.fs_d.value * dsScale;
-		const float shadowOffsetY = (float)params[SDK_PROCAMP_SHADOW_OFFSET_Y]->u.fs_d.value * dsScale;
-		const float shadowOpacity = (float)params[SDK_PROCAMP_SHADOW_OPACITY]->u.fs_d.value;
+		const float shadowOffsetX = (float)params[OST_WINDYLINES_SHADOW_OFFSET_X]->u.fs_d.value * dsScale;
+		const float shadowOffsetY = (float)params[OST_WINDYLINES_SHADOW_OFFSET_Y]->u.fs_d.value * dsScale;
+		const float shadowOpacity = (float)params[OST_WINDYLINES_SHADOW_OPACITY]->u.fs_d.value;
 		
 		// Motion Blur parameters
-		const bool motionBlurEnable = params[SDK_PROCAMP_MOTION_BLUR_ENABLE]->u.bd.value != 0;
-		const int motionBlurSamples = (int)params[SDK_PROCAMP_MOTION_BLUR_SAMPLES]->u.fs_d.value;
-		const float motionBlurStrength = (float)params[SDK_PROCAMP_MOTION_BLUR_STRENGTH]->u.fs_d.value;
+		const bool motionBlurEnable = params[OST_WINDYLINES_MOTION_BLUR_ENABLE]->u.bd.value != 0;
+		const int motionBlurSamples = (int)params[OST_WINDYLINES_MOTION_BLUR_SAMPLES]->u.fs_d.value;
+		const float motionBlurStrength = (float)params[OST_WINDYLINES_MOTION_BLUR_STRENGTH]->u.fs_d.value;
 		
 		// Focus (Depth of Field) parameters
 		// Focus parameters removed
-		const float spawnScaleX = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_X]->u.fs_d.value / 100.0f;
-		const float spawnScaleY = (float)params[SDK_PROCAMP_LINE_SPAWN_SCALE_Y]->u.fs_d.value / 100.0f;
-		const float spawnRotationDeg = (float)params[SDK_PROCAMP_LINE_SPAWN_ROTATION]->u.fs_d.value;
+		const float spawnScaleX = (float)params[OST_WINDYLINES_LINE_SPAWN_SCALE_X]->u.fs_d.value / 100.0f;
+		const float spawnScaleY = (float)params[OST_WINDYLINES_LINE_SPAWN_SCALE_Y]->u.fs_d.value / 100.0f;
+		const float spawnRotationDeg = (float)params[OST_WINDYLINES_LINE_SPAWN_ROTATION]->u.fs_d.value;
 		const float spawnRotationRad = spawnRotationDeg * 3.14159265f / 180.0f;
 		const float spawnCos = FastCos(spawnRotationRad);
 		const float spawnSin = FastSin(spawnRotationRad);
-		const bool showSpawnArea = params[SDK_PROCAMP_LINE_SHOW_SPAWN_AREA]->u.bd.value != 0;
-		const PF_Pixel spawnAreaColorPx = params[SDK_PROCAMP_LINE_SPAWN_AREA_COLOR]->u.cd.value;
+		const bool showSpawnArea = params[OST_WINDYLINES_LINE_SHOW_SPAWN_AREA]->u.bd.value != 0;
+		const PF_Pixel spawnAreaColorPx = params[OST_WINDYLINES_LINE_SPAWN_AREA_COLOR]->u.cd.value;
 		const float spawnAreaColorR = spawnAreaColorPx.red / 255.0f;
 		const float spawnAreaColorG = spawnAreaColorPx.green / 255.0f;
 		const float spawnAreaColorB = spawnAreaColorPx.blue / 255.0f;
@@ -1999,12 +1999,12 @@ static PF_Err Render(
 		
 		// Apply linkage using spawn area bounds (matches GPU behavior)
 		// CPU popup values are 1-based, normalize to 0-based LINKAGE_MODE_* constants
-		const int lengthLinkage = normalizePopup(params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value, 3);
-		const float lengthLinkageRate = (float)params[SDK_PROCAMP_LENGTH_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		const int thicknessLinkage = normalizePopup(params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value, 3);
-		const float thicknessLinkageRate = (float)params[SDK_PROCAMP_THICKNESS_LINKAGE_RATE]->u.fs_d.value / 100.0f;
-		const int travelLinkage = normalizePopup(params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value, 3);
-		const float travelLinkageRate = (float)params[SDK_PROCAMP_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		const int lengthLinkage = normalizePopup(params[OST_WINDYLINES_LENGTH_LINKAGE]->u.pd.value, 3);
+		const float lengthLinkageRate = (float)params[OST_WINDYLINES_LENGTH_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		const int thicknessLinkage = normalizePopup(params[OST_WINDYLINES_THICKNESS_LINKAGE]->u.pd.value, 3);
+		const float thicknessLinkageRate = (float)params[OST_WINDYLINES_THICKNESS_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		const int travelLinkage = normalizePopup(params[OST_WINDYLINES_TRAVEL_LINKAGE]->u.pd.value, 3);
+		const float travelLinkageRate = (float)params[OST_WINDYLINES_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
 		
 		float finalLineLength = lineLength;
 		float finalLineThickness = lineThickness;
@@ -2051,8 +2051,8 @@ static PF_Err Render(
 		}
 	
 	// Start Time + Duration: control when lines spawn
-	const float lineStartTime = (float)params[SDK_PROCAMP_LINE_START_TIME]->u.fs_d.value;
-	const float lineDuration = (float)params[SDK_PROCAMP_LINE_DURATION]->u.fs_d.value;
+	const float lineStartTime = (float)params[OST_WINDYLINES_LINE_START_TIME]->u.fs_d.value;
+	const float lineDuration = (float)params[OST_WINDYLINES_LINE_DURATION]->u.fs_d.value;
 	// Calculate effective end time (0 duration = infinite)
 	const float lineEndTime = (lineDuration > 0.0f) ? (lineStartTime + lineDuration) : 0.0f;
 	
@@ -2061,12 +2061,12 @@ static PF_Err Render(
 	
 	// Origin Offset X/Y (px) - 線の起点のオフセット
 	// Apply downsample scale to origin offsets (user inputs in full-resolution pixels)
-	const float userOriginOffsetX = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_X]->u.fs_d.value * dsScale;
-	const float userOriginOffsetY = (float)params[SDK_PROCAMP_ORIGIN_OFFSET_Y]->u.fs_d.value * dsScale;
+	const float userOriginOffsetX = (float)params[OST_WINDYLINES_ORIGIN_OFFSET_X]->u.fs_d.value * dsScale;
+	const float userOriginOffsetY = (float)params[OST_WINDYLINES_ORIGIN_OFFSET_Y]->u.fs_d.value * dsScale;
 	
 	// Animation Pattern (1=Simple, 2=Half Reverse, 3=Split)
-	const int animPattern = params[SDK_PROCAMP_ANIM_PATTERN]->u.pd.value;
-	const float centerGap = (float)params[SDK_PROCAMP_CENTER_GAP]->u.fs_d.value;
+	const int animPattern = params[OST_WINDYLINES_ANIM_PATTERN]->u.pd.value;
+	const float centerGap = (float)params[OST_WINDYLINES_CENTER_GAP]->u.fs_d.value;
 	
 	for (int i = 0; lineState && i < lineState->lineCount; ++i)
 		{
@@ -2834,9 +2834,9 @@ extern "C" DllExport PF_Err EffectMain(
 			changedExtra, changedExtra ? changedExtra->param_index : -1);
 		
 		// Effect Preset: apply preset parameters or defaults
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_EFFECT_PRESET)
+		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_EFFECT_PRESET)
 		{
-			const int presetValue = params[SDK_PROCAMP_EFFECT_PRESET]->u.pd.value;
+			const int presetValue = params[OST_WINDYLINES_EFFECT_PRESET]->u.pd.value;
 			WriteLog("Effect Preset changed: presetValue=%d (1=Default, 2+=Preset[n-2])", presetValue);
 			
 			if (presetValue == 1)
@@ -2869,17 +2869,17 @@ extern "C" DllExport PF_Err EffectMain(
 		}
 		
 		// Single Color changed: auto-switch unified preset to "単色" (value=1)
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_LINE_COLOR)
+		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_LINE_COLOR)
 		{
-			const int currentPreset = params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value;
+			const int currentPreset = params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value;
 			if (currentPreset != 1)  // 1 = 単色 (1-based)
 			{
-				params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value = 1;
-				params[SDK_PROCAMP_COLOR_PRESET]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
+				params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value = 1;
+				params[OST_WINDYLINES_COLOR_PRESET]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
 				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
 				if (paramUtils.get())
 				{
-					paramUtils->PF_UpdateParamUI(in_data->effect_ref, SDK_PROCAMP_COLOR_PRESET, params[SDK_PROCAMP_COLOR_PRESET]);
+					paramUtils->PF_UpdateParamUI(in_data->effect_ref, OST_WINDYLINES_COLOR_PRESET, params[OST_WINDYLINES_COLOR_PRESET]);
 				}
 				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 				WriteLog("Single color changed: Auto-switched unified preset to 単色 (value=1)");
@@ -2887,7 +2887,7 @@ extern "C" DllExport PF_Err EffectMain(
 		}
 		
 		// Spawn Source: enable/disable Alpha Threshold based on selection
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_SPAWN_SOURCE)
+		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_SPAWN_SOURCE)
 		{
 			// Update Alpha Threshold visibility
 			UpdateAlphaThresholdVisibility(in_data, params);
@@ -2896,9 +2896,9 @@ extern "C" DllExport PF_Err EffectMain(
 		
 		// Linkage parameters: update visibility when linkage mode changes
 		if (changedExtra && (
-			changedExtra->param_index == SDK_PROCAMP_TRAVEL_LINKAGE ||
-			changedExtra->param_index == SDK_PROCAMP_THICKNESS_LINKAGE ||
-			changedExtra->param_index == SDK_PROCAMP_LENGTH_LINKAGE))
+			changedExtra->param_index == OST_WINDYLINES_TRAVEL_LINKAGE ||
+			changedExtra->param_index == OST_WINDYLINES_THICKNESS_LINKAGE ||
+			changedExtra->param_index == OST_WINDYLINES_LENGTH_LINKAGE))
 		{
 			WriteLog("Linkage parameter changed: param_index=%d", changedExtra->param_index);
 			UpdatePseudoGroupVisibility(in_data, params);
@@ -2906,7 +2906,7 @@ extern "C" DllExport PF_Err EffectMain(
 		}
 		
 		// Color Mode: update custom colors visibility
-		if (changedExtra && changedExtra->param_index == SDK_PROCAMP_COLOR_MODE)
+		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_COLOR_MODE)
 		{
 			WriteLog("Color Mode parameter changed");
 			UpdatePseudoGroupVisibility(in_data, params);

@@ -1,4 +1,4 @@
-# SDK_ProcAmp ビルド & インストール手順
+# OST_WindyLines ビルド & インストール手順
 
 ## 1. クリーンビルド
 ```bash

@@ -4,7 +4,7 @@
 
 import re
 
-filepath = r"c:\Users\Owner\Desktop\Premiere_Pro_24.0_C_Win_SDK\Premiere_Pro_24.0_C++_Win_SDK\Premiere_Pro_24.0_SDK\Examples\Projects\GPUVideoFilter\Windy_Lines\SDK_ProcAmp_CPU.cpp"
+filepath = r"c:\Users\Owner\Desktop\Premiere_Pro_24.0_C_Win_SDK\Premiere_Pro_24.0_C++_Win_SDK\Premiere_Pro_24.0_SDK\Examples\Projects\GPUVideoFilter\Windy_Lines\OST_WindyLines_CPU.cpp"
 
 with open(filepath, 'r', encoding='cp932') as f:
     content = f.read()

@@ -2,8 +2,8 @@
 # Performance Optimization Plan
 
 **作成日**: 2026-02-06  
-**対象**: SDK_ProcAmp (Windy Lines Effect Plugin)  
-**対象ファイル**: SDK_ProcAmp_GPU.cpp, SDK_ProcAmp_CPU.cpp
+**対象**: OST_WindyLines (Windy Lines Effect Plugin)  
+**対象ファイル**: OST_WindyLines_GPU.cpp, OST_WindyLines_CPU.cpp
 
 ---
 
@@ -24,7 +24,7 @@
 
 **問題箇所**: CPU実装の複数箇所
 ```cpp
-// SDK_ProcAmp_CPU.cpp
+// OST_WindyLines_CPU.cpp
 
 // Line 1981: 毎フレーム実行
 lineState->lineParams.assign(clampedLineCount, {});
@@ -102,7 +102,7 @@ std::copy(lineState->tileOffsets.begin(), lineState->tileOffsets.end(),
 const auto& tileOffsetsRef = lineState->tileOffsets;
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp  
+**対象ファイル**: OST_WindyLines_CPU.cpp  
 **影響範囲**: Lines 1981, 2004-2005, 2248, 2277, 2285-2286  
 **推定改善**: フレームタイム **10-15%** 削減
 
@@ -112,7 +112,7 @@ const auto& tileOffsetsRef = lineState->tileOffsets;
 
 **問題箇所**: GPU実装
 ```cpp
-// SDK_ProcAmp_GPU.cpp
+// OST_WindyLines_GPU.cpp
 
 // Lines 1738-1742: reserve呼び出しあり（良い）
 lineData.reserve(lineCount * 4);
@@ -163,7 +163,7 @@ lineData.emplace_back(d1);
 // ...
 ```
 
-**対象ファイル**: SDK_ProcAmp_GPU.cpp  
+**対象ファイル**: OST_WindyLines_GPU.cpp  
 **影響範囲**: Lines 2009-2012, 2027  
 **推定改善**: GPU初期化時間 **5-10%** 削減
 
@@ -173,7 +173,7 @@ lineData.emplace_back(d1);
 
 **問題箇所**: CPU/GPU両方
 ```cpp
-// SDK_ProcAmp_CPU.cpp, Lines 806-825
+// OST_WindyLines_CPU.cpp, Lines 806-825
 static float ApplyEasingDerivative(float t, int easingType)
 {
     const float epsilon = 0.001f;
@@ -229,7 +229,7 @@ static float ApplyEasingDerivativeAnalytic(float t, int easingType) {
 }
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp (Lines 806-825, 2215), SDK_ProcAmp_GPU.cpp (Lines 1829-1835)  
+**対象ファイル**: OST_WindyLines_CPU.cpp (Lines 806-825, 2215), OST_WindyLines_GPU.cpp (Lines 1829-1835)  
 **影響範囲**: CPU/GPU両方のレンダーループ  
 **推定改善**: **50-100** 関数呼び出し/フレーム削減、**5-10%** フレームタイム削減
 
@@ -239,7 +239,7 @@ static float ApplyEasingDerivativeAnalytic(float t, int easingType) {
 
 **問題箇所**: CPU実装
 ```cpp
-// SDK_ProcAmp_CPU.cpp
+// OST_WindyLines_CPU.cpp
 
 // FIRST: Lines 2250-2273 - タイルカウント用
 for (int i = 0; lineState && i < lineState->lineCount; ++i)
@@ -331,7 +331,7 @@ for (int i = 0; i < lineState->lineCount; ++i)
 }
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp  
+**対象ファイル**: OST_WindyLines_CPU.cpp  
 **影響範囲**: Lines 2250-2273, 2283-2312  
 **推定改善**: タイリング処理 **50%** 高速化、全体で **3-5%** フレームタイム削減
 
@@ -343,7 +343,7 @@ for (int i = 0; i < lineState->lineCount; ++i)
 
 **問題箇所**: CPU実装
 ```cpp
-// SDK_ProcAmp_CPU.cpp, Lines 2521-2545
+// OST_WindyLines_CPU.cpp, Lines 2521-2545
 
 for (int s = 0; s < samples; ++s)
 {
@@ -388,7 +388,7 @@ for (int s = 0; s < samples; ++s)
 }
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp  
+**対象ファイル**: OST_WindyLines_CPU.cpp  
 **影響範囲**: Lines 2526-2527  
 **推定改善**: モーションブラー有効時に **5-10%** ピクセル処理高速化
 
@@ -398,7 +398,7 @@ for (int s = 0; s < samples; ++s)
 
 **問題箇所**: CPU実装
 ```cpp
-// SDK_ProcAmp_CPU.cpp, Lines 2356-2361
+// OST_WindyLines_CPU.cpp, Lines 2356-2361
 
 // ピクセルループ内（毎ピクセル実行）
 const int tileX = x / tileSize;      // 整数除算
@@ -461,7 +461,7 @@ const int start = lineState->tileOffsets[tileIndex];
 const int count = lineState->tileCounts[tileIndex];
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp  
+**対象ファイル**: OST_WindyLines_CPU.cpp  
 **影響範囲**: Lines 2356-2361  
 **推定改善**: **2-5%** フレームタイム削減（画面サイズ依存）
 
@@ -471,7 +471,7 @@ const int count = lineState->tileCounts[tileIndex];
 
 **問題箇所**: CPU実装
 ```cpp
-// SDK_ProcAmp_CPU.cpp, Lines 2152-2161
+// OST_WindyLines_CPU.cpp, Lines 2152-2161
 
 // ラインごとに計算（ラインループ内）
 const float invW = alphaBoundsWidth > 0.0f ? (1.0f / alphaBoundsWidth) : 1.0f;
@@ -521,7 +521,7 @@ for (int i = 0; i < lineCount; ++i) {
 }
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp  
+**対象ファイル**: OST_WindyLines_CPU.cpp  
 **影響範囲**: Lines 2152-2161  
 **推定改善**: **1-2%** フレームタイム削減
 
@@ -531,7 +531,7 @@ for (int i = 0; i < lineCount; ++i) {
 
 **問題箇所**: GPU実装
 ```cpp
-// SDK_ProcAmp_GPU.cpp, Lines 2090-2093
+// OST_WindyLines_GPU.cpp, Lines 2090-2093
 
 EnsureCudaBuffer((void**)&sCudaLineData, sCudaLineDataBytes, lineDataBytes);
 EnsureCudaBuffer((void**)&sCudaTileOffsets, sCudaTileOffsetsBytes, tileOffsetsBytes);
@@ -569,7 +569,7 @@ if (lineDataBytes > maxLineDataBytes) {
 EnsureCudaBuffer((void**)&sCudaLineData, sCudaLineDataBytes, maxLineDataBytes);
 ```
 
-**対象ファイル**: SDK_ProcAmp_GPU.cpp  
+**対象ファイル**: OST_WindyLines_GPU.cpp  
 **影響範囲**: Lines 2090-2093  
 **推定改善**: GPU初期化時間 **10-20%** 削減（ラインカウント変動時）
 
@@ -581,7 +581,7 @@ EnsureCudaBuffer((void**)&sCudaLineData, sCudaLineDataBytes, maxLineDataBytes);
 
 **問題箇所**: CPU実装
 ```cpp
-// SDK_ProcAmp_CPU.cpp, Lines 2368-2371
+// OST_WindyLines_CPU.cpp, Lines 2368-2371
 
 // レンダリングループ内
 if (ld.halfThick < 0.5f)
@@ -621,7 +621,7 @@ if (appearAlpha < 0.001f || ld.halfThick < 0.5f) {
 // if (ld.halfThick < 0.5f) continue;  // 削除
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp  
+**対象ファイル**: OST_WindyLines_CPU.cpp  
 **影響範囲**: Lines 2125, 2368-2371  
 **推定改善**: 微小（<1%）
 
@@ -631,7 +631,7 @@ if (appearAlpha < 0.001f || ld.halfThick < 0.5f) {
 
 **問題箇所**: GPU実装
 ```cpp
-// SDK_ProcAmp_GPU.cpp, Lines 718-737
+// OST_WindyLines_GPU.cpp, Lines 718-737
 
 bool GetBool(const PrParam& param)
 {
@@ -683,7 +683,7 @@ bool GetBool(const PrParam& param)
 }
 ```
 
-**対象ファイル**: SDK_ProcAmp_GPU.cpp  
+**対象ファイル**: OST_WindyLines_GPU.cpp  
 **影響範囲**: Lines 718-747  
 **推定改善**: 微小（レンダーパス外）
 
@@ -693,7 +693,7 @@ bool GetBool(const PrParam& param)
 
 **問題箇所**: CPU実装
 ```cpp
-// SDK_ProcAmp_CPU.cpp, Line 2236
+// OST_WindyLines_CPU.cpp, Line 2236
 
 ld._padding = 0;  // 手動パディング
 ```
@@ -735,7 +735,7 @@ struct alignas(64) LineDerived  // キャッシュライン整列
 static_assert(sizeof(LineDerived) % 64 == 0, "LineDerived not cache-aligned");
 ```
 
-**対象ファイル**: SDK_ProcAmp_CPU.cpp  
+**対象ファイル**: OST_WindyLines_CPU.cpp  
 **影響範囲**: LineDerived構造体定義、Line 2236  
 **推定改善**: **1-3%**（キャッシュミス削減）
 
@@ -745,7 +745,7 @@ static_assert(sizeof(LineDerived) % 64 == 0, "LineDerived not cache-aligned");
 
 **問題箇所**: GPU実装
 ```cpp
-// SDK_ProcAmp_GPU.cpp, Lines 2004-2007
+// OST_WindyLines_GPU.cpp, Lines 2004-2007
 
 Float4 d0 = { centerX, centerY, lineCos, lineSin };
 Float4 d1 = { halfLen, halfThick, segCenterX, depth };
@@ -771,7 +771,7 @@ Float4 d3 = { 1.0f, 0.0f, 0.0f, 0.0f };  // ほぼ未使用!
 // lineData配列を3要素/ラインに変更
 lineData.reserve(lineCount * 3);  // 4 → 3
 
-// カーネル側も調整（SDK_ProcAmp.cu）
+// カーネル側も調整（OST_WindyLines.cu）
 // __global__ void RenderLinesKernel(const Float4* lineData, ...)
 // {
 //     int lineIdx = ...;
@@ -785,7 +785,7 @@ lineData.reserve(lineCount * 3);  // 4 → 3
 Float4 d3 = { appearAlpha, (float)tileMinX, (float)tileMinY, 0.0f };
 ```
 
-**対象ファイル**: SDK_ProcAmp_GPU.cpp, SDK_ProcAmp.cu  
+**対象ファイル**: OST_WindyLines_GPU.cpp, OST_WindyLines.cu  
 **影響範囲**: Lines 2004-2007  
 **推定改善**: メモリ使用量 **25%** 削減（lineData配列）
 
@@ -848,11 +848,11 @@ Float4 d3 = { appearAlpha, (float)tileMinX, (float)tileMinY, 0.0f };
 ## 📝 実装エージェントへの総合指示
 
 ### フェーズ1: メモリ管理最適化（最優先）
-1. **SDK_ProcAmp_CPU.cpp**: LineRenderStateのメモリプール実装
+1. **OST_WindyLines_CPU.cpp**: LineRenderStateのメモリプール実装
    - Lines 1981, 2004-2005, 2248, 2277, 2285-2286を修正
    - `assign()`を`resize()`に変更、reserve戦略実装
    
-2. **SDK_ProcAmp_GPU.cpp**: Vector push_back削減
+2. **OST_WindyLines_GPU.cpp**: Vector push_back削減
    - Lines 2009-2012をインデックスアクセスに変更
    - reserve容量の調整
 
@@ -861,15 +861,15 @@ Float4 d3 = { appearAlpha, (float)tileMinX, (float)tileMinY, 0.0f };
    - LineDerivedにvelocityフィールド追加
    - ライン初期化時に計算（1回のみ）
    
-4. **SDK_ProcAmp_CPU.cpp**: タイル境界の事前計算
+4. **OST_WindyLines_CPU.cpp**: タイル境界の事前計算
    - LineDerivedにtileMin/Max追加
    - Lines 2250-2273, 2283-2312を簡略化
 
 ### フェーズ3: ループ最適化（中優先）
-5. **SDK_ProcAmp_CPU.cpp**: モーションブラー最適化
+5. **OST_WindyLines_CPU.cpp**: モーションブラー最適化
    - Lines 2526-2527を移動
    
-6. **SDK_ProcAmp_CPU.cpp**: ピクセルタイル計算最適化
+6. **OST_WindyLines_CPU.cpp**: ピクセルタイル計算最適化
    - Lines 2356-2361を改善
 
 ### テスト戦略

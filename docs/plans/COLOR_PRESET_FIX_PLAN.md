@@ -22,8 +22,8 @@
 
 | ファイル | 判定順序 | 結果 |
 |---|---|---|
-| SDK_ProcAmp_GPU.cpp (L685-696) | `0-based` チェック → `1-based` チェック | **間違い** |
-| SDK_ProcAmp_CPU.cpp (L61-73, L1696-1707) | `1-based` チェック → `0-based` チェック | **正しい** |
+| OST_WindyLines_GPU.cpp (L685-696) | `0-based` チェック → `1-based` チェック | **間違い** |
+| OST_WindyLines_CPU.cpp (L61-73, L1696-1707) | `1-based` チェック → `0-based` チェック | **正しい** |
 
 #### GPU版NormalizePopupValue（現在 — バグあり）
 ```cpp
@@ -63,7 +63,7 @@ auto normalizePopup = [](int value, int maxValue) {
 ### 修正箇所
 
 #### 修正1-A: GPU.cpp の NormalizePopupValue 修正
-- **ファイル**: `SDK_ProcAmp_GPU.cpp` L685-696
+- **ファイル**: `OST_WindyLines_GPU.cpp` L685-696
 - **変更**: 条件の判定順序を CPU版と同じに修正
 
 ```cpp
@@ -82,15 +82,15 @@ static int NormalizePopupValue(int value, int maxValue)
 > 他のポップアップが「偶然正しく動いていた」場合はそちらが壊れる可能性がある。ただし CPU版は既にこの順序で正常動作しているため、GPU版も同じにするのが正しい。
 
 #### 修正1-B: GPU.cpp の presetIndex maxValue 更新
-- **ファイル**: `SDK_ProcAmp_GPU.cpp` L1144
+- **ファイル**: `OST_WindyLines_GPU.cpp` L1144
 - **変更**: ハードコード `33` → `kColorPresetCount` を使用
 
 ```cpp
 // 修正前
-const int presetIndex = NormalizePopupParam(GetParam(SDK_PROCAMP_COLOR_PRESET, ...), 33);
+const int presetIndex = NormalizePopupParam(GetParam(OST_WINDYLINES_COLOR_PRESET, ...), 33);
 
 // 修正後
-const int presetIndex = NormalizePopupParam(GetParam(SDK_PROCAMP_COLOR_PRESET, ...), kColorPresetCount);
+const int presetIndex = NormalizePopupParam(GetParam(OST_WINDYLINES_COLOR_PRESET, ...), kColorPresetCount);
 ```
 
 #### 修正1-C: デバッグログ追加（GPU.cpp）
@@ -121,17 +121,17 @@ DebugLog("[GPU ColorPreset] Loaded preset #%d, Color[0]: R=%.2f G=%.2f B=%.2f",
 
 ### 現状のUI構造
 ```
-カラーモード:     [単色 ▼]          ← SDK_PROCAMP_COLOR_MODE (ポップアップ)
-色：単色:         [■ ホワイト]       ← SDK_PROCAMP_LINE_COLOR (カラーピッカー)
-色：プリセット:    [レインボー ▼]     ← SDK_PROCAMP_COLOR_PRESET (ポップアップ)
-カスタム1～8:     [■][■][■]...       ← SDK_PROCAMP_CUSTOM_COLOR_1～8
+カラーモード:     [単色 ▼]          ← OST_WINDYLINES_COLOR_MODE (ポップアップ)
+色：単色:         [■ ホワイト]       ← OST_WINDYLINES_LINE_COLOR (カラーピッカー)
+色：プリセット:    [レインボー ▼]     ← OST_WINDYLINES_COLOR_PRESET (ポップアップ)
+カスタム1～8:     [■][■][■]...       ← OST_WINDYLINES_CUSTOM_COLOR_1～8
 ```
 
 ### 変更後のUI構造
 ```
-色：プリセット:    [単色 ▼]          ← SDK_PROCAMP_COLOR_PRESET (統合ポップアップ)
-色：単色:         [■ ホワイト]       ← SDK_PROCAMP_LINE_COLOR (カラーピッカー)
-カスタム1～8:     [■][■][■]...       ← SDK_PROCAMP_CUSTOM_COLOR_1～8
+色：プリセット:    [単色 ▼]          ← OST_WINDYLINES_COLOR_PRESET (統合ポップアップ)
+色：単色:         [■ ホワイト]       ← OST_WINDYLINES_LINE_COLOR (カラーピッカー)
+カスタム1～8:     [■][■][■]...       ← OST_WINDYLINES_CUSTOM_COLOR_1～8
 ```
 
 ### 統合後のドロップダウン内容
@@ -156,12 +156,12 @@ DebugLog("[GPU ColorPreset] Loaded preset #%d, Color[0]: R=%.2f G=%.2f B=%.2f",
   - 形式: `"単色|カスタム|レインボー|パステルレインボー|森|..."`
 - `kColorPresetCount` は従来通り（プリセットの数のみ）。別途 `kColorMenuTotalCount = kColorPresetCount + 2` を生成
 
-#### 2-B: SDK_ProcAmp_ColorPresets.h （自動生成を更新）
+#### 2-B: OST_WindyLines_ColorPresets.h （自動生成を更新）
 - `kColorPresetMenuString` — 統合メニュー文字列
 - `kColorMenuTotalCount` — メニュー項目の総数（単色 + カスタム + プリセット数）
 - `kColorMenuPresetOffset = 2` — プリセットのオフセット（最初のプリセットのメニュー内0-basedインデックス）
 
-#### 2-C: SDK_ProcAmp.h
+#### 2-C: OST_WindyLines.h
 - `ColorMode` enum を以下に変更:
 ```cpp
 // 統合カラーメニュー (0-based, NormalizePopup後)
@@ -170,22 +170,22 @@ constexpr int COLOR_MENU_SINGLE = 0;
 constexpr int COLOR_MENU_CUSTOM = 1;
 constexpr int COLOR_MENU_PRESET_OFFSET = 2;
 ```
-- `SDK_PROCAMP_COLOR_MODE` パラメータの enum 定義（残すか廃止か後述）
+- `OST_WINDYLINES_COLOR_MODE` パラメータの enum 定義（残すか廃止か後述）
 - `EffectPreset` 構造体: `colorMode` と `colorPreset` を 1つの `colorSelection` に統合
 - `COLOR_MODE_DFLT` → `COLOR_SELECTION_DFLT = 1` （単色がデフォルト、1-based）
 
-#### 2-D: SDK_ProcAmp_ParamNames.h
+#### 2-D: OST_WindyLines_ParamNames.h
 - `COLOR_MODE` 関連の名前定義を削除（または非表示に変更）
 - `COLOR_PRESET` の名前を `"色の設定"` 等に変更
 - `COLOR_MODE_MENU` の削除
 - `COLOR_PRESET_MENU` は自動生成の `kColorPresetMenuString` を参照するように変更
 
-#### 2-E: SDK_ProcAmp_GPU.cpp
-- `SDK_PROCAMP_COLOR_MODE` の読み取りを廃止
+#### 2-E: OST_WindyLines_GPU.cpp
+- `OST_WINDYLINES_COLOR_MODE` の読み取りを廃止
 - 統合パラメータの読み取りロジック:
 ```cpp
 const int colorSelection = NormalizePopupParam(
-    GetParam(SDK_PROCAMP_COLOR_PRESET, ...), kColorMenuTotalCount);
+    GetParam(OST_WINDYLINES_COLOR_PRESET, ...), kColorMenuTotalCount);
 
 if (colorSelection == COLOR_MENU_SINGLE) {
     // 単色モード（旧 colorMode == 0）
@@ -199,11 +199,11 @@ if (colorSelection == COLOR_MENU_SINGLE) {
 }
 ```
 
-#### 2-F: SDK_ProcAmp_CPU.cpp
+#### 2-F: OST_WindyLines_CPU.cpp
 
 **ParamsSetup (L1115-1170)**:
-- `PF_ADD_POPUP` for `SDK_PROCAMP_COLOR_MODE` を削除
-- `SDK_PROCAMP_COLOR_PRESET` のポップアップに統合メニュー文字列を使用
+- `PF_ADD_POPUP` for `OST_WINDYLINES_COLOR_MODE` を削除
+- `OST_WINDYLINES_COLOR_PRESET` のポップアップに統合メニュー文字列を使用
 - ラベル数を `kColorMenuTotalCount` に変更
 
 **UpdatePseudoGroupVisibility (L770-825)**:
@@ -214,7 +214,7 @@ if (colorSelection == COLOR_MENU_SINGLE) {
 - `colorMode` と `presetIndex` を統合値から計算:
 ```cpp
 const int colorSelection = normalizePopup(
-    params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value, kColorMenuTotalCount);
+    params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value, kColorMenuTotalCount);
 
 if (colorSelection == COLOR_MENU_SINGLE) {
     // 単色
@@ -232,9 +232,9 @@ if (colorSelection == COLOR_MENU_SINGLE) {
 - `LINE_COLOR変更→COLOR_MODEをSingleに設定` → `LINE_COLOR変更→COLOR_PRESETを「単色」(1)に設定` に変更
 
 **PF_Cmd_USER_CHANGED_PARAM (イベント処理)**:
-- `SDK_PROCAMP_COLOR_PRESET` 変更時、選択値に応じてカスタムカラーの表示/非表示を切り替え
+- `OST_WINDYLINES_COLOR_PRESET` 変更時、選択値に応じてカスタムカラーの表示/非表示を切り替え
 
-#### 2-G: SDK_ProcAmp_Presets.h & preset_converter.py
+#### 2-G: OST_WindyLines_Presets.h & preset_converter.py
 - `EffectPreset` の `colorMode` と `colorPreset` を統合
   - 旧: `colorMode=2, colorPreset=5` (プリセットモード, 5番目のプリセット)
   - 新: `colorSelection = 5 + 2 = 7` (オフセット2を加算)
@@ -249,12 +249,12 @@ if (colorSelection == COLOR_MENU_SINGLE) {
 
 ## パラメータインデックスの扱い
 
-### 重要: SDK_PROCAMP_COLOR_MODE は廃止か隠しパラメータか
+### 重要: OST_WINDYLINES_COLOR_MODE は廃止か隠しパラメータか
 
 Premiere Proのパラメータはインデックスで永続化されるため、**既存プロジェクトとの後方互換性** の問題がある。
 
 #### 選択肢A: COLOR_MODE を隠しパラメータにする（推奨）
-- `SDK_PROCAMP_COLOR_MODE` の enum 位置はそのまま維持
+- `OST_WINDYLINES_COLOR_MODE` の enum 位置はそのまま維持
 - ParamsSetup で `PF_ParamFlag_INVISIBLE` を設定して非表示にする
 - デフォルト値を COLOR_MODE_PRESET (2) に固定
 - 新規プロジェクトでは常に COLOR_PRESET が統合メニューとして機能
@@ -270,22 +270,22 @@ Premiere Proのパラメータはインデックスで永続化されるため�
 
 ```cpp
 // PF_Cmd_SEQUENCE_SETUP or initial render:
-const int legacyColorMode = params[SDK_PROCAMP_COLOR_MODE]->u.pd.value;
-const int legacyPreset = params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value;
+const int legacyColorMode = params[OST_WINDYLINES_COLOR_MODE]->u.pd.value;
+const int legacyPreset = params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value;
 
 // 旧プロジェクト判定: COLOR_MODE が非Preset (≠2) の場合はマイグレーション
 if (legacyColorMode == COLOR_MODE_SINGLE) {
     // 単色 → 統合メニュー index 1
-    params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value = 1;
+    params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value = 1;
 } else if (legacyColorMode == COLOR_MODE_CUSTOM) {
     // カスタム → 統合メニュー index 2  
-    params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value = 2;
+    params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value = 2;
 } else {
     // プリセット → 統合メニュー index = legacyPreset + 2
-    params[SDK_PROCAMP_COLOR_PRESET]->u.pd.value = legacyPreset + 2;
+    params[OST_WINDYLINES_COLOR_PRESET]->u.pd.value = legacyPreset + 2;
 }
 // マイグレーション後、COLOR_MODE を固定値に
-params[SDK_PROCAMP_COLOR_MODE]->u.pd.value = COLOR_MODE_PRESET;
+params[OST_WINDYLINES_COLOR_MODE]->u.pd.value = COLOR_MODE_PRESET;
 ```
 
 ---
@@ -300,22 +300,22 @@ params[SDK_PROCAMP_COLOR_MODE]->u.pd.value = COLOR_MODE_PRESET;
 
 ### Step 2: フェーズ2の準備
 1. `color_preset_converter.py` に統合メニュー生成を追加 (2-A)
-2. Python実行して `SDK_ProcAmp_ColorPresets.h` を再生成 (2-B)
-3. `SDK_ProcAmp.h` の定義更新 (2-C)
-4. `SDK_ProcAmp_ParamNames.h` の更新 (2-D)
+2. Python実行して `OST_WindyLines_ColorPresets.h` を再生成 (2-B)
+3. `OST_WindyLines.h` の定義更新 (2-C)
+4. `OST_WindyLines_ParamNames.h` の更新 (2-D)
 
 ### Step 3: フェーズ2の実装
-1. `SDK_ProcAmp_CPU.cpp` の修正 (2-F)
+1. `OST_WindyLines_CPU.cpp` の修正 (2-F)
    - ParamsSetup
    - UpdatePseudoGroupVisibility
    - Render
    - 自動切替ロジック
-2. `SDK_ProcAmp_GPU.cpp` の修正 (2-E)
+2. `OST_WindyLines_GPU.cpp` の修正 (2-E)
 3. ビルド確認
 
 ### Step 4: エフェクトプリセット統合
 1. `preset_converter.py` / `presets.tsv` の更新 (2-G, 2-H)
-2. `SDK_ProcAmp_Presets.h` の再生成
+2. `OST_WindyLines_Presets.h` の再生成
 3. マイグレーションロジックの実装
 
 ### Step 5: テストと検証
@@ -344,15 +344,15 @@ params[SDK_PROCAMP_COLOR_MODE]->u.pd.value = COLOR_MODE_PRESET;
 
 | ファイル | フェーズ1 | フェーズ2 |
 |---|---|---|
-| SDK_ProcAmp_GPU.cpp | ✅ NormalizePopupValue修正, maxValue修正, ログ追加 | ✅ 統合ロジック |
-| SDK_ProcAmp_CPU.cpp | — | ✅ ParamsSetup, Render, UI制御, 切替ロジック |
-| SDK_ProcAmp.h | — | ✅ enum/define変更, EffectPreset構造体 |
-| SDK_ProcAmp_ParamNames.h | — | ✅ 名前定義更新 |
+| OST_WindyLines_GPU.cpp | ✅ NormalizePopupValue修正, maxValue修正, ログ追加 | ✅ 統合ロジック |
+| OST_WindyLines_CPU.cpp | — | ✅ ParamsSetup, Render, UI制御, 切替ロジック |
+| OST_WindyLines.h | — | ✅ enum/define変更, EffectPreset構造体 |
+| OST_WindyLines_ParamNames.h | — | ✅ 名前定義更新 |
 | color_preset_converter.py | — | ✅ 統合メニュー生成 |
-| SDK_ProcAmp_ColorPresets.h | — | ✅ 自動再生成 |
+| OST_WindyLines_ColorPresets.h | — | ✅ 自動再生成 |
 | preset_converter.py | — | ✅ colorSelection対応 |
 | presets.tsv | — | ✅ カラム統合 |
-| SDK_ProcAmp_Presets.h | — | ✅ 自動再生成 |
-| SDK_ProcAmp.cu | — | — (変更不要) |
-| SDK_ProcAmp.cl | — | — (変更不要) |
-| SDK_ProcAmp.hlsl | — | — (変更不要) |
+| OST_WindyLines_Presets.h | — | ✅ 自動再生成 |
+| OST_WindyLines.cu | — | — (変更不要) |
+| OST_WindyLines.cl | — | — (変更不要) |
+| OST_WindyLines.hlsl | — | — (変更不要) |

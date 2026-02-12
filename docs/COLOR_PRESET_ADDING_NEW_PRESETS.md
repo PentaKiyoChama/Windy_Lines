@@ -40,7 +40,7 @@ python color_preset_converter.py
 ```
 Reading color presets from: color_presets.tsv
 Parsed 35 color presets
-✓ Generated: SDK_ProcAmp_ColorPresets.h
+✓ Generated: OST_WindyLines_ColorPresets.h
 ✓ Total color presets: 35
 ✓ Total colors: 280
 
@@ -61,12 +61,12 @@ Preset Summary:
 
 **Windows**:
 ```bash
-MSBuild SDK_ProcAmp.sln /t:Clean,Build /p:Configuration=Debug
+MSBuild OST_WindyLines.sln /t:Clean,Build /p:Configuration=Debug
 ```
 
 **Mac**:
 ```bash
-xcodebuild clean build -project SDK_ProcAmp.xcodeproj -configuration Debug
+xcodebuild clean build -project OST_WindyLines.xcodeproj -configuration Debug
 ```
 
 **Make**:
@@ -78,7 +78,7 @@ make clean && make
 
 1. 新しくビルドされたプラグインをAfter Effectsのプラグインフォルダにコピー
 2. After Effectsを再起動
-3. SDK_ProcAmpエフェクトを適用
+3. OST_WindyLinesエフェクトを適用
 4. 色プリセット選択UIで新しいプリセット「春の桜」を確認
 5. 選択して表示を確認
 
@@ -191,8 +191,8 @@ tail -c 1 color_presets.tsv | od -An -tx1
 python color_preset_converter.py
 
 # 生成されたヘッダーで新しいプリセットを確認
-grep "COLOR_PRESET_SPRINGSAKURA" SDK_ProcAmp_ColorPresets.h
-grep "kSpringSakura" SDK_ProcAmp_ColorPresets.h
+grep "COLOR_PRESET_SPRINGSAKURA" OST_WindyLines_ColorPresets.h
+grep "kSpringSakura" OST_WindyLines_ColorPresets.h
 ```
 
 ---
@@ -253,7 +253,7 @@ grep "kSpringSakura" SDK_ProcAmp_ColorPresets.h
 
 3. **生成されたヘッダーを確認**:
    ```bash
-   grep -n "COLOR_PRESET_" SDK_ProcAmp_ColorPresets.h | tail -5
+   grep -n "COLOR_PRESET_" OST_WindyLines_ColorPresets.h | tail -5
    ```
 
 4. **ビルドログを確認**:

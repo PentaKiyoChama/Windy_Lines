@@ -16,9 +16,9 @@
                   <BuildableReference
                      BuildableIdentifier = "primary"
                      BlueprintIdentifier = "7E83C0F9170F4840008B8043"
-                     BuildableName = "SDK_ProcAmp.plugin"
-                     BlueprintName = "SDK_ProcAmp"
-                     ReferencedContainer = "container:SDK_ProcAmp.xcodeproj">
+                     BuildableName = "OST_WindyLines.plugin"
+                     BlueprintName = "OST_WindyLines"
+                     ReferencedContainer = "container:OST_WindyLines.xcodeproj">
                   </BuildableReference>
                </EnvironmentBuildable>
             </ActionContent>
@@ -34,9 +34,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "7E83C0F9170F4840008B8043"
-               BuildableName = "SDK_ProcAmp.plugin"
-               BlueprintName = "SDK_ProcAmp"
-               ReferencedContainer = "container:SDK_ProcAmp.xcodeproj">
+               BuildableName = "OST_WindyLines.plugin"
+               BlueprintName = "OST_WindyLines"
+               ReferencedContainer = "container:OST_WindyLines.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -74,9 +74,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7E83C0F9170F4840008B8043"
-            BuildableName = "SDK_ProcAmp.plugin"
-            BlueprintName = "SDK_ProcAmp"
-            ReferencedContainer = "container:SDK_ProcAmp.xcodeproj">
+            BuildableName = "OST_WindyLines.plugin"
+            BlueprintName = "OST_WindyLines"
+            ReferencedContainer = "container:OST_WindyLines.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
    </ProfileAction>

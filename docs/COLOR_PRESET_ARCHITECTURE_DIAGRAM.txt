@@ -10,7 +10,7 @@
 │  CURRENT SYSTEM (Before)                                             │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  SDK_ProcAmp.h (Hardcoded - 211 lines)                              │
+│  OST_WindyLines.h (Hardcoded - 211 lines)                              │
 │  ┌──────────────────────────────────────────────────────┐          │
 │  │ struct PresetColor { a, r, g, b };                   │          │
 │  │                                                       │          │
@@ -67,7 +67,7 @@
 │            │ ⬇️  Auto-generated                                      │
 │            │                                                         │
 │  ┌─────────▼──────────────────────────────────┐                     │
-│  │ SDK_ProcAmp_ColorPresets.h (Auto-generated)│  ← DO NOT EDIT      │
+│  │ OST_WindyLines_ColorPresets.h (Auto-generated)│  ← DO NOT EDIT      │
 │  │                                             │                     │
 │  │ // Auto-generated - DO NOT EDIT            │                     │
 │  │ struct PresetColor { a, r, g, b };         │                     │
@@ -82,10 +82,10 @@
 │            │ ⬇️  #include                                            │
 │            │                                                         │
 │  ┌─────────▼──────────────────────────────────┐                     │
-│  │ SDK_ProcAmp.h (Modified - only 1 line)     │                     │
+│  │ OST_WindyLines.h (Modified - only 1 line)     │                     │
 │  │                                             │                     │
 │  │ // Color presets (auto-generated)          │                     │
-│  │ #include "SDK_ProcAmp_ColorPresets.h"      │                     │
+│  │ #include "OST_WindyLines_ColorPresets.h"      │                     │
 │  │                                             │                     │
 │  │ // Rest of the code...                     │                     │
 │  └────────────────────────────────────────────┘                     │
@@ -109,10 +109,10 @@
 │                                                                      │
 │  2. Run converter                                                    │
 │     $ python color_preset_converter.py                               │
-│     ✓ Generated: SDK_ProcAmp_ColorPresets.h                          │
+│     ✓ Generated: OST_WindyLines_ColorPresets.h                          │
 │                                                                      │
 │  3. (Optional) Add new enum if needed                                │
-│     SDK_ProcAmp.h:                                                   │
+│     OST_WindyLines.h:                                                   │
 │     enum ColorPreset {                                               │
 │       ...                                                            │
 │       COLOR_PRESET_NEW_THEME = 34,  // Add this                      │
@@ -134,12 +134,12 @@
 │  │   ↓                        │          │   ↓                  │  │
 │  │ preset_converter.py        │   ==     │ color_preset_        │  │
 │  │   ↓                        │          │   converter.py       │  │
-│  │ SDK_ProcAmp_Presets.h      │          │   ↓                  │  │
-│  │   ↓                        │          │ SDK_ProcAmp_         │  │
-│  │ #include in SDK_ProcAmp.h  │          │   ColorPresets.h     │  │
+│  │ OST_WindyLines_Presets.h      │          │   ↓                  │  │
+│  │   ↓                        │          │ OST_WindyLines_         │  │
+│  │ #include in OST_WindyLines.h  │          │   ColorPresets.h     │  │
 │  └────────────────────────────┘          │   ↓                  │  │
 │                                           │ #include in          │  │
-│  ✅ Working well!                         │   SDK_ProcAmp.h      │  │
+│  ✅ Working well!                         │   OST_WindyLines.h      │  │
 │                                           └──────────────────────┘  │
 │                                           ⚙️  Same architecture!     │
 │                                                                      │
@@ -153,14 +153,14 @@
 │  ┌─────────────────────────────────────────────────────┐            │
 │  │ ✨ color_presets.tsv              (Master data)     │            │
 │  │ ✨ color_preset_converter.py      (Generator)       │            │
-│  │ ✨ SDK_ProcAmp_ColorPresets.h     (Auto-generated)  │            │
+│  │ ✨ OST_WindyLines_ColorPresets.h     (Auto-generated)  │            │
 │  └─────────────────────────────────────────────────────┘            │
 │                                                                      │
 │  MODIFIED FILES:                                                     │
 │  ┌─────────────────────────────────────────────────────┐            │
-│  │ 📝 SDK_ProcAmp.h                                    │            │
+│  │ 📝 OST_WindyLines.h                                    │            │
 │  │    - Delete: Lines 537-748 (211 lines)              │            │
-│  │    + Add:    #include "SDK_ProcAmp_ColorPresets.h"  │            │
+│  │    + Add:    #include "OST_WindyLines_ColorPresets.h"  │            │
 │  │              (1 line)                                │            │
 │  └─────────────────────────────────────────────────────┘            │
 │                                                                      │
@@ -175,11 +175,11 @@
 │  Files Created:                                                      │
 │  ✓ color_presets_SAMPLE.tsv           (Sample with 3 presets)       │
 │  ✓ color_preset_converter_POC.py      (Working converter)           │
-│  ✓ SDK_ProcAmp_ColorPresets.h         (Generated successfully)      │
+│  ✓ OST_WindyLines_ColorPresets.h         (Generated successfully)      │
 │                                                                      │
 │  Test Result:                                                        │
 │  $ python color_preset_converter_POC.py color_presets_SAMPLE.tsv    │
-│  ✓ Generated: SDK_ProcAmp_ColorPresets.h                            │
+│  ✓ Generated: OST_WindyLines_ColorPresets.h                            │
 │  ✓ Total color presets: 3                                           │
 │  ✓ Total colors: 24                                                 │
 │                                                                      │
@@ -206,7 +206,7 @@
 │  ├────────────────────────────────────────────────┼──────┼─────┤   │
 │  │ 1. Extract 33 presets to TSV                   │ 1-2h │ ⭐⭐ │   │
 │  │ 2. Implement converter (based on POC)          │ 2-3h │ ⭐⭐ │   │
-│  │ 3. Modify SDK_ProcAmp.h                        │ 0.5h │ ⭐  │   │
+│  │ 3. Modify OST_WindyLines.h                        │ 0.5h │ ⭐  │   │
 │  │ 4. Build & test                                │ 1-2h │ ⭐⭐ │   │
 │  │ 5. Documentation                               │ 1h   │ ⭐  │   │
 │  └────────────────────────────────────────────────┴──────┴─────┘   │

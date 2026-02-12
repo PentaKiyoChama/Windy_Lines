@@ -15,7 +15,7 @@
  * from Adobe.
  **************************************************************************/
 
-// DEBUG RENDER MARKERS for HLSL/DirectX (must match SDK_ProcAmp.h)
+// DEBUG RENDER MARKERS for HLSL/DirectX (must match OST_WindyLines.h)
 #define ENABLE_DEBUG_RENDER_MARKERS 1
 
  /*

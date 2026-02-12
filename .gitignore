@@ -12,7 +12,7 @@
 *.recipe
 
 # Keep manually maintained .rcp file (not auto-generated)
-!SDK_ProcAmp.rcp
+!OST_WindyLines.rcp
 
 # Visual Studio
 .vs/

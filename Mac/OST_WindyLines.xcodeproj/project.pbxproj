@@ -8,13 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		185D78901CFDC57E005B69BA /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 185D788F1CFDC57E005B69BA /* Metal.framework */; };
-		3F57A74326FE89EF004786EA /* SDK_ProcAmp.metal in Sources */ = {isa = PBXBuildFile; fileRef = 3F57A74226FE89EF004786EA /* SDK_ProcAmp.metal */; };
+		3F57A74326FE89EF004786EA /* OST_WindyLines.metal in Sources */ = {isa = PBXBuildFile; fileRef = 3F57A74226FE89EF004786EA /* OST_WindyLines.metal */; };
 		7E83C0FE170F4840008B8043 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E83C0FD170F4840008B8043 /* Cocoa.framework */; };
 		7E83C108170F4840008B8043 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 7E83C106170F4840008B8043 /* InfoPlist.strings */; };
-		7E83C117170F489B008B8043 /* SDK_ProcAmp_CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E83C113170F489B008B8043 /* SDK_ProcAmp_CPU.cpp */; };
-		7E83C118170F489B008B8043 /* SDK_ProcAmp_GPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E83C114170F489B008B8043 /* SDK_ProcAmp_GPU.cpp */; };
+		7E83C117170F489B008B8043 /* OST_WindyLines_CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E83C113170F489B008B8043 /* OST_WindyLines_CPU.cpp */; };
+		7E83C118170F489B008B8043 /* OST_WindyLines_GPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E83C114170F489B008B8043 /* OST_WindyLines_GPU.cpp */; };
 		7E9365E0172F7344006C8436 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E9365DF172F7344006C8436 /* OpenCL.framework */; };
-		7EC22DD61FA7C99700D810DC /* SDK_ProcAmp.r in Rez */ = {isa = PBXBuildFile; fileRef = 7E83C116170F489B008B8043 /* SDK_ProcAmp.r */; };
+		7EC22DD61FA7C99700D810DC /* OST_WindyLines.r in Rez */ = {isa = PBXBuildFile; fileRef = 7E83C116170F489B008B8043 /* OST_WindyLines.r */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -35,20 +35,20 @@
 
 /* Begin PBXFileReference section */
 		185D788F1CFDC57E005B69BA /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
-		3F57A74226FE89EF004786EA /* SDK_ProcAmp.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = SDK_ProcAmp.metal; path = ../../SDK_ProcAmp.metal; sourceTree = "<group>"; };
-		7E163E331FA412E100260BD2 /* SDK_ProcAmp.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SDK_ProcAmp.h; path = ../SDK_ProcAmp.h; sourceTree = SOURCE_ROOT; };
+		3F57A74226FE89EF004786EA /* OST_WindyLines.metal */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.metal; name = OST_WindyLines.metal; path = ../../OST_WindyLines.metal; sourceTree = "<group>"; };
+		7E163E331FA412E100260BD2 /* OST_WindyLines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = OST_WindyLines.h; path = ../OST_WindyLines.h; sourceTree = SOURCE_ROOT; };
 		7E2DB36B17349346007FA6AC /* A.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = A.h; path = Examples/Headers/A.h; sourceTree = AE_SDK_BASE_PATH; };
-		7E83C0FA170F4840008B8043 /* SDK_ProcAmp.plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SDK_ProcAmp.plugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E83C0FA170F4840008B8043 /* OST_WindyLines.plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OST_WindyLines.plugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E83C0FD170F4840008B8043 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		7E83C100170F4840008B8043 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		7E83C101170F4840008B8043 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = System/Library/Frameworks/CoreData.framework; sourceTree = SDKROOT; };
 		7E83C102170F4840008B8043 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		7E83C105170F4840008B8043 /* SDK_ProcAmp-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "SDK_ProcAmp-Info.plist"; sourceTree = "<group>"; };
+		7E83C105170F4840008B8043 /* OST_WindyLines-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "OST_WindyLines-Info.plist"; sourceTree = "<group>"; };
 		7E83C107170F4840008B8043 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		7E83C109170F4840008B8043 /* SDK_ProcAmp-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SDK_ProcAmp-Prefix.pch"; sourceTree = "<group>"; };
-		7E83C113170F489B008B8043 /* SDK_ProcAmp_CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SDK_ProcAmp_CPU.cpp; path = ../SDK_ProcAmp_CPU.cpp; sourceTree = SOURCE_ROOT; };
-		7E83C114170F489B008B8043 /* SDK_ProcAmp_GPU.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = SDK_ProcAmp_GPU.cpp; path = ../SDK_ProcAmp_GPU.cpp; sourceTree = SOURCE_ROOT; };
-		7E83C116170F489B008B8043 /* SDK_ProcAmp.r */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.rez; name = SDK_ProcAmp.r; path = ../SDK_ProcAmp.r; sourceTree = SOURCE_ROOT; };
+		7E83C109170F4840008B8043 /* OST_WindyLines-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OST_WindyLines-Prefix.pch"; sourceTree = "<group>"; };
+		7E83C113170F489B008B8043 /* OST_WindyLines_CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OST_WindyLines_CPU.cpp; path = ../OST_WindyLines_CPU.cpp; sourceTree = SOURCE_ROOT; };
+		7E83C114170F489B008B8043 /* OST_WindyLines_GPU.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = OST_WindyLines_GPU.cpp; path = ../OST_WindyLines_GPU.cpp; sourceTree = SOURCE_ROOT; };
+		7E83C116170F489B008B8043 /* OST_WindyLines.r */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.rez; name = OST_WindyLines.r; path = ../OST_WindyLines.r; sourceTree = SOURCE_ROOT; };
 		7E83C124170F4EE9008B8043 /* AEConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AEConfig.h; path = Examples/Headers/AEConfig.h; sourceTree = AE_SDK_BASE_PATH; };
 		7E83C128170F519D008B8043 /* AE_Effect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AE_Effect.h; path = Examples/Headers/AE_Effect.h; sourceTree = AE_SDK_BASE_PATH; };
 		7E83C136170F8622008B8043 /* PrGPUFilterModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PrGPUFilterModule.h; path = ../../Utils/PrGPUFilterModule.h; sourceTree = SOURCE_ROOT; };
@@ -78,7 +78,7 @@
 		7E83C0EF170F4840008B8043 = {
 			isa = PBXGroup;
 			children = (
-				7E83C103170F4840008B8043 /* SDK_ProcAmp */,
+				7E83C103170F4840008B8043 /* OST_WindyLines */,
 				7E83C0FC170F4840008B8043 /* Frameworks */,
 				7E83C0FB170F4840008B8043 /* Products */,
 			);
@@ -87,7 +87,7 @@
 		7E83C0FB170F4840008B8043 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				7E83C0FA170F4840008B8043 /* SDK_ProcAmp.plugin */,
+				7E83C0FA170F4840008B8043 /* OST_WindyLines.plugin */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -113,17 +113,17 @@
 			name = "Other Frameworks";
 			sourceTree = "<group>";
 		};
-		7E83C103170F4840008B8043 /* SDK_ProcAmp */ = {
+		7E83C103170F4840008B8043 /* OST_WindyLines */ = {
 			isa = PBXGroup;
 			children = (
-				3F57A74226FE89EF004786EA /* SDK_ProcAmp.metal */,
-				7E83C114170F489B008B8043 /* SDK_ProcAmp_GPU.cpp */,
-				7E83C113170F489B008B8043 /* SDK_ProcAmp_CPU.cpp */,
-				7E163E331FA412E100260BD2 /* SDK_ProcAmp.h */,
-				7E83C116170F489B008B8043 /* SDK_ProcAmp.r */,
+				3F57A74226FE89EF004786EA /* OST_WindyLines.metal */,
+				7E83C114170F489B008B8043 /* OST_WindyLines_GPU.cpp */,
+				7E83C113170F489B008B8043 /* OST_WindyLines_CPU.cpp */,
+				7E163E331FA412E100260BD2 /* OST_WindyLines.h */,
+				7E83C116170F489B008B8043 /* OST_WindyLines.r */,
 				7E83C104170F4840008B8043 /* Supporting Files */,
 			);
-			path = SDK_ProcAmp;
+			path = OST_WindyLines;
 			sourceTree = "<group>";
 		};
 		7E83C104170F4840008B8043 /* Supporting Files */ = {
@@ -137,9 +137,9 @@
 				7E83C173170F8901008B8043 /* PrSDKGPUDeviceSuite.h */,
 				7E83C175170F8914008B8043 /* PrSDKGPUFilter.h */,
 				7E83C176170F8914008B8043 /* PrSDKGPUImageProcessingSuite.h */,
-				7E83C105170F4840008B8043 /* SDK_ProcAmp-Info.plist */,
+				7E83C105170F4840008B8043 /* OST_WindyLines-Info.plist */,
 				7E83C106170F4840008B8043 /* InfoPlist.strings */,
-				7E83C109170F4840008B8043 /* SDK_ProcAmp-Prefix.pch */,
+				7E83C109170F4840008B8043 /* OST_WindyLines-Prefix.pch */,
 				7E9365DB172F62D1006C8436 /* SPProps.h */,
 				7EA45A99173496CE00584507 /* SPMData.h */,
 			);
@@ -149,9 +149,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		7E83C0F9170F4840008B8043 /* SDK_ProcAmp */ = {
+		7E83C0F9170F4840008B8043 /* OST_WindyLines */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7E83C10C170F4840008B8043 /* Build configuration list for PBXNativeTarget "SDK_ProcAmp" */;
+			buildConfigurationList = 7E83C10C170F4840008B8043 /* Build configuration list for PBXNativeTarget "OST_WindyLines" */;
 			buildPhases = (
 				7E83C0F6170F4840008B8043 /* Sources */,
 				7E83C0F7170F4840008B8043 /* Frameworks */,
@@ -164,9 +164,9 @@
 			);
 			dependencies = (
 			);
-			name = SDK_ProcAmp;
-			productName = SDK_ProcAmp;
-			productReference = 7E83C0FA170F4840008B8043 /* SDK_ProcAmp.plugin */;
+			name = OST_WindyLines;
+			productName = OST_WindyLines;
+			productReference = 7E83C0FA170F4840008B8043 /* OST_WindyLines.plugin */;
 			productType = "com.apple.product-type.bundle";
 		};
 /* End PBXNativeTarget section */
@@ -178,7 +178,7 @@
 				LastUpgradeCheck = 0730;
 				ORGANIZATIONNAME = "";
 			};
-			buildConfigurationList = 7E83C0F4170F4840008B8043 /* Build configuration list for PBXProject "SDK_ProcAmp" */;
+			buildConfigurationList = 7E83C0F4170F4840008B8043 /* Build configuration list for PBXProject "OST_WindyLines" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -191,7 +191,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				7E83C0F9170F4840008B8043 /* SDK_ProcAmp */,
+				7E83C0F9170F4840008B8043 /* OST_WindyLines */,
 			);
 		};
 /* End PBXProject section */
@@ -212,7 +212,7 @@
 			isa = PBXRezBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7EC22DD61FA7C99700D810DC /* SDK_ProcAmp.r in Rez */,
+				7EC22DD61FA7C99700D810DC /* OST_WindyLines.r in Rez */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -243,9 +243,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7E83C117170F489B008B8043 /* SDK_ProcAmp_CPU.cpp in Sources */,
-				3F57A74326FE89EF004786EA /* SDK_ProcAmp.metal in Sources */,
-				7E83C118170F489B008B8043 /* SDK_ProcAmp_GPU.cpp in Sources */,
+				7E83C117170F489B008B8043 /* OST_WindyLines_CPU.cpp in Sources */,
+				3F57A74326FE89EF004786EA /* OST_WindyLines.metal in Sources */,
+				7E83C118170F489B008B8043 /* OST_WindyLines_GPU.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,7 +343,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DSTROOT = "/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "SDK_ProcAmp-Prefix.pch";
+				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
@@ -355,7 +355,7 @@
 					"\"${DERIVED_FILE_DIR}/64/PreprocessedOpenCL\"",
 					"\"${DERIVED_FILE_DIR}/64/PreprocessedMetal\"",
 				);
-				INFOPLIST_FILE = "SDK_ProcAmp-Info.plist";
+				INFOPLIST_FILE = "OST_WindyLines-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				OBJROOT = "$(PROJECT_DIR)/build";
 				OTHER_LDFLAGS = (
@@ -387,7 +387,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DSTROOT = "/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "SDK_ProcAmp-Prefix.pch";
+				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
@@ -398,7 +398,7 @@
 					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
 					"\"${DERIVED_FILE_DIR}/64/PreprocessedOpenCL\"",
 				);
-				INFOPLIST_FILE = "SDK_ProcAmp-Info.plist";
+				INFOPLIST_FILE = "OST_WindyLines-Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
 				OBJROOT = "$(PROJECT_DIR)/build";
 				OTHER_LDFLAGS = (
@@ -427,7 +427,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		7E83C0F4170F4840008B8043 /* Build configuration list for PBXProject "SDK_ProcAmp" */ = {
+		7E83C0F4170F4840008B8043 /* Build configuration list for PBXProject "OST_WindyLines" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7E83C10A170F4840008B8043 /* Debug */,
@@ -436,7 +436,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7E83C10C170F4840008B8043 /* Build configuration list for PBXNativeTarget "SDK_ProcAmp" */ = {
+		7E83C10C170F4840008B8043 /* Build configuration list for PBXNativeTarget "OST_WindyLines" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				7E83C10D170F4840008B8043 /* Debug */,

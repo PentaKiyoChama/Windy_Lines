@@ -51,7 +51,7 @@ def generate_enum(presets):
 - `Rainbow` → `COLOR_PRESET_RAINBOW`
 - `test_color` → `COLOR_PRESET_TEST_COLOR`
 
-#### 2. SDK_ProcAmp.h
+#### 2. OST_WindyLines.h
 **削除内容**:
 - ❌ 手動で定義されていた`enum ColorPreset`（38行）
 - ❌ コメントアウトされた古いコード（211行）
@@ -61,11 +61,11 @@ def generate_enum(presets):
 **残存内容**:
 ```cpp
 // Color preset definitions - auto-generated from color_presets.tsv
-// Run color_preset_converter.py to regenerate SDK_ProcAmp_ColorPresets.h
-#include "SDK_ProcAmp_ColorPresets.h"
+// Run color_preset_converter.py to regenerate OST_WindyLines_ColorPresets.h
+#include "OST_WindyLines_ColorPresets.h"
 ```
 
-#### 3. SDK_ProcAmp_ColorPresets.h（自動生成）
+#### 3. OST_WindyLines_ColorPresets.h（自動生成）
 **生成内容**:
 ```cpp
 // 1. Enum定義（自動生成）
@@ -114,7 +114,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
            ↓ python color_preset_converter.py
            │
 ┌──────────┴────────────────────────┐
-│ SDK_ProcAmp_ColorPresets.h        │
+│ OST_WindyLines_ColorPresets.h        │
 │ (自動生成 - 手動編集禁止)           │
 │                                    │
 │ ✅ enum ColorPreset (自動生成)     │
@@ -126,7 +126,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
            ↓ #include
            │
 ┌──────────┴──────────┐
-│ SDK_ProcAmp.h       │
+│ OST_WindyLines.h       │
 │ (1行のincludeのみ)  │
 └──────────┬──────────┘
            │
@@ -144,7 +144,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 |------|-------------------|-------------|
 | TSVファイル | ✅ presets.tsv | ✅ color_presets.tsv |
 | 変換スクリプト | ✅ preset_converter.py | ✅ color_preset_converter.py |
-| 生成ヘッダー | ✅ SDK_ProcAmp_Presets.h | ✅ SDK_ProcAmp_ColorPresets.h |
+| 生成ヘッダー | ✅ OST_WindyLines_Presets.h | ✅ OST_WindyLines_ColorPresets.h |
 | 手動enum | ❌ 不要 | ❌ 不要 |
 | 追加手順 | TSV追加→Python | TSV追加→Python |
 | 自動生成 | ✅ 配列 + カウント | ✅ enum + 配列 + 関数 |
@@ -247,7 +247,7 @@ const PresetColor kexperimental[8] = { ... };  // 自動更新！
 ```
 1. TSVに追加
 2. python実行
-3. SDK_ProcAmp.hのenumに手動で追加  ← 手間！
+3. OST_WindyLines.hのenumに手動で追加  ← 手間！
    COLOR_PRESET_NEW_PRESET,
 4. ビルド
 ```

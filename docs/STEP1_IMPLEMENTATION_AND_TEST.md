@@ -12,18 +12,18 @@
 
 ### 変更したファイル
 
-1. **SDK_ProcAmp.h** - 新ヘッダーのincludeを追加（無効化状態）
+1. **OST_WindyLines.h** - 新ヘッダーのincludeを追加（無効化状態）
 
 ### 実装の詳細
 
-#### SDK_ProcAmp.h の変更（行536付近）
+#### OST_WindyLines.h の変更（行536付近）
 
 **追加したコード**:
 ```cpp
 // ========== 新しい色プリセットシステム（テスト中）==========
 // Step 1: 新ヘッダーを追加（まだ無効化状態）
 #if 0  // まだ有効化しない（テストのみ）
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 #endif
 // ========================================================
 ```
@@ -41,32 +41,32 @@
 ### テスト1: ファイル変更の確認
 
 #### 目的
-SDK_ProcAmp.hに正しくincludeが追加されたか確認する。
+OST_WindyLines.hに正しくincludeが追加されたか確認する。
 
 #### 手順
 ```bash
 cd /home/runner/work/Windy_Lines/Windy_Lines
 
 # 1. 変更内容を確認
-git diff SDK_ProcAmp.h
+git diff OST_WindyLines.h
 
 # 期待される出力:
 # +// ========== 新しい色プリセットシステム（テスト中）==========
 # +// Step 1: 新ヘッダーを追加（まだ無効化状態）
 # +#if 0  // まだ有効化しない（テストのみ）
-# +#include "SDK_ProcAmp_ColorPresets.h"
+# +#include "OST_WindyLines_ColorPresets.h"
 # +#endif
 # +// ========================================================
 
 # 2. #if 0 が正しく設定されているか確認
-grep -A 2 "#if 0" SDK_ProcAmp.h | grep "SDK_ProcAmp_ColorPresets"
-# 期待値: #include "SDK_ProcAmp_ColorPresets.h"
+grep -A 2 "#if 0" OST_WindyLines.h | grep "OST_WindyLines_ColorPresets"
+# 期待値: #include "OST_WindyLines_ColorPresets.h"
 
 # 3. 既存の定義が残っているか確認
-grep -c "struct PresetColor" SDK_ProcAmp.h
+grep -c "struct PresetColor" OST_WindyLines.h
 # 期待値: 1（既存の定義が残っている）
 
-grep -c "namespace ColorPresets" SDK_ProcAmp.h
+grep -c "namespace ColorPresets" OST_WindyLines.h
 # 期待値: 1（既存の定義が残っている）
 ```
 
@@ -89,7 +89,7 @@ cd /home/runner/work/Windy_Lines/Windy_Lines
 
 # プリプロセッサの出力を確認（C++のみを展開）
 # 注: 実際の環境に応じてコンパイラを調整
-# g++ -E -P SDK_ProcAmp.h 2>/dev/null | grep -A 5 "struct PresetColor"
+# g++ -E -P OST_WindyLines.h 2>/dev/null | grep -A 5 "struct PresetColor"
 
 # または、手動で確認:
 # 1. #if 0 の中のコードが無視されるか
@@ -113,19 +113,19 @@ echo "✓ #if 0により新ヘッダーは無効化されています"
 **Windows (Visual Studio)**:
 ```bash
 # クリーンビルド
-MSBuild SDK_ProcAmp.sln /t:Clean
-MSBuild SDK_ProcAmp.sln /t:Build /p:Configuration=Debug
+MSBuild OST_WindyLines.sln /t:Clean
+MSBuild OST_WindyLines.sln /t:Build /p:Configuration=Debug
 
 # または
-devenv SDK_ProcAmp.sln /Clean Debug
-devenv SDK_ProcAmp.sln /Build Debug
+devenv OST_WindyLines.sln /Clean Debug
+devenv OST_WindyLines.sln /Build Debug
 ```
 
 **Mac (Xcode)**:
 ```bash
 # クリーンビルド
-xcodebuild clean -project SDK_ProcAmp.xcodeproj -configuration Debug
-xcodebuild build -project SDK_ProcAmp.xcodeproj -configuration Debug
+xcodebuild clean -project OST_WindyLines.xcodeproj -configuration Debug
+xcodebuild build -project OST_WindyLines.xcodeproj -configuration Debug
 ```
 
 **Make**:
@@ -156,17 +156,17 @@ make
 # （環境に応じてパスを調整）
 
 # Windows例:
-# copy Debug\SDK_ProcAmp.aex "C:\Program Files\Adobe\Adobe After Effects 2024\Support Files\Plug-ins\"
+# copy Debug\OST_WindyLines.aex "C:\Program Files\Adobe\Adobe After Effects 2024\Support Files\Plug-ins\"
 
 # Mac例:
-# cp -R build/Debug/SDK_ProcAmp.plugin "/Applications/Adobe After Effects 2024/Plug-ins/"
+# cp -R build/Debug/OST_WindyLines.plugin "/Applications/Adobe After Effects 2024/Plug-ins/"
 ```
 
 **After Effects での確認**:
 1. After Effectsを起動
 2. 新規コンポジションを作成
 3. 平面レイヤーを作成
-4. エフェクト → SDK_ProcAmp を適用
+4. エフェクト → OST_WindyLines を適用
 5. 色プリセット選択UIを開く
 6. 以下を確認:
    - [ ] 全33プリセット（または34プリセット）が表示される
@@ -190,13 +190,13 @@ make
 
 #### 手順
 ```bash
-# 既存プロジェクトを用意（SDK_ProcAmpを使用しているもの）
+# 既存プロジェクトを用意（OST_WindyLinesを使用しているもの）
 # 例: test_project.aep
 ```
 
 **After Effects での確認**:
 1. 既存の.aepファイルを開く
-2. SDK_ProcAmpが適用されているレイヤーを確認
+2. OST_WindyLinesが適用されているレイヤーを確認
 3. 以下を確認:
    - [ ] プロジェクトが正常に開ける
    - [ ] エラーメッセージがない
@@ -221,19 +221,19 @@ make
 ```bash
 cd /home/runner/work/Windy_Lines/Windy_Lines
 
-# 1. SDK_ProcAmp_ColorPresets.h を一時的にリネーム
-mv SDK_ProcAmp_ColorPresets.h SDK_ProcAmp_ColorPresets.h.tmp
+# 1. OST_WindyLines_ColorPresets.h を一時的にリネーム
+mv OST_WindyLines_ColorPresets.h OST_WindyLines_ColorPresets.h.tmp
 
 # 2. ビルド（成功するはず - #if 0で無効化されているため）
 make clean && make
 # または
-# MSBuild SDK_ProcAmp.sln /t:Clean,Build
+# MSBuild OST_WindyLines.sln /t:Clean,Build
 
 # 3. ビルドが成功することを確認
 echo $?  # 0 であるべき（エラーなし）
 
 # 4. ファイルを元に戻す
-mv SDK_ProcAmp_ColorPresets.h.tmp SDK_ProcAmp_ColorPresets.h
+mv OST_WindyLines_ColorPresets.h.tmp OST_WindyLines_ColorPresets.h
 ```
 
 #### 期待される結果
@@ -247,7 +247,7 @@ mv SDK_ProcAmp_ColorPresets.h.tmp SDK_ProcAmp_ColorPresets.h
 以下の全項目が✅になったら、ステップ1完了です。
 
 ### ファイル変更
-- [ ] SDK_ProcAmp.h にincludeが追加されている
+- [ ] OST_WindyLines.h にincludeが追加されている
 - [ ] `#if 0`で無効化されている
 - [ ] 既存の定義がすべて残っている
 - [ ] コメントが適切
@@ -291,16 +291,16 @@ echo ""
 
 echo "✓ テスト1: ファイル変更の確認"
 echo "include追加確認:"
-git diff SDK_ProcAmp.h | grep -c "SDK_ProcAmp_ColorPresets.h"
+git diff OST_WindyLines.h | grep -c "OST_WindyLines_ColorPresets.h"
 echo ""
 
 echo "#if 0 確認:"
-git diff SDK_ProcAmp.h | grep -c "#if 0"
+git diff OST_WindyLines.h | grep -c "#if 0"
 echo ""
 
 echo "既存定義の確認:"
-grep -c "struct PresetColor" SDK_ProcAmp.h
-grep -c "namespace ColorPresets" SDK_ProcAmp.h
+grep -c "struct PresetColor" OST_WindyLines.h
+grep -c "namespace ColorPresets" OST_WindyLines.h
 echo ""
 
 echo "✓ テスト2: プリプロセッサ動作"
@@ -309,8 +309,8 @@ echo ""
 
 echo "✓ テスト3: ビルドテスト"
 echo "  ※ 実際の環境でビルドコマンドを実行してください"
-echo "  Windows: MSBuild SDK_ProcAmp.sln /t:Clean,Build"
-echo "  Mac: xcodebuild clean build -project SDK_ProcAmp.xcodeproj"
+echo "  Windows: MSBuild OST_WindyLines.sln /t:Clean,Build"
+echo "  Mac: xcodebuild clean build -project OST_WindyLines.xcodeproj"
 echo "  Make: make clean && make"
 echo ""
 
@@ -324,14 +324,14 @@ echo ""
 
 echo "✓ テスト6: 無効化状態の確認"
 echo "新ヘッダーを一時的にリネームしてビルドテスト..."
-if [ -f SDK_ProcAmp_ColorPresets.h ]; then
-    mv SDK_ProcAmp_ColorPresets.h SDK_ProcAmp_ColorPresets.h.tmp
+if [ -f OST_WindyLines_ColorPresets.h ]; then
+    mv OST_WindyLines_ColorPresets.h OST_WindyLines_ColorPresets.h.tmp
     echo "  ヘッダーをリネームしました"
     echo "  ※ ビルドを実行して成功することを確認してください"
     echo "  ※ 確認後、以下のコマンドで元に戻してください:"
-    echo "     mv SDK_ProcAmp_ColorPresets.h.tmp SDK_ProcAmp_ColorPresets.h"
+    echo "     mv OST_WindyLines_ColorPresets.h.tmp OST_WindyLines_ColorPresets.h"
 else
-    echo "  ⚠️ SDK_ProcAmp_ColorPresets.h が見つかりません"
+    echo "  ⚠️ OST_WindyLines_ColorPresets.h が見つかりません"
 fi
 echo ""
 
@@ -367,19 +367,19 @@ echo "次: ステップ2（新システムの有効化）"
 
 **症状**: 
 ```
-fatal error: SDK_ProcAmp_ColorPresets.h: No such file or directory
+fatal error: OST_WindyLines_ColorPresets.h: No such file or directory
 ```
 
 **原因**: `#if 0`が正しく設定されていない
 
 **解決**:
 ```bash
-# SDK_ProcAmp.h の該当箇所を確認
-grep -B 1 -A 1 "SDK_ProcAmp_ColorPresets.h" SDK_ProcAmp.h
+# OST_WindyLines.h の該当箇所を確認
+grep -B 1 -A 1 "OST_WindyLines_ColorPresets.h" OST_WindyLines.h
 
 # 以下のようになっているべき:
 # #if 0
-# #include "SDK_ProcAmp_ColorPresets.h"
+# #include "OST_WindyLines_ColorPresets.h"
 # #endif
 
 # もし #if 0 がない場合は、手動で追加
@@ -397,10 +397,10 @@ error: redefinition of 'struct PresetColor'
 **解決**:
 ```bash
 # 既存の定義があるか確認
-grep -A 2 "struct PresetColor" SDK_ProcAmp.h
+grep -A 2 "struct PresetColor" OST_WindyLines.h
 
 # ない場合は、gitで元に戻す
-git checkout HEAD -- SDK_ProcAmp.h
+git checkout HEAD -- OST_WindyLines.h
 
 # 再度ステップ1を実装
 ```
@@ -414,11 +414,11 @@ git checkout HEAD -- SDK_ProcAmp.h
 **確認**:
 ```bash
 # #if 0 が正しく設定されているか確認
-grep -B 1 "#include \"SDK_ProcAmp_ColorPresets.h\"" SDK_ProcAmp.h
+grep -B 1 "#include \"OST_WindyLines_ColorPresets.h\"" OST_WindyLines.h
 # 直前に "#if 0" があるべき
 
 # 既存の定義が残っているか確認
-grep -c "const PresetColor kRainbow" SDK_ProcAmp.h
+grep -c "const PresetColor kRainbow" OST_WindyLines.h
 # 1 であるべき（既存定義）
 ```
 
@@ -428,7 +428,7 @@ grep -c "const PresetColor kRainbow" SDK_ProcAmp.h
 
 以下をすべて確認できたら、ステップ1は完了です：
 
-1. ✅ SDK_ProcAmp.h にincludeが追加されている（`#if 0`で無効化）
+1. ✅ OST_WindyLines.h にincludeが追加されている（`#if 0`で無効化）
 2. ✅ 既存の定義がすべて残っている
 3. ✅ ビルドが成功する
 4. ✅ After Effectsで正常に動作する

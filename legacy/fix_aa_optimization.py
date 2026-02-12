@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Fix AA=0 optimization for SDK_ProcAmp.cl"""
+"""Fix AA=0 optimization for OST_WindyLines.cl"""
 
 import os
 
 # Get script directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
-cl_file = os.path.join(script_dir, 'SDK_ProcAmp.cl')
+cl_file = os.path.join(script_dir, 'OST_WindyLines.cl')
 
 # Read file
 with open(cl_file, 'r', encoding='utf-8') as f:

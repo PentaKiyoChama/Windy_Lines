@@ -39,7 +39,7 @@ if (aa > 0.0f)
 
 ### 3. バウンディングボックスへの影響 (Bounding Box Impact)
 
-`SDK_ProcAmp_GPU.cpp` の2015行目：
+`OST_WindyLines_GPU.cpp` の2015行目：
 ```cpp
 const float radius = fabsf(segCenterX) + halfLen + halfThick + aa;
 ```
@@ -145,11 +145,11 @@ This function has the following properties:
 
 ### 関連ファイル (Related Files)
 
-- `SDK_ProcAmp.cu` (CUDA implementation) - lines 504-507
-- `SDK_ProcAmp.cl` (OpenCL/Metal) - lines 527-528
-- `SDK_ProcAmp_CPU.cpp` (CPU implementation) - lines 2600-2602
-- `SDK_ProcAmp_GPU.cpp` (Host code) - line 2015
-- `SDK_ProcAmp.h` - lines 329-333 (parameter definition)
+- `OST_WindyLines.cu` (CUDA implementation) - lines 504-507
+- `OST_WindyLines.cl` (OpenCL/Metal) - lines 527-528
+- `OST_WindyLines_CPU.cpp` (CPU implementation) - lines 2600-2602
+- `OST_WindyLines_GPU.cpp` (Host code) - line 2015
+- `OST_WindyLines.h` - lines 329-333 (parameter definition)
 
 ## 参考文献 (References)
 

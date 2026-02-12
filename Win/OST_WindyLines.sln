@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{1ED234F7-B7CB-45C0-97E7-29A9E197A391}") = "SDK_ProcAmp", "SDK_ProcAmp.vcxproj", "{77B1B4A1-2ACE-4D5C-A5AF-DCB5106E93BE}"
+Project("{1ED234F7-B7CB-45C0-97E7-29A9E197A391}") = "OST_WindyLines", "OST_WindyLines.vcxproj", "{77B1B4A1-2ACE-4D5C-A5AF-DCB5106E93BE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

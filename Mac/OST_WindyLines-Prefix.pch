@@ -1,0 +1,7 @@
+//
+// Prefix header for all source files of the 'OST_WindyLines' target in the 'OST_WindyLines' project
+//
+
+#ifdef __OBJC__
+    #import <Cocoa/Cocoa.h>
+#endif

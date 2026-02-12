@@ -1,7 +1,7 @@
 ﻿#pragma once
 //utf-8 bom no 2
 
-#define SDK_PROCAMP_STRINGS_H
+#define OST_WINDYLINES_STRINGS_H
 
 #define PLUGIN_NAME "流れる線"
 

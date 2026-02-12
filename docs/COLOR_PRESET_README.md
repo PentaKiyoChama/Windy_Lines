@@ -88,7 +88,7 @@
 **使い方**:
 ```bash
 python color_preset_converter_POC.py color_presets_SAMPLE.tsv
-# → SDK_ProcAmp_ColorPresets.h が生成される
+# → OST_WindyLines_ColorPresets.h が生成される
 ```
 
 **機能**:
@@ -102,7 +102,7 @@ python color_preset_converter_POC.py color_presets_SAMPLE.tsv
 ---
 
 #### 🔧 extract_color_presets_POC.py (未テスト)
-**説明**: 既存のSDK_ProcAmp.hから色プリセットを抽出するスクリプト  
+**説明**: 既存のOST_WindyLines.hから色プリセットを抽出するスクリプト  
 **目的**: 手動入力の代わりに自動抽出（開発補助）
 
 ---
@@ -127,7 +127,7 @@ id	name	name_en	color1	color2	...	color8
 
 ---
 
-#### 🔷 SDK_ProcAmp_ColorPresets.h (1.5KB)
+#### 🔷 OST_WindyLines_ColorPresets.h (1.5KB)
 **説明**: 自動生成されたヘッダーファイルのサンプル  
 **内容**:
 - PresetColor構造体定義
@@ -154,7 +154,7 @@ id	name	name_en	color1	color2	...	color8
 │   ├── extract_color_presets_POC.py             🔧 開発補助
 │   ├── color_presets_SAMPLE.tsv                 📊 サンプルTSV
 │   ├── color_presets.tsv                        📄 テンプレート
-│   └── SDK_ProcAmp_ColorPresets.h               🔷 生成サンプル
+│   └── OST_WindyLines_ColorPresets.h               🔷 生成サンプル
 │
 └── 📖 このファイル
     └── COLOR_PRESET_README.md                   📖 索引
@@ -175,7 +175,7 @@ id	name	name_en	color1	color2	...	color8
 python color_preset_converter_POC.py color_presets_SAMPLE.tsv
 
 # 生成されたヘッダーを確認
-cat SDK_ProcAmp_ColorPresets.h
+cat OST_WindyLines_ColorPresets.h
 ```
 
 ### ステップ3: 実装ガイドに従う

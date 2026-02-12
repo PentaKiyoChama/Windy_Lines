@@ -24,7 +24,7 @@
 
 **作業内容**:
 ```bash
-# 1. color_presets.tsv を作成（SDK_ProcAmp.h から全33プリセットを抽出）
+# 1. color_presets.tsv を作成（OST_WindyLines.h から全33プリセットを抽出）
 # 2. color_preset_converter.py を作成（POCをベースに本実装）
 ```
 
@@ -34,7 +34,7 @@
 python color_preset_converter.py
 
 # 生成されたヘッダーを確認
-cat SDK_ProcAmp_ColorPresets.h
+cat OST_WindyLines_ColorPresets.h
 
 # 内容が正しいか目視確認
 # - 33個のプリセットすべてがあるか
@@ -47,9 +47,9 @@ cat SDK_ProcAmp_ColorPresets.h
 **ロールバック**: 不要（既存コードに触れていないため）
 
 **次のステップへ進む条件**:
-- ✅ SDK_ProcAmp_ColorPresets.h が正常に生成される
+- ✅ OST_WindyLines_ColorPresets.h が正常に生成される
 - ✅ 33プリセット × 8色 = 264色すべてが含まれている
-- ✅ 色の値が既存のSDK_ProcAmp.hと完全に一致
+- ✅ 色の値が既存のOST_WindyLines.hと完全に一致
 
 ---
 
@@ -58,11 +58,11 @@ cat SDK_ProcAmp_ColorPresets.h
 
 **作業内容**:
 ```cpp
-// SDK_ProcAmp.h の編集（行537の直前に追加）
+// OST_WindyLines.h の編集（行537の直前に追加）
 
 // ========== 新しい色プリセットシステム（テスト中）==========
 #if 0  // まだ有効化しない（テストのみ）
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 #endif
 // ========================================================
 
@@ -96,7 +96,7 @@ make clean && make
 **ロールバック方法**:
 ```bash
 # 追加した #if 0 ... #endif ブロックを削除
-git checkout HEAD -- SDK_ProcAmp.h
+git checkout HEAD -- OST_WindyLines.h
 ```
 
 **次のステップへ進む条件**:
@@ -112,10 +112,10 @@ git checkout HEAD -- SDK_ProcAmp.h
 
 **作業内容**:
 ```cpp
-// SDK_ProcAmp.h
+// OST_WindyLines.h
 
 // 新しい色プリセットシステム
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 
 // ========== 既存の定義（一時的に残す）==========
 // 削除予定だが、まだ残しておく（念のため）
@@ -134,10 +134,10 @@ namespace ColorPresets {
 **重要**: この段階では`PresetColor`構造体の定義が重複するため、以下のように修正：
 
 ```cpp
-// SDK_ProcAmp.h
+// OST_WindyLines.h
 
 // 新しい色プリセットシステム
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 // ↑ この中に struct PresetColor と namespace ColorPresets が定義されている
 
 // 既存の定義は完全にコメントアウト（または削除）
@@ -171,10 +171,10 @@ make clean && make
 **ロールバック方法**:
 ```bash
 # オプションA: includeを無効化して既存定義を復活
-git checkout HEAD~1 -- SDK_ProcAmp.h
+git checkout HEAD~1 -- OST_WindyLines.h
 
 # オプションB: 手動で修正
-# #include "SDK_ProcAmp_ColorPresets.h" をコメントアウト
+# #include "OST_WindyLines_ColorPresets.h" をコメントアウト
 # 既存の定義のコメントを外す
 ```
 
@@ -192,10 +192,10 @@ git checkout HEAD~1 -- SDK_ProcAmp.h
 
 **作業内容**:
 ```cpp
-// SDK_ProcAmp.h
+// OST_WindyLines.h
 
 // 色プリセット定義（自動生成）
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 
 // 既存の211行を完全に削除
 // （行537-748を削除）
@@ -222,7 +222,7 @@ make clean && make
 **ロールバック方法**:
 ```bash
 # ステップ2の状態に戻す
-git checkout HEAD~1 -- SDK_ProcAmp.h
+git checkout HEAD~1 -- OST_WindyLines.h
 
 # または、最悪の場合は元のコミットに完全に戻す
 git revert <commit_hash>
@@ -260,7 +260,7 @@ make clean && make
 | ステップ | ロールバック難易度 | ロールバック方法 |
 |---------|------------------|-----------------|
 | ステップ0 | ⭐（簡単） | ファイル削除のみ |
-| ステップ1 | ⭐（簡単） | `git checkout HEAD -- SDK_ProcAmp.h` |
+| ステップ1 | ⭐（簡単） | `git checkout HEAD -- OST_WindyLines.h` |
 | ステップ2 | ⭐⭐（普通） | includeをコメントアウト |
 | ステップ3 | ⭐⭐⭐（やや複雑） | `git revert` または前ステップに戻す |
 | ステップ4 | ⭐⭐⭐⭐（複雑） | 全体を前バージョンに戻す |
@@ -346,12 +346,12 @@ git checkout -b color-preset-step4  # 本番運用
 ### ステップ0完了の確認
 - [ ] color_presets.tsv 作成完了
 - [ ] color_preset_converter.py 作成完了
-- [ ] SDK_ProcAmp_ColorPresets.h 生成成功
+- [ ] OST_WindyLines_ColorPresets.h 生成成功
 - [ ] 33プリセット × 8色 = 264色を確認
-- [ ] 既存のSDK_ProcAmp.hと色の値が一致
+- [ ] 既存のOST_WindyLines.hと色の値が一致
 
 ### ステップ1完了の確認
-- [ ] SDK_ProcAmp.h に include 追加（無効化状態）
+- [ ] OST_WindyLines.h に include 追加（無効化状態）
 - [ ] ビルド成功
 - [ ] After Effects起動成功
 - [ ] 全プリセット表示確認
@@ -382,7 +382,7 @@ git checkout -b color-preset-step4  # 本番運用
 ### ビルドエラーが出る場合
 ```bash
 # 前のステップに戻す
-git checkout HEAD~1 -- SDK_ProcAmp.h
+git checkout HEAD~1 -- OST_WindyLines.h
 
 # エラーメッセージを確認
 make clean && make 2>&1 | tee build_error.log
@@ -398,14 +398,14 @@ cat color_presets.tsv | grep "レインボー"
 # ヘッダーを再生成
 python color_preset_converter.py
 
-# SDK_ProcAmp.h との差分を確認
-diff SDK_ProcAmp.h.backup SDK_ProcAmp_ColorPresets.h
+# OST_WindyLines.h との差分を確認
+diff OST_WindyLines.h.backup OST_WindyLines_ColorPresets.h
 ```
 
 ### 既存プロジェクトが開けない場合
 ```bash
 # 即座にロールバック
-git checkout HEAD~1 -- SDK_ProcAmp.h
+git checkout HEAD~1 -- OST_WindyLines.h
 make clean && make
 
 # 問題を調査してから再試行

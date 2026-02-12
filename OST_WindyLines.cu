@@ -1,8 +1,8 @@
-#ifndef SDK_PROCAMP_CU
-#define SDK_PROCAMP_CU
+#ifndef OST_WINDYLINES_CU
+#define OST_WINDYLINES_CU
 
-// DEBUG RENDER MARKERS for CUDA (must match SDK_ProcAmp.h)
-#define ENABLE_DEBUG_RENDER_MARKERS 1
+// DEBUG RENDER MARKERS for CUDA (must match OST_WindyLines.h)
+#define ENABLE_DEBUG_RENDER_MARKERS 0
 
 #if __CUDACC_VER_MAJOR__ >= 9
 	#include <cuda_fp16.h>

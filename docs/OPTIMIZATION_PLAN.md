@@ -1,7 +1,7 @@
-# SDK_ProcAmp 包括的リファクタリング計画書
+# OST_WindyLines 包括的リファクタリング計画書
 
 ## 概要
-SDK_ProcAmp Wind Lines Effect v63 の包括的最適化  
+OST_WindyLines Wind Lines Effect v63 の包括的最適化  
 **規模:** 約7,000行（CPU:2,732行、GPU:2,473行、CUDA:871行、OpenCL:734行、Header:688行）  
 **最終更新:** 2026年2月5日  
 **目標:** CPU軽量化 → 共通化 → 最適化 ✅ **Phase 1-3 完了！**
@@ -12,7 +12,7 @@ SDK_ProcAmp Wind Lines Effect v63 の包括的最適化
 
 | フェーズ | 目的 | 対象ファイル | 期間目安 | 進捗 |
 |---------|------|-------------|---------|------|
-| **Phase 1** | CPU軽量化（即効性） | SDK_ProcAmp_CPU.cpp | 1週間 | ✅ **完了** |
+| **Phase 1** | CPU軽量化（即効性） | OST_WindyLines_CPU.cpp | 1週間 | ✅ **完了** |
 | **Phase 2** | 共通コード抽出 | 全ファイル | 1-2週間 | ✅ **完了** |
 | **Phase 3** | パフォーマンス最適化 | CPU.cpp | 2週間 | ✅ **完了** |
 | **Phase 4** | GPU最適化 | .cu, .cl, .metal | - | 🔄 保留 |
@@ -121,7 +121,7 @@ struct alignas(64) LineDerived {
 
 ## Phase 4: GPU最適化 🔄 保留
 
-GPU実装（SDK_ProcAmp.cl、.cu、.metal）の最適化は以下の理由で保留：
+GPU実装（OST_WindyLines.cl、.cu、.metal）の最適化は以下の理由で保留：
 
 ### 保留理由
 1. **複雑な構造**: GPU実装は約730行で、モーションブラー有無・影有無などの条件分岐が多数
@@ -167,7 +167,7 @@ GPU実装（SDK_ProcAmp.cl、.cu、.metal）の最適化は以下の理由で保
 - **SDK**: macOS SDK 26.2
 - **アーキテクチャ**: arm64
 - **ビルド状態**: ✅ 成功
-- **出力**: `/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/SDK_ProcAmp.plugin`
+- **出力**: `/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/OST_WindyLines.plugin`
 
 ### Windows - 未テスト
 - **IDE**: Visual Studio 2022
@@ -181,11 +181,11 @@ GPU実装（SDK_ProcAmp.cl、.cu、.metal）の最適化は以下の理由で保
 
 | ファイル | 行数 | 最適化状態 | 備考 |
 |---------|------|-----------|------|
-| SDK_ProcAmp_CPU.cpp | 2,732 | ✅ 完了 | Phase 1-3すべて適用済み |
-| SDK_ProcAmp_GPU.cpp | 2,473 | - | ホスト側制御、変更なし |
-| SDK_ProcAmp.cu | 871 | 🔄 保留 | CUDA実装（Windows） |
-| SDK_ProcAmp.cl | 734 | 🔄 保留 | OpenCL/Metal実装（Mac） |
-| SDK_ProcAmp.metal | 1 | 🔄 保留 | .clをインクルード |
+| OST_WindyLines_CPU.cpp | 2,732 | ✅ 完了 | Phase 1-3すべて適用済み |
+| OST_WindyLines_GPU.cpp | 2,473 | - | ホスト側制御、変更なし |
+| OST_WindyLines.cu | 871 | 🔄 保留 | CUDA実装（Windows） |
+| OST_WindyLines.cl | 734 | 🔄 保留 | OpenCL/Metal実装（Mac） |
+| OST_WindyLines.metal | 1 | 🔄 保留 | .clをインクルード |
 
 ---
 
@@ -233,16 +233,16 @@ GPU実装（SDK_ProcAmp.cl、.cu、.metal）の最適化は以下の理由で保
 **ファイル編集例:**
 ```powershell
 # 正しい（cp932で保存）
-Get-Content SDK_ProcAmp_CPU.cpp -Raw -Encoding Default | ... | Set-Content SDK_ProcAmp_CPU.cpp -Encoding Default -NoNewline
+Get-Content OST_WindyLines_CPU.cpp -Raw -Encoding Default | ... | Set-Content OST_WindyLines_CPU.cpp -Encoding Default -NoNewline
 
 # 間違い（UTF-8で保存してしまう）
-Get-Content SDK_ProcAmp_CPU.cpp | ... | Set-Content SDK_ProcAmp_CPU.cpp
+Get-Content OST_WindyLines_CPU.cpp | ... | Set-Content OST_WindyLines_CPU.cpp
 ```
 
 ### 🔴 GPU強制無効化設定（現在テスト中）
 現在、CPUテストのため**GPUを強制的に失敗**させています：
 
-- **ファイル:** `SDK_ProcAmp_GPU.cpp`
+- **ファイル:** `OST_WindyLines_GPU.cpp`
 - **行:** 807
 - **現在のコード:**
 ```cpp
@@ -255,14 +255,14 @@ return suiteError_Fail;  // GPU強制失敗（CPU最適化テスト用）
 **プロジェクト構造:**
 ```
 Windy_Lines/
-├── SDK_ProcAmp_CPU.cpp    (2,428行) - CPU実装（現在最適化中）
-├── SDK_ProcAmp_GPU.cpp    (2,473行) - GPU統合レイヤー
-├── SDK_ProcAmp.cu         (871行)   - CUDA実装
-├── SDK_ProcAmp.cl         (734行)   - OpenCL実装
-├── SDK_ProcAmp.h          (688行)   - 共通ヘッダー
+├── OST_WindyLines_CPU.cpp    (2,428行) - CPU実装（現在最適化中）
+├── OST_WindyLines_GPU.cpp    (2,473行) - GPU統合レイヤー
+├── OST_WindyLines.cu         (871行)   - CUDA実装
+├── OST_WindyLines.cl         (734行)   - OpenCL実装
+├── OST_WindyLines.h          (688行)   - 共通ヘッダー
 ├── OPTIMIZATION_PLAN.md   (本ファイル)
 └── Win/
-    └── SDK_ProcAmp.vcxproj
+    └── OST_WindyLines.vcxproj
 ```
 
 **ビルド設定:**
@@ -274,7 +274,7 @@ Windy_Lines/
 
 **プラグイン出力先:**
 ```
-Debug:   G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\SDK_ProcAmp.aex
+Debug:   G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\OST_WindyLines.aex
 Release: （未設定）
 ```
 
@@ -293,7 +293,7 @@ cd "c:\Users\Owner\Desktop\Premiere_Pro_24.0_C_Win_SDK\Premiere_Pro_24.0_C++_Win
 
 ### 2. ビルド実行
 ```powershell
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" SDK_ProcAmp.vcxproj /p:Configuration=Debug /p:Platform=x64 /t:Build
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" OST_WindyLines.vcxproj /p:Configuration=Debug /p:Platform=x64 /t:Build
 ```
 
 ### 3. ビルド結果の確認
@@ -306,7 +306,7 @@ cd "c:\Users\Owner\Desktop\Premiere_Pro_24.0_C_Win_SDK\Premiere_Pro_24.0_C++_Win
 
 ❌ **失敗の場合（LNK1104）:**
 ```
-LINK : fatal error LNK1104: ファイル 'G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\SDK_ProcAmp.aex' を開くことができません。
+LINK : fatal error LNK1104: ファイル 'G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\OST_WindyLines.aex' を開くことができません。
 ```
 → **原因:** Premiere Proがプラグインをロック中  
 → **解決:** Premiere Proを完全終了してリビルド
@@ -354,7 +354,7 @@ Motion Blur Samples: 8
 
 **目的:** ほぼ透明（coverage < 0.001f）なピクセルのブレンド処理をスキップして5%高速化
 
-**実装ファイル:** `SDK_ProcAmp_CPU.cpp`
+**実装ファイル:** `OST_WindyLines_CPU.cpp`
 
 **実装箇所:** 行1900-2200付近（ブレンド処理の直前、複数箇所）
 
@@ -379,7 +379,7 @@ if (coverage < 0.001f) {
 3. **検索方法:**
 ```powershell
 # coverageが計算される箇所を検索
-grep_search -query "coverage =" -isRegexp false -includePattern "SDK_ProcAmp_CPU.cpp"
+grep_search -query "coverage =" -isRegexp false -includePattern "OST_WindyLines_CPU.cpp"
 ```
 
 4. **注意点:**
@@ -448,7 +448,7 @@ for (int s = 0; s < effectiveSamples; s++) {
 - [ ] タスク1-5完了（モーションブラー最適化）
 - [ ] Premiere Proで動作確認
 - [ ] パフォーマンスベンチマーク実施
-- [ ] GPU強制失敗を解除（SDK_ProcAmp_GPU.cpp:807）
+- [ ] GPU強制失敗を解除（OST_WindyLines_GPU.cpp:807）
 - [ ] GPUモードで動作確認
 - [ ] Phase 2計画の詳細化
 
@@ -477,7 +477,7 @@ for (int s = 0; s < effectiveSamples; s++) {
 
 #### 1. ビルドエラー: LNK1104
 ```
-LINK : fatal error LNK1104: ファイル 'G:\...\SDK_ProcAmp.aex' を開くことができません。
+LINK : fatal error LNK1104: ファイル 'G:\...\OST_WindyLines.aex' を開くことができません。
 ```
 **原因:** Premiere Proがプラグインをロック中  
 **解決:**
@@ -486,7 +486,7 @@ LINK : fatal error LNK1104: ファイル 'G:\...\SDK_ProcAmp.aex' を開くこ�
 Get-Process | Where-Object {$_.Name -like "*Premiere*"} | Stop-Process -Force
 
 # リビルド
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" SDK_ProcAmp.vcxproj /p:Configuration=Debug /p:Platform=x64 /t:Build
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" OST_WindyLines.vcxproj /p:Configuration=Debug /p:Platform=x64 /t:Build
 ```
 
 #### 2. 文字化け
@@ -494,8 +494,8 @@ Get-Process | Where-Object {$_.Name -like "*Premiere*"} | Stop-Process -Force
 **解決:**
 ```powershell
 # cp932 (Shift-JIS) で保存し直す
-$content = Get-Content SDK_ProcAmp_CPU.cpp -Raw -Encoding UTF8
-$content | Set-Content SDK_ProcAmp_CPU.cpp -Encoding Default -NoNewline
+$content = Get-Content OST_WindyLines_CPU.cpp -Raw -Encoding UTF8
+$content | Set-Content OST_WindyLines_CPU.cpp -Encoding Default -NoNewline
 ```
 
 #### 3. プラグインが表示されない
@@ -503,7 +503,7 @@ $content | Set-Content SDK_ProcAmp_CPU.cpp -Encoding Default -NoNewline
 **確認:**
 ```powershell
 # プラグインファイルの存在確認
-Test-Path "G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\SDK_ProcAmp.aex"
+Test-Path "G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\OST_WindyLines.aex"
 ```
 
 #### 4. コンパイルエラー: 変数名の重複
@@ -511,7 +511,7 @@ Test-Path "G:\アドビ関連\Adobe Premiere Pro 2026\PlugIns\Common\MyPlugins\S
 **解決:** 別の変数名を使用（例: `skipDx`/`skipDy`）
 
 #### 5. GPU版が動かない
-**原因:** SDK_ProcAmp_GPU.cpp:807 で強制失敗させている  
+**原因:** OST_WindyLines_GPU.cpp:807 で強制失敗させている  
 **解決:**
 ```cpp
 // 変更前
@@ -556,8 +556,8 @@ Premiere Pro: 2026
 ## 📚 関連ドキュメント
 
 - `GPU_IMPLEMENTATION_MEMO.md` - GPU実装メモ
-- `SDK_ProcAmp_DevGuide.md` - 開発ガイド
-- `SDK_ProcAmp_Notes.json` - 実装ノート（JSON形式）
+- `OST_WindyLines_DevGuide.md` - 開発ガイド
+- `OST_WindyLines_Notes.json` - 実装ノート（JSON形式）
 - `readme.txt` - プロジェクト概要
 
 ---
@@ -612,7 +612,7 @@ if (fabsf(skipPx) > ld.halfLen + margin && fabsf(skipPy) > margin)
 ApplyEasing関数内のpowf呼び出しを乗算に展開してイージング計算を高速化
 
 ### 対象ファイル
-`SDK_ProcAmp_CPU.cpp`
+`OST_WindyLines_CPU.cpp`
 
 ### 変更箇所: 2箇所
 
@@ -736,7 +736,7 @@ SDF計算を共通inline関数化してコンパイラ最適化に委ねる
 ## GPU関連
 
 ### GPU再有効化手順
-**ファイル:** `SDK_ProcAmp_GPU.cpp`  
+**ファイル:** `OST_WindyLines_GPU.cpp`  
 **行:** 807  
 
 ```cpp
@@ -753,7 +753,7 @@ return suiteError_Fail;
 
 ```powershell
 cd "c:\Users\Owner\Desktop\Premiere_Pro_24.0_C_Win_SDK\Premiere_Pro_24.0_C++_Win_SDK\Premiere_Pro_24.0_SDK\Examples\Projects\GPUVideoFilter\Windy_Lines\Win"
-& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" SDK_ProcAmp.vcxproj /p:Configuration=Debug /p:Platform=x64 /t:Build
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" OST_WindyLines.vcxproj /p:Configuration=Debug /p:Platform=x64 /t:Build
 ```
 
 ---

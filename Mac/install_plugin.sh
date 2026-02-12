@@ -1,9 +1,9 @@
 #!/bin/bash
-# Auto-install script for SDK_ProcAmp plugin
+# Auto-install script for OST_WindyLines plugin
 # This script copies the built plugin to Adobe MediaCore folder with admin privileges
 
 INSTALL_DIR="/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore"
-SOURCE_PLUGIN="$PWD/build/Debug/SDK_ProcAmp.plugin"
+SOURCE_PLUGIN="$PWD/build/Debug/OST_WindyLines.plugin"
 
 echo "Installing plugin from: ${SOURCE_PLUGIN}"
 echo "To: ${INSTALL_DIR}"
@@ -17,8 +17,8 @@ fi
 
 # Use sudo to copy with admin privileges
 echo "Installing plugin (requires administrator password)..."
-sudo rm -rf "${INSTALL_DIR}/SDK_ProcAmp.plugin" && \
-sudo ditto "${SOURCE_PLUGIN}" "${INSTALL_DIR}/SDK_ProcAmp.plugin"
+sudo rm -rf "${INSTALL_DIR}/OST_WindyLines.plugin" && \
+sudo ditto "${SOURCE_PLUGIN}" "${INSTALL_DIR}/OST_WindyLines.plugin"
 
 if [ $? -eq 0 ]; then
     echo "✅ Plugin installed successfully to ${INSTALL_DIR}"

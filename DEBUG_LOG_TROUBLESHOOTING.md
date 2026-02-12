@@ -8,8 +8,8 @@ Mac環境でデバッグログが出力されない問題の調査と解決方�
 ## 📍 現在の状態
 
 ### 実装済みの内容
-- SDK_ProcAmp.h にクロスプラットフォーム対応の WriteLog 関数を実装
-- SDK_ProcAmp_CPU.cpp に色プリセット選択時のデバッグログを追加
+- OST_WindyLines.h にクロスプラットフォーム対応の WriteLog 関数を実装
+- OST_WindyLines_CPU.cpp に色プリセット選択時のデバッグログを追加
 - Windows/Mac 両環境で動作するはずのコード
 
 ### 問題
@@ -26,7 +26,7 @@ Mac環境でログファイルが作成されない
 **確認方法**:
 ```bash
 # ビルド時に _DEBUG を明示的に定義
-cd SDK_ProcAmp
+cd OST_WindyLines
 make clean
 make CFLAGS="-D_DEBUG" CXXFLAGS="-D_DEBUG"
 
@@ -37,7 +37,7 @@ xcodebuild -configuration Debug
 **検証**:
 ```bash
 # シンボルテーブルを確認
-nm -g SDK_ProcAmp.plugin/Contents/MacOS/SDK_ProcAmp | grep -i debug
+nm -g OST_WindyLines.plugin/Contents/MacOS/OST_WindyLines | grep -i debug
 ```
 
 ---
@@ -78,15 +78,15 @@ echo $HOME
 
 ### 4. 簡易テストコードの追加
 
-SDK_ProcAmp_CPU.cpp の `Render` 関数の最初に以下のテストコードを追加：
+OST_WindyLines_CPU.cpp の `Render` 関数の最初に以下のテストコードを追加：
 
 ```cpp
 // ===== デバッグログテスト開始 =====
 // _DEBUG マクロ不要の常時ログ出力テスト
 {
     const char* testPaths[] = {
-        "/tmp/SDK_ProcAmp_Test.txt",
-        "/Users/Shared/SDK_ProcAmp_Test.txt"  // より権限の緩い場所
+        "/tmp/OST_WindyLines_Test.txt",
+        "/Users/Shared/OST_WindyLines_Test.txt"  // より権限の緩い場所
     };
     
     for (int i = 0; i < 2; ++i) {
@@ -106,15 +106,15 @@ SDK_ProcAmp_CPU.cpp の `Render` 関数の最初に以下のテストコード�
 **確認**:
 ```bash
 # プラグインを実行後、ログファイルを確認
-cat /tmp/SDK_ProcAmp_Test.txt
-cat /Users/Shared/SDK_ProcAmp_Test.txt
+cat /tmp/OST_WindyLines_Test.txt
+cat /Users/Shared/OST_WindyLines_Test.txt
 ```
 
 ---
 
 ### 5. WriteLog 関数の詳細確認
 
-**現在の実装** (SDK_ProcAmp.h):
+**現在の実装** (OST_WindyLines.h):
 ```cpp
 static void WriteLog(const char* format, ...)
 {
@@ -122,14 +122,14 @@ static void WriteLog(const char* format, ...)
     
     #ifdef _WIN32
         const char* paths[] = {
-            "C:\\Temp\\SDK_ProcAmp_Log.txt",
-            "C:\\Users\\Owner\\Desktop\\SDK_ProcAmp_Log.txt"
+            "C:\\Temp\\OST_WindyLines_Log.txt",
+            "C:\\Users\\Owner\\Desktop\\OST_WindyLines_Log.txt"
         };
     #else
         // Mac/Unix paths
         const char* pathTemplates[] = {
-            "/tmp/SDK_ProcAmp_Log.txt",
-            "~/Desktop/SDK_ProcAmp_Log.txt"
+            "/tmp/OST_WindyLines_Log.txt",
+            "~/Desktop/OST_WindyLines_Log.txt"
         };
         char expandedPath[512] = "";
         const char* paths[2];
@@ -194,10 +194,10 @@ static void WriteLog(const char* format, ...)
 #else
     // Mac/Unix paths - より多くの選択肢
     const char* pathTemplates[] = {
-        "/tmp/SDK_ProcAmp_Log.txt",                    // 優先度1
-        "/Users/Shared/SDK_ProcAmp_Log.txt",           // 優先度2（共有フォルダ）
-        "~/Desktop/SDK_ProcAmp_Log.txt",               // 優先度3
-        "/var/tmp/SDK_ProcAmp_Log.txt"                 // 優先度4
+        "/tmp/OST_WindyLines_Log.txt",                    // 優先度1
+        "/Users/Shared/OST_WindyLines_Log.txt",           // 優先度2（共有フォルダ）
+        "~/Desktop/OST_WindyLines_Log.txt",               // 優先度3
+        "/var/tmp/OST_WindyLines_Log.txt"                 // 優先度4
     };
     
     char expandedPath[512] = "";
@@ -227,16 +227,16 @@ static void WriteLog(const char* format, ...)
 
 ```bash
 # すべての可能性のある場所を確認
-ls -la /tmp/SDK_ProcAmp_*.txt
-ls -la ~/Desktop/SDK_ProcAmp_*.txt
-ls -la /Users/Shared/SDK_ProcAmp_*.txt
-ls -la /var/tmp/SDK_ProcAmp_*.txt
+ls -la /tmp/OST_WindyLines_*.txt
+ls -la ~/Desktop/OST_WindyLines_*.txt
+ls -la /Users/Shared/OST_WindyLines_*.txt
+ls -la /var/tmp/OST_WindyLines_*.txt
 
 # リアルタイム監視
-tail -f /tmp/SDK_ProcAmp_Log.txt
+tail -f /tmp/OST_WindyLines_Log.txt
 
 # 最近作成されたファイルを検索
-find /tmp ~/Desktop /Users/Shared /var/tmp -name "*SDK_ProcAmp*" -type f -mmin -10 2>/dev/null
+find /tmp ~/Desktop /Users/Shared /var/tmp -name "*OST_WindyLines*" -type f -mmin -10 2>/dev/null
 ```
 
 ---
@@ -318,8 +318,8 @@ log stream --predicate 'process == "After Effects"' --level debug
 ## 📚 参考情報
 
 ### 関連ファイル
-- `SDK_ProcAmp.h` (WriteLog 関数の実装)
-- `SDK_ProcAmp_CPU.cpp` (DebugLog の呼び出し箇所)
+- `OST_WindyLines.h` (WriteLog 関数の実装)
+- `OST_WindyLines_CPU.cpp` (DebugLog の呼び出し箇所)
 
 ### 変更履歴
 - コミット `40077d1`: デバッグログ追加（Windows専用）
@@ -340,9 +340,9 @@ log stream --predicate 'process == "After Effects"' --level debug
 - [ ] プラグインファイルのタイムスタンプが最新であることを確認
 - [ ] After Effects のプラグインフォルダに正しくコピー
 - [ ] After Effects を完全再起動
-- [ ] `/tmp/SDK_ProcAmp_Log.txt` の存在確認
-- [ ] `~/Desktop/SDK_ProcAmp_Log.txt` の存在確認
-- [ ] テストコードで `/tmp/SDK_ProcAmp_Test.txt` の作成確認
+- [ ] `/tmp/OST_WindyLines_Log.txt` の存在確認
+- [ ] `~/Desktop/OST_WindyLines_Log.txt` の存在確認
+- [ ] テストコードで `/tmp/OST_WindyLines_Test.txt` の作成確認
 - [ ] Console.app でログ確認
 - [ ] システム環境設定 > セキュリティ > フルディスクアクセス確認
 

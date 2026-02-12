@@ -29,9 +29,9 @@
 3. ✅ PR #7 changes verified
    - Files modified:
      - LINKAGE_UI_IMPLEMENTATION_MEMO.md (new file, +267 lines)
-     - SDK_ProcAmp.h
-     - SDK_ProcAmp_CPU.cpp  
-     - SDK_ProcAmp_GPU.cpp
+     - OST_WindyLines.h
+     - OST_WindyLines_CPU.cpp  
+     - OST_WindyLines_GPU.cpp
 
 ## Conclusion
 

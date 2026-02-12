@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Debug Marker Sync Tool
-Synchronizes ENABLE_DEBUG_RENDER_MARKERS value from SDK_ProcAmp.h to all GPU files.
+Synchronizes ENABLE_DEBUG_RENDER_MARKERS value from OST_WindyLines.h to all GPU files.
 Usage: python sync_debug_markers.py
 """
 
@@ -12,7 +12,7 @@ def get_script_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 def extract_debug_marker_value(h_file_path):
-    """Extract ENABLE_DEBUG_RENDER_MARKERS value from SDK_ProcAmp.h"""
+    """Extract ENABLE_DEBUG_RENDER_MARKERS value from OST_WindyLines.h"""
     with open(h_file_path, 'r', encoding='utf-8') as f:
         content = f.read()
     
@@ -21,7 +21,7 @@ def extract_debug_marker_value(h_file_path):
     if match:
         return int(match.group(1))
     else:
-        raise ValueError("ENABLE_DEBUG_RENDER_MARKERS not found in SDK_ProcAmp.h")
+        raise ValueError("ENABLE_DEBUG_RENDER_MARKERS not found in OST_WindyLines.h")
 
 def update_gpu_file(file_path, value):
     """Update ENABLE_DEBUG_RENDER_MARKERS value in a GPU file"""
@@ -43,18 +43,18 @@ def main():
     script_dir = get_script_dir()
     
     # Files to sync
-    h_file = os.path.join(script_dir, 'SDK_ProcAmp.h')
+    h_file = os.path.join(script_dir, 'OST_WindyLines.h')
     gpu_files = [
-        os.path.join(script_dir, 'SDK_ProcAmp.cu'),
-        os.path.join(script_dir, 'SDK_ProcAmp.cl'),
+        os.path.join(script_dir, 'OST_WindyLines.cu'),
+        os.path.join(script_dir, 'OST_WindyLines.cl'),
         # HLSL not used for Premiere Pro (After Effects only), moved to legacy/
-        # os.path.join(script_dir, 'SDK_ProcAmp.hlsl'),
+        # os.path.join(script_dir, 'OST_WindyLines.hlsl'),
     ]
     
     try:
         # Get value from header file
         debug_value = extract_debug_marker_value(h_file)
-        print(f"SDK_ProcAmp.h: ENABLE_DEBUG_RENDER_MARKERS = {debug_value}")
+        print(f"OST_WindyLines.h: ENABLE_DEBUG_RENDER_MARKERS = {debug_value}")
         
         # Update GPU files
         for gpu_file in gpu_files:

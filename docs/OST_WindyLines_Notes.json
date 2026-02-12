@@ -1,17 +1,17 @@
 {
   "AI_READ_ME_FIRST": {
-    "project": "SDK_ProcAmp Wind Lines Effect",
+    "project": "OST_WindyLines Wind Lines Effect",
     "version": "v63 - 2026-02-04",
     "status": "STABLE - CPU motion blur gray artifacts fixed",
     "last_critical_fix": "v63: Fixed CPU motion blur rendering gray trail artifacts by matching CUDA implementation exactly"
   },
   
   "QUICK_REF": {
-    "cpu": "SDK_ProcAmp_CPU.cpp",
-    "gpu_cuda": "SDK_ProcAmp.cu (729 lines - REFERENCE)",
-    "gpu_opencl": "SDK_ProcAmp.cl (733 lines)",
-    "gpu_metal": "SDK_ProcAmp.metal (just includes .cl)",
-    "host": "SDK_ProcAmp_GPU.cpp"
+    "cpu": "OST_WindyLines_CPU.cpp",
+    "gpu_cuda": "OST_WindyLines.cu (729 lines - REFERENCE)",
+    "gpu_opencl": "OST_WindyLines.cl (733 lines)",
+    "gpu_metal": "OST_WindyLines.metal (just includes .cl)",
+    "host": "OST_WindyLines_GPU.cpp"
   },
   
   "CRITICAL_RULES": {
@@ -99,7 +99,7 @@
           "line1": "if (originalAlpha >= 0.99f) { a = 1.0f; }",
           "line2": "outV *= a;",
           "line3": "outU *= a;",
-          "location": "SDK_ProcAmp_CPU.cpp lines 2143-2154 (before pixel output)"
+          "location": "OST_WindyLines_CPU.cpp lines 2143-2154 (before pixel output)"
         },
         "why_removal_fixes_it": "Premultiplied alpha compositing already produces correct straight alpha output. No additional multiplication is needed or wanted.",
         "after_fix": {
@@ -120,7 +120,7 @@
         "new": "Direct output without additional multiplication - premultiplied compositing already produces correct straight alpha result",
         "benefit": "FIXES GRAY ARTIFACTS - colors maintain saturation, motion blur trails fade naturally via alpha only",
         "explanation": "Premultiplied alpha compositing formula (lineColor * srcAlpha + bgColor * bgAlpha * (1-srcAlpha)) / outAlpha already produces correct straight alpha color. Additional *= a was multiplying colors a second time, reducing saturation.",
-        "location": "SDK_ProcAmp_CPU.cpp lines 2143-2154"
+        "location": "OST_WindyLines_CPU.cpp lines 2143-2154"
       },
       "shadow_motion_blur_restored": {
         "note": "Initially removed shadow motion blur thinking it was related to the issue, but restored after identifying true cause was double premultiplication",
@@ -182,10 +182,10 @@
       "premiere_pro": "Premiere Pro expects premultiplied alpha format, so this is the only correct approach"
     },
     "files_modified": [
-      "SDK_ProcAmp.cl (OpenCL/Metal - lines 555-640: all blend modes unified to premultiplied)",
-      "SDK_ProcAmp.cu (CUDA - lines 285-315 Shadow, 470-530 Blend Modes, 512-522 Front line accumulation fix)",
-      "SDK_ProcAmp_CPU.cpp (CPU - lines 1850-1970 Shadow and Blend Modes, 1959-1969 Front line accumulation fix)",
-      "SDK_ProcAmp.cl.bak (DELETED - was causing confusion with mismatched braces)"
+      "OST_WindyLines.cl (OpenCL/Metal - lines 555-640: all blend modes unified to premultiplied)",
+      "OST_WindyLines.cu (CUDA - lines 285-315 Shadow, 470-530 Blend Modes, 512-522 Front line accumulation fix)",
+      "OST_WindyLines_CPU.cpp (CPU - lines 1850-1970 Shadow and Blend Modes, 1959-1969 Front line accumulation fix)",
+      "OST_WindyLines.cl.bak (DELETED - was causing confusion with mismatched braces)"
     ],
     "future_note": "If adding any new blend mode or compositing operation, ALWAYS use premultiplied alpha formula from the start. Never use lerp/straight alpha for partial coverage."
   },
@@ -196,7 +196,7 @@
       "easing_menu_reorg": {
         "old_order": "0-23 (all base types), 24-27 (all OutIn types)",
         "new_order": "OutIn grouped with base families - 0: Linear, 1-2: SmoothStep, 3-6: Sine(In/Out/InOut/OutIn), 7-10: Quad, 11-14: Cubic, 15-18: Circ, 19-21: Back, 22-24: Elastic, 25-27: Bounce",
-        "files": "SDK_ProcAmp_ParamNames.h (EASING_MENU), SDK_ProcAmp_GPU.cpp (ApplyEasing switch cases)"
+        "files": "OST_WindyLines_ParamNames.h (EASING_MENU), OST_WindyLines_GPU.cpp (ApplyEasing switch cases)"
       },
       "insine_outsine_swap_fix": {
         "problem": "InSine and OutSine implementations were reversed",
@@ -230,8 +230,8 @@
       "data_structure": "d3 Float4 simplified to { 1.0f, 0.0f, 0.0f, 0.0f } (appearAlpha removed)"
     },
     "files_modified": [
-      "SDK_ProcAmp_ParamNames.h (menu reorg)",
-      "SDK_ProcAmp_GPU.cpp (ApplyEasing cases, ApplyEasingDerivative, length animation logic, round cap fix)"
+      "OST_WindyLines_ParamNames.h (menu reorg)",
+      "OST_WindyLines_GPU.cpp (ApplyEasing cases, ApplyEasingDerivative, length animation logic, round cap fix)"
     ]
   },
 
@@ -252,13 +252,13 @@
       "lineData": "Now 4 Float4s per line (was 3): d0=position, d1=size, d2=color+velocity, d3=appearAlpha",
       "base_index": "lineIndex * 4 (was lineIndex * 3)"
     },
-    "files_modified": ["SDK_ProcAmp_GPU.cpp", "SDK_ProcAmp_CPU.cpp", "SDK_ProcAmp.cu", "SDK_ProcAmp.cl"]
+    "files_modified": ["OST_WindyLines_GPU.cpp", "OST_WindyLines_CPU.cpp", "OST_WindyLines.cu", "OST_WindyLines.cl"]
   },
 
   "V53_FIX_CRITICAL": {
     "problem": "Lines not rendering on Mac/Metal (CUDA worked fine)",
     "symptom": "No lines visible, no errors, kernel appeared to run",
-    "root_cause": "Brace/bracket mismatch in SDK_ProcAmp.cl - line drawing code was INSIDE shadow if-block",
+    "root_cause": "Brace/bracket mismatch in OST_WindyLines.cl - line drawing code was INSIDE shadow if-block",
     "bad_code_structure": "if (inShadowEnable != 0) { shadow code... line color... line drawing... } // WRONG - line drawing inside shadow block!",
     "correct_structure": "if (inShadowEnable != 0) { shadow code only } // then line drawing OUTSIDE",
     "why_hard_to_find": [
@@ -311,19 +311,19 @@
       "Using wrong variable name (lineCap vs inLineCap)",
       "Missing cap check in one of the three distance calculations"
     ],
-    "reference": "CUDA SDK_ProcAmp.cu lines 252, 330, 374 have correct implementation"
+    "reference": "CUDA OST_WindyLines.cu lines 252, 330, 374 have correct implementation"
   },
   
   "MOTION_BLUR_FIX": {
     "problem": "Motion blur implementation unified and corrected",
     "correct_behavior": "Motion blur now always trails BEHIND the moving line with standard uniform temporal sampling",
     "changes_v54": [
-      "Removed SDK_PROCAMP_MOTION_BLUR_TYPE parameter from SDK_ProcAmp.h",
+      "Removed OST_WINDYLINES_MOTION_BLUR_TYPE parameter from OST_WindyLines.h",
       "Removed MOTION_BLUR_TYPE_DFLT definition",
-      "Removed blur type popup from SDK_ProcAmp_CPU.cpp ParamsSetup",
-      "Fixed motionBlurType to 0 (Trail mode) in SDK_ProcAmp_GPU.cpp",
-      "Removed type branching from SDK_ProcAmp.cl and SDK_ProcAmp.cu",
-      "Removed P_BLUR_TYPE and related strings from SDK_ProcAmp_ParamNames.h"
+      "Removed blur type popup from OST_WindyLines_CPU.cpp ParamsSetup",
+      "Fixed motionBlurType to 0 (Trail mode) in OST_WindyLines_GPU.cpp",
+      "Removed type branching from OST_WindyLines.cl and OST_WindyLines.cu",
+      "Removed P_BLUR_TYPE and related strings from OST_WindyLines_ParamNames.h"
     ],
     "changes_v54_1": [
       "CUDA implementation now matches OpenCL/Metal exactly",
@@ -337,7 +337,7 @@
       "sample_distribution": "Evenly distributed from -blurRange to 0 (trail behind)",
       "velocity_linked": "Blur length scales with instantaneous velocity (fast movement = longer blur)"
     },
-    "files_modified": ["SDK_ProcAmp.h", "SDK_ProcAmp_CPU.cpp", "SDK_ProcAmp_GPU.cpp", "SDK_ProcAmp.cu", "SDK_ProcAmp.cl", "SDK_ProcAmp_ParamNames.h"]
+    "files_modified": ["OST_WindyLines.h", "OST_WindyLines_CPU.cpp", "OST_WindyLines_GPU.cpp", "OST_WindyLines.cu", "OST_WindyLines.cl", "OST_WindyLines_ParamNames.h"]
   },
   
   "V51_FIX": {
@@ -396,7 +396,7 @@
   "BUILD": {
     "mac": "xcodebuild ARCHS=arm64, install to /Library/Application Support/Adobe/.../MediaCore/",
     "mac_clean": "xcodebuild clean before testing .cl changes - metallib may be cached",
-    "windows": "Visual Studio SDK_ProcAmp.vcxproj"
+    "windows": "Visual Studio OST_WindyLines.vcxproj"
   },
   
   "FEATURES": {
@@ -442,7 +442,7 @@
     "status": "VERIFIED - This is EXPECTED BEHAVIOR, not a bug",
     "technical_explanation": {
       "how_aa_works": {
-        "parameter": "SDK_PROCAMP_LINE_AA (range: 0-5, default: 1)",
+        "parameter": "OST_WINDYLINES_LINE_AA (range: 0-5, default: 1)",
         "purpose": "Controls width of smooth edge transition for anti-aliasing",
         "implementation": "Hermite smoothstep: coverage = tt * tt * (3 - 2*tt) where tt = (aa - dist) / aa",
         "effect": "Creates smooth fade-out zone extending aa pixels beyond geometric line edge"
@@ -480,17 +480,17 @@
     },
     "code_locations": {
       "smoothstep_calculation": {
-        "cuda": "SDK_ProcAmp.cu lines 504-507, 539-542",
-        "opencl": "SDK_ProcAmp.cl lines 527-528, 555-556",
-        "cpu": "SDK_ProcAmp_CPU.cpp lines 2600-2602, 2625-2627",
+        "cuda": "OST_WindyLines.cu lines 504-507, 539-542",
+        "opencl": "OST_WindyLines.cl lines 527-528, 555-556",
+        "cpu": "OST_WindyLines_CPU.cpp lines 2600-2602, 2625-2627",
         "formula": "tt = saturate((dist - aa) / (0.0f - aa)); coverage = tt * tt * (3.0f - 2.0f * tt)"
       },
       "bounding_box": {
-        "location": "SDK_ProcAmp_GPU.cpp line 2015",
+        "location": "OST_WindyLines_GPU.cpp line 2015",
         "code": "const float radius = fabsf(segCenterX) + halfLen + halfThick + aa;",
         "reason": "Extends render region to include anti-aliased pixels, prevents edge clipping"
       },
-      "parameter_definition": "SDK_ProcAmp.h lines 329-333 (LINE_AA_MIN_VALUE=0, LINE_AA_MAX_VALUE=5, LINE_AA_DFLT=1)"
+      "parameter_definition": "OST_WindyLines.h lines 329-333 (LINE_AA_MIN_VALUE=0, LINE_AA_MAX_VALUE=5, LINE_AA_DFLT=1)"
     },
     "user_recommendations": {
       "default": "aa=1.0 (default) - Optimal balance for most cases",

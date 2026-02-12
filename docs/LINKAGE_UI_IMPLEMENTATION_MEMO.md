@@ -9,7 +9,7 @@ This implementation reorganizes the linkage settings UI for Thickness, Length, a
 2. **Conditional Display**: Implemented logic to show/hide parameters based on linkage mode:
    - When "Off": Show actual value (px), hide linkage rate (%)
    - When "Linked to Width/Height": Hide actual value, show linkage rate (%)
-3. **Files Modified**: `SDK_ProcAmp.h` (parameter indices), `SDK_ProcAmp_CPU.cpp` (UI setup and visibility logic)
+3. **Files Modified**: `OST_WindyLines.h` (parameter indices), `OST_WindyLines_CPU.cpp` (UI setup and visibility logic)
 
 **Testing Required**: Full UI testing in After Effects/Premiere Pro to verify parameter ordering and visibility toggling.
 
@@ -87,56 +87,56 @@ This implementation reorganizes the linkage settings UI for Thickness, Length, a
 
 ### 3. パラメータインデックスの更新 (Parameter Index Updates)
 
-`SDK_ProcAmp.h` の enum を以下のように変更:
+`OST_WindyLines.h` の enum を以下のように変更:
 
 ```cpp
 // 旧: Basic Settings (3-7)
-SDK_PROCAMP_LINE_COUNT,           // 3
-SDK_PROCAMP_LINE_LIFETIME,        // 4
-SDK_PROCAMP_LINE_INTERVAL,        // 5
-SDK_PROCAMP_LINE_TRAVEL,          // 6 ← 旧位置
-SDK_PROCAMP_LINE_EASING,          // 7
+OST_WINDYLINES_LINE_COUNT,           // 3
+OST_WINDYLINES_LINE_LIFETIME,        // 4
+OST_WINDYLINES_LINE_INTERVAL,        // 5
+OST_WINDYLINES_LINE_TRAVEL,          // 6 ← 旧位置
+OST_WINDYLINES_LINE_EASING,          // 7
 
 // 新: Basic Settings (3-9) - 連動設定を挿入
-SDK_PROCAMP_LINE_COUNT,           // 3
-SDK_PROCAMP_LINE_LIFETIME,        // 4
-SDK_PROCAMP_LINE_INTERVAL,        // 5
-SDK_PROCAMP_TRAVEL_LINKAGE,       // 6 ← 新規追加
-SDK_PROCAMP_TRAVEL_LINKAGE_RATE,  // 7 ← 新規追加
-SDK_PROCAMP_LINE_TRAVEL,          // 8 ← 新位置(+2)
-SDK_PROCAMP_LINE_EASING,          // 9 ← 新位置(+2)
+OST_WINDYLINES_LINE_COUNT,           // 3
+OST_WINDYLINES_LINE_LIFETIME,        // 4
+OST_WINDYLINES_LINE_INTERVAL,        // 5
+OST_WINDYLINES_TRAVEL_LINKAGE,       // 6 ← 新規追加
+OST_WINDYLINES_TRAVEL_LINKAGE_RATE,  // 7 ← 新規追加
+OST_WINDYLINES_LINE_TRAVEL,          // 8 ← 新位置(+2)
+OST_WINDYLINES_LINE_EASING,          // 9 ← 新位置(+2)
 ```
 
 ```cpp
 // 旧: Appearance (19-23)
-SDK_PROCAMP_LINE_THICKNESS,       // 19 ← 旧位置
-SDK_PROCAMP_LINE_LENGTH,          // 20 ← 旧位置
-SDK_PROCAMP_LINE_ANGLE,           // 21
-SDK_PROCAMP_LINE_CAP,             // 22
-SDK_PROCAMP_LINE_TAIL_FADE,       // 23
+OST_WINDYLINES_LINE_THICKNESS,       // 19 ← 旧位置
+OST_WINDYLINES_LINE_LENGTH,          // 20 ← 旧位置
+OST_WINDYLINES_LINE_ANGLE,           // 21
+OST_WINDYLINES_LINE_CAP,             // 22
+OST_WINDYLINES_LINE_TAIL_FADE,       // 23
 
 // 新: Appearance (21-29) - 連動設定を挿入
-SDK_PROCAMP_THICKNESS_LINKAGE,        // 21 ← 新規追加
-SDK_PROCAMP_THICKNESS_LINKAGE_RATE,   // 22 ← 新規追加
-SDK_PROCAMP_LINE_THICKNESS,           // 23 ← 新位置(+4)
-SDK_PROCAMP_LENGTH_LINKAGE,           // 24 ← 新規追加
-SDK_PROCAMP_LENGTH_LINKAGE_RATE,      // 25 ← 新規追加
-SDK_PROCAMP_LINE_LENGTH,              // 26 ← 新位置(+6)
-SDK_PROCAMP_LINE_ANGLE,               // 27 ← 新位置(+6)
-SDK_PROCAMP_LINE_CAP,                 // 28 ← 新位置(+6)
-SDK_PROCAMP_LINE_TAIL_FADE,           // 29 ← 新位置(+6)
+OST_WINDYLINES_THICKNESS_LINKAGE,        // 21 ← 新規追加
+OST_WINDYLINES_THICKNESS_LINKAGE_RATE,   // 22 ← 新規追加
+OST_WINDYLINES_LINE_THICKNESS,           // 23 ← 新位置(+4)
+OST_WINDYLINES_LENGTH_LINKAGE,           // 24 ← 新規追加
+OST_WINDYLINES_LENGTH_LINKAGE_RATE,      // 25 ← 新規追加
+OST_WINDYLINES_LINE_LENGTH,              // 26 ← 新位置(+6)
+OST_WINDYLINES_LINE_ANGLE,               // 27 ← 新位置(+6)
+OST_WINDYLINES_LINE_CAP,                 // 28 ← 新位置(+6)
+OST_WINDYLINES_LINE_TAIL_FADE,           // 29 ← 新位置(+6)
 ```
 
 **重要:** 以降のすべてのパラメータインデックスが+4シフトされています。最終的な総パラメータ数は68個(0-67)です。旧Linkageトピックグループ(ヘッダーとエンドマーカー)が削除されたため、実質的にパラメータの総数は変わっていません。
 
 ### 4. 変更されたファイル (Modified Files)
 
-1. **SDK_ProcAmp.h**
-   - enum SDK_ProcAmp_Param のインデックスを更新
+1. **OST_WindyLines.h**
+   - enum OST_WindyLines_Param のインデックスを更新
    - 連動パラメータを適切な位置に移動
    - 旧Linkageトピックグループの定義を削除
 
-2. **SDK_ProcAmp_CPU.cpp**
+2. **OST_WindyLines_CPU.cpp**
    - `ParamsSetup()` 関数内でパラメータ定義順序を変更:
      - TRAVEL_LINKAGE/TRAVEL_LINKAGE_RATE を LINE_TRAVEL の直前に移動
      - THICKNESS_LINKAGE/THICKNESS_LINKAGE_RATE を LINE_THICKNESS の直前に移動
@@ -170,19 +170,19 @@ SDK_PROCAMP_LINE_TAIL_FADE,           // 29 ← 新位置(+6)
 
 ```cpp
 // UpdatePseudoGroupVisibility() 内
-const int thicknessLinkage = params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value;
+const int thicknessLinkage = params[OST_WINDYLINES_THICKNESS_LINKAGE]->u.pd.value;
 const bool thicknessIsLinked = (thicknessLinkage == 2 || thicknessLinkage == 3);
-setVisible(SDK_PROCAMP_LINE_THICKNESS, !thicknessIsLinked);
-setVisible(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, thicknessIsLinked);
+setVisible(OST_WINDYLINES_LINE_THICKNESS, !thicknessIsLinked);
+setVisible(OST_WINDYLINES_THICKNESS_LINKAGE_RATE, thicknessIsLinked);
 ```
 
 ### 変更検出とUI更新
 
 ```cpp
 // PF_Cmd_USER_CHANGED_PARAM ハンドラ内
-if (changedExtra && (changedExtra->param_index == SDK_PROCAMP_THICKNESS_LINKAGE ||
-                     changedExtra->param_index == SDK_PROCAMP_LENGTH_LINKAGE ||
-                     changedExtra->param_index == SDK_PROCAMP_TRAVEL_LINKAGE))
+if (changedExtra && (changedExtra->param_index == OST_WINDYLINES_THICKNESS_LINKAGE ||
+                     changedExtra->param_index == OST_WINDYLINES_LENGTH_LINKAGE ||
+                     changedExtra->param_index == OST_WINDYLINES_TRAVEL_LINKAGE))
 {
     UpdatePseudoGroupVisibility(in_data, params);
     out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
@@ -248,7 +248,7 @@ A: `UpdatePseudoGroupVisibility()` が正しく呼び出されているか確認
 
 ### Q: 連動率が機能しない
 
-A: レンダリング部分(`SDK_ProcAmp_CPU.cpp` と `SDK_ProcAmp_GPU.cpp`)で正しい linkage パラメータを参照していることを確認してください。
+A: レンダリング部分(`OST_WindyLines_CPU.cpp` と `OST_WindyLines_GPU.cpp`)で正しい linkage パラメータを参照していることを確認してください。
 
 ### Q: 既存プロジェクトで値がおかしい
 
@@ -257,8 +257,8 @@ A: パラメータインデックスが変更されているため、プロジ�
 ## 参考情報 (References)
 
 - Adobe After Effects SDK Documentation
-- `SDK_ProcAmp_ParamNames.h` - パラメータ名の定義
-- `SDK_ProcAmp_Notes.json` - プロジェクト全体の注意事項
+- `OST_WindyLines_ParamNames.h` - パラメータ名の定義
+- `OST_WindyLines_Notes.json` - プロジェクト全体の注意事項
 
 ## 作成日・作成者 (Created)
 

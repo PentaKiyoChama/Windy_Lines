@@ -20,13 +20,13 @@
 /*******************************************************************/
 
 
-#include "SDK_ProcAmp.h"
-#include "SDK_ProcAmp_Version.h"
+#include "OST_WindyLines.h"
+#include "OST_WindyLines_Version.h"
 #include "PrGPUFilterModule.h"
 #include "PrSDKVideoSegmentProperties.h"
 
 #if _WIN32
-    #include "SDK_ProcAmp.cl.h"
+    #include "OST_WindyLines.cl.h"
     #include <CL/cl.h>
 #else
     #include <OpenCL/cl.h>
@@ -42,36 +42,36 @@
 #include <climits>
 #include <unordered_map>
 
-// Debug logging function is now in SDK_ProcAmp.h
+// Debug logging function is now in OST_WindyLines.h
 
 #if _WIN32
     #if defined(MAJOR_VERSION)
         #pragma push_macro("MAJOR_VERSION")
         #undef MAJOR_VERSION
-        #define SDK_PROCAMP_RESTORE_MAJOR_VERSION 1
+        #define OST_WINDYLINES_RESTORE_MAJOR_VERSION 1
     #endif
     #if defined(MINOR_VERSION)
         #pragma push_macro("MINOR_VERSION")
         #undef MINOR_VERSION
-        #define SDK_PROCAMP_RESTORE_MINOR_VERSION 1
+        #define OST_WINDYLINES_RESTORE_MINOR_VERSION 1
     #endif
     #if defined(PATCH_LEVEL)
         #pragma push_macro("PATCH_LEVEL")
         #undef PATCH_LEVEL
-        #define SDK_PROCAMP_RESTORE_PATCH_LEVEL 1
+        #define OST_WINDYLINES_RESTORE_PATCH_LEVEL 1
     #endif
     #include <cuda_runtime.h>
-    #if defined(SDK_PROCAMP_RESTORE_PATCH_LEVEL)
+    #if defined(OST_WINDYLINES_RESTORE_PATCH_LEVEL)
         #pragma pop_macro("PATCH_LEVEL")
-        #undef SDK_PROCAMP_RESTORE_PATCH_LEVEL
+        #undef OST_WINDYLINES_RESTORE_PATCH_LEVEL
     #endif
-    #if defined(SDK_PROCAMP_RESTORE_MINOR_VERSION)
+    #if defined(OST_WINDYLINES_RESTORE_MINOR_VERSION)
         #pragma pop_macro("MINOR_VERSION")
-        #undef SDK_PROCAMP_RESTORE_MINOR_VERSION
+        #undef OST_WINDYLINES_RESTORE_MINOR_VERSION
     #endif
-    #if defined(SDK_PROCAMP_RESTORE_MAJOR_VERSION)
+    #if defined(OST_WINDYLINES_RESTORE_MAJOR_VERSION)
         #pragma pop_macro("MAJOR_VERSION")
-        #undef SDK_PROCAMP_RESTORE_MAJOR_VERSION
+        #undef OST_WINDYLINES_RESTORE_MAJOR_VERSION
     #endif
     #include "DirectXUtils.h"
     #include <vector>
@@ -120,7 +120,7 @@ static void EnsureCudaBuffer(void** buffer, size_t& capacityBytes, size_t requir
 
 /*
 **The ProcAmp2Params structure MUST match the kernel values sequence exactly.
-** Order from SDK_ProcAmp.cl GF_KERNEL_FUNCTION(ProcAmp2Kernel, ...) values section:
+** Order from OST_WindyLines.cl GF_KERNEL_FUNCTION(ProcAmp2Kernel, ...) values section:
 */
 typedef struct
 {
@@ -215,7 +215,7 @@ prSuiteError CheckForMetalError(NSError *inError)
 
 #if HAS_CUDA
 //  CUDA KERNEL
-//  * See SDK_ProcAmp.cu
+//  * See OST_WindyLines.cu
 extern void ProcAmp2_CUDA(
 	float* ioBuffer,
 	int pitch,
@@ -805,8 +805,8 @@ public:
 				//A real plugin would check to see if 16f access is actually supported.
 #if _WIN32
 				char const *k16fString = "#define GF_OPENCL_SUPPORTS_16F 1\n";
-				size_t sizes[] = { strlen(k16fString), strlen(kSDK_ProcAmp_OpenCLString) };
-				char const *strings[] = { k16fString, kSDK_ProcAmp_OpenCLString };
+				size_t sizes[] = { strlen(k16fString), strlen(kOST_WindyLines_OpenCLString) };
+				char const *strings[] = { k16fString, kOST_WindyLines_OpenCLString };
 #else
 				// Mac: Try to use preprocessed header first, fallback to reading .cl file
 				char const *k16fString = "#define GF_OPENCL_SUPPORTS_16F 1\n";
@@ -814,12 +814,12 @@ public:
 				char const *strings[2];
 				
 				// Try to include preprocessed header (if build step creates it)
-				#ifdef SDK_PROCAMP_OPENCL_STRING_AVAILABLE
+				#ifdef OST_WINDYLINES_OPENCL_STRING_AVAILABLE
 					// Preprocessed header available
 					sizes[0] = strlen(k16fString);
-					sizes[1] = strlen(kSDK_ProcAmp_OpenCLString);
+					sizes[1] = strlen(kOST_WindyLines_OpenCLString);
 					strings[0] = k16fString;
-					strings[1] = kSDK_ProcAmp_OpenCLString;
+					strings[1] = kOST_WindyLines_OpenCLString;
 				#else
 					// Fallback: Read OpenCL source from file
 					std::string clSourcePath = __FILE__;
@@ -828,7 +828,7 @@ public:
 					{
 						clSourcePath.erase(slashPos);
 					}
-					clSourcePath += "/SDK_ProcAmp.cl";
+					clSourcePath += "/OST_WindyLines.cl";
 					std::ifstream clFile(clSourcePath.c_str());
 					if (!clFile.is_open())
 					{
@@ -900,7 +900,7 @@ public:
 				}
 
                 std::wstring csoPath, sigPath;
-                if (!GetShaderPath(L"SDK_ProcAmp", csoPath, sigPath))
+                if (!GetShaderPath(L"OST_WindyLines", csoPath, sigPath))
                 {
                     return suiteError_Fail;
                 }
@@ -917,7 +917,7 @@ public:
 
 				// Load the alpha shader
 				std::wstring alphaCsoPath, alphaSigPath;
-				if (!GetShaderPath(L"SDK_ProcAmp_Alpha", alphaCsoPath, alphaSigPath))
+				if (!GetShaderPath(L"OST_WindyLines_Alpha", alphaCsoPath, alphaSigPath))
 				{
 					return suiteError_Fail;
 				}
@@ -950,7 +950,7 @@ public:
 				prSuiteError result = suiteError_NoError;
 
                 NSString *pluginBundlePath = [[NSBundle bundleWithIdentifier:@"MyCompany.SDK-ProcAmp"] bundlePath];
-                NSString *metalLibPath = [pluginBundlePath stringByAppendingPathComponent:@"Contents/Resources/MetalLib/SDK_ProcAmp.metallib"];
+                NSString *metalLibPath = [pluginBundlePath stringByAppendingPathComponent:@"Contents/Resources/MetalLib/OST_WindyLines.metallib"];
                 if(!(metalLibPath && [[NSFileManager defaultManager] fileExistsAtPath:metalLibPath]))
                 {
                     // Metallib file missing in path
@@ -1053,13 +1053,13 @@ public:
 
 		// Cache-consistent approach using media in point to calculate clip-relative frame
 		const PrTime clipTime = inRenderParams->inClipTime;
-		const bool allowMidPlay = BoolParamFromPrParam(GetParam(SDK_PROCAMP_LINE_ALLOW_MIDPLAY, inRenderParams->inClipTime));
-		const bool hideElement = BoolParamFromPrParam(GetParam(SDK_PROCAMP_HIDE_ELEMENT, inRenderParams->inClipTime));
-		const int blendMode = NormalizePopupParam(GetParam(SDK_PROCAMP_BLEND_MODE, inRenderParams->inClipTime), 4);
-		const bool shadowEnable = BoolParamFromPrParam(GetParam(SDK_PROCAMP_SHADOW_ENABLE, inRenderParams->inClipTime));
+		const bool allowMidPlay = BoolParamFromPrParam(GetParam(OST_WINDYLINES_LINE_ALLOW_MIDPLAY, inRenderParams->inClipTime));
+		const bool hideElement = BoolParamFromPrParam(GetParam(OST_WINDYLINES_HIDE_ELEMENT, inRenderParams->inClipTime));
+		const int blendMode = NormalizePopupParam(GetParam(OST_WINDYLINES_BLEND_MODE, inRenderParams->inClipTime), 4);
+		const bool shadowEnable = BoolParamFromPrParam(GetParam(OST_WINDYLINES_SHADOW_ENABLE, inRenderParams->inClipTime));
 		float shadowColorR = 0.0f, shadowColorG = 0.0f, shadowColorB = 0.0f;
 		{
-			PrParam shadowColorParam = GetParam(SDK_PROCAMP_SHADOW_COLOR, inRenderParams->inClipTime);
+			PrParam shadowColorParam = GetParam(OST_WINDYLINES_SHADOW_COLOR, inRenderParams->inClipTime);
 			if (shadowColorParam.mType == kPrParamType_PrMemoryPtr && shadowColorParam.mMemoryPtr)
 			{
 				const PF_Pixel* color = reinterpret_cast<const PF_Pixel*>(shadowColorParam.mMemoryPtr);
@@ -1072,20 +1072,20 @@ public:
 				DecodePackedColor64(static_cast<csSDK_uint64>(shadowColorParam.mInt64), shadowColorR, shadowColorG, shadowColorB);
 			}
 		}
-		const float shadowOffsetX = static_cast<float>(GetParam(SDK_PROCAMP_SHADOW_OFFSET_X, inRenderParams->inClipTime).mFloat64);
-		const float shadowOffsetY = static_cast<float>(GetParam(SDK_PROCAMP_SHADOW_OFFSET_Y, inRenderParams->inClipTime).mFloat64);
-		const float shadowOpacity = static_cast<float>(GetParam(SDK_PROCAMP_SHADOW_OPACITY, inRenderParams->inClipTime).mFloat64);
-		const float spawnScaleX = static_cast<float>(GetParam(SDK_PROCAMP_LINE_SPAWN_SCALE_X, inRenderParams->inClipTime).mFloat64) / 100.0f;
-		const float spawnScaleY = static_cast<float>(GetParam(SDK_PROCAMP_LINE_SPAWN_SCALE_Y, inRenderParams->inClipTime).mFloat64) / 100.0f;
-		const float spawnRotationDeg = static_cast<float>(GetParam(SDK_PROCAMP_LINE_SPAWN_ROTATION, inRenderParams->inClipTime).mFloat64);
+		const float shadowOffsetX = static_cast<float>(GetParam(OST_WINDYLINES_SHADOW_OFFSET_X, inRenderParams->inClipTime).mFloat64);
+		const float shadowOffsetY = static_cast<float>(GetParam(OST_WINDYLINES_SHADOW_OFFSET_Y, inRenderParams->inClipTime).mFloat64);
+		const float shadowOpacity = static_cast<float>(GetParam(OST_WINDYLINES_SHADOW_OPACITY, inRenderParams->inClipTime).mFloat64);
+		const float spawnScaleX = static_cast<float>(GetParam(OST_WINDYLINES_LINE_SPAWN_SCALE_X, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		const float spawnScaleY = static_cast<float>(GetParam(OST_WINDYLINES_LINE_SPAWN_SCALE_Y, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		const float spawnRotationDeg = static_cast<float>(GetParam(OST_WINDYLINES_LINE_SPAWN_ROTATION, inRenderParams->inClipTime).mFloat64);
 		const float spawnRotationRad = spawnRotationDeg * 3.14159265f / 180.0f;
 		const float spawnCos = cosf(spawnRotationRad);
 		const float spawnSin = sinf(spawnRotationRad);
-		const bool showSpawnArea = BoolParamFromPrParam(GetParam(SDK_PROCAMP_LINE_SHOW_SPAWN_AREA, inRenderParams->inClipTime));
+		const bool showSpawnArea = BoolParamFromPrParam(GetParam(OST_WINDYLINES_LINE_SHOW_SPAWN_AREA, inRenderParams->inClipTime));
 		// Read spawn area color
 		float spawnAreaColorR = 0.5f, spawnAreaColorG = 0.5f, spawnAreaColorB = 1.0f;  // Default light blue
 		{
-			const PrParam spawnAreaColorParam = GetParam(SDK_PROCAMP_LINE_SPAWN_AREA_COLOR, inRenderParams->inClipTime);
+			const PrParam spawnAreaColorParam = GetParam(OST_WINDYLINES_LINE_SPAWN_AREA_COLOR, inRenderParams->inClipTime);
 			if (spawnAreaColorParam.mType == kPrParamType_PrMemoryPtr && spawnAreaColorParam.mMemoryPtr)
 			{
 				const PF_Pixel* colorPtr = reinterpret_cast<const PF_Pixel*>(spawnAreaColorParam.mMemoryPtr);
@@ -1098,10 +1098,10 @@ public:
 				DecodePackedColor64(spawnAreaColorParam.mInt64, spawnAreaColorR, spawnAreaColorG, spawnAreaColorB);
 			}
 		}
-		const float originOffsetX = static_cast<float>(GetParam(SDK_PROCAMP_ORIGIN_OFFSET_X, inRenderParams->inClipTime).mFloat64);
-		const float originOffsetY = static_cast<float>(GetParam(SDK_PROCAMP_ORIGIN_OFFSET_Y, inRenderParams->inClipTime).mFloat64);
-		const int animPattern = NormalizePopupParam(GetParam(SDK_PROCAMP_ANIM_PATTERN, inRenderParams->inClipTime), 3);
-		const float centerGap = static_cast<float>(GetParam(SDK_PROCAMP_CENTER_GAP, inRenderParams->inClipTime).mFloat64);
+		const float originOffsetX = static_cast<float>(GetParam(OST_WINDYLINES_ORIGIN_OFFSET_X, inRenderParams->inClipTime).mFloat64);
+		const float originOffsetY = static_cast<float>(GetParam(OST_WINDYLINES_ORIGIN_OFFSET_Y, inRenderParams->inClipTime).mFloat64);
+		const int animPattern = NormalizePopupParam(GetParam(OST_WINDYLINES_ANIM_PATTERN, inRenderParams->inClipTime), 3);
+		const float centerGap = static_cast<float>(GetParam(OST_WINDYLINES_CENTER_GAP, inRenderParams->inClipTime).mFloat64);
 		// Focus parameters removed
 	
 	// v51: DevGuide approach - use clipTime with SharedClipData
@@ -1143,7 +1143,7 @@ public:
 	// Get unified preset parameter
 	// IMPORTANT: Premiere Pro's GetParam() returns 0-based values for popup params
 	// so we do NOT normalize (no -1 conversion needed)
-	PrParam rawPresetParam = GetParam(SDK_PROCAMP_COLOR_PRESET, inRenderParams->inClipTime);
+	PrParam rawPresetParam = GetParam(OST_WINDYLINES_COLOR_PRESET, inRenderParams->inClipTime);
 	int rawPresetIndex = 0;
 	if (rawPresetParam.mType == kPrParamType_Int32)
 		rawPresetIndex = rawPresetParam.mInt32;
@@ -1172,7 +1172,7 @@ public:
 	{
 		// Single color mode: all 8 slots have the same color
 		float singleR = 1.0f, singleG = 1.0f, singleB = 1.0f;
-		PrParam lineColorParam = GetParam(SDK_PROCAMP_LINE_COLOR, inRenderParams->inClipTime);
+		PrParam lineColorParam = GetParam(OST_WINDYLINES_LINE_COLOR, inRenderParams->inClipTime);
 		if (lineColorParam.mType == kPrParamType_PrMemoryPtr && lineColorParam.mMemoryPtr)
 		{
 			const PF_Pixel* color = reinterpret_cast<const PF_Pixel*>(lineColorParam.mMemoryPtr);
@@ -1200,10 +1200,10 @@ public:
 	{
 		// Custom mode: load from custom color parameters
 		const int customColorParams[8] = {
-			SDK_PROCAMP_CUSTOM_COLOR_1, SDK_PROCAMP_CUSTOM_COLOR_2,
-			SDK_PROCAMP_CUSTOM_COLOR_3, SDK_PROCAMP_CUSTOM_COLOR_4,
-			SDK_PROCAMP_CUSTOM_COLOR_5, SDK_PROCAMP_CUSTOM_COLOR_6,
-			SDK_PROCAMP_CUSTOM_COLOR_7, SDK_PROCAMP_CUSTOM_COLOR_8
+			OST_WINDYLINES_CUSTOM_COLOR_1, OST_WINDYLINES_CUSTOM_COLOR_2,
+			OST_WINDYLINES_CUSTOM_COLOR_3, OST_WINDYLINES_CUSTOM_COLOR_4,
+			OST_WINDYLINES_CUSTOM_COLOR_5, OST_WINDYLINES_CUSTOM_COLOR_6,
+			OST_WINDYLINES_CUSTOM_COLOR_7, OST_WINDYLINES_CUSTOM_COLOR_8
 		};
 		for (int i = 0; i < 8; ++i)
 		{
@@ -1306,43 +1306,43 @@ public:
 			outC2 = lineY;
 		}
 
-		const float lineThickness = static_cast<float>(GetParam(SDK_PROCAMP_LINE_THICKNESS, inRenderParams->inClipTime).mFloat64);
-	const float lineLength = static_cast<float>(GetParam(SDK_PROCAMP_LINE_LENGTH, inRenderParams->inClipTime).mFloat64);
-	const int lineCap = NormalizePopupParam(GetParam(SDK_PROCAMP_LINE_CAP, inRenderParams->inClipTime), 2);
-		const float lineAngle = static_cast<float>(GetParam(SDK_PROCAMP_LINE_ANGLE, inRenderParams->inClipTime).mFloat32);
-		const float lineAA = static_cast<float>(GetParam(SDK_PROCAMP_LINE_AA, inRenderParams->inClipTime).mFloat64);
+		const float lineThickness = static_cast<float>(GetParam(OST_WINDYLINES_LINE_THICKNESS, inRenderParams->inClipTime).mFloat64);
+	const float lineLength = static_cast<float>(GetParam(OST_WINDYLINES_LINE_LENGTH, inRenderParams->inClipTime).mFloat64);
+	const int lineCap = NormalizePopupParam(GetParam(OST_WINDYLINES_LINE_CAP, inRenderParams->inClipTime), 2);
+		const float lineAngle = static_cast<float>(GetParam(OST_WINDYLINES_LINE_ANGLE, inRenderParams->inClipTime).mFloat32);
+		const float lineAA = static_cast<float>(GetParam(OST_WINDYLINES_LINE_AA, inRenderParams->inClipTime).mFloat64);
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
-		const int spawnSource = NormalizePopupParam(GetParam(SDK_PROCAMP_SPAWN_SOURCE, inRenderParams->inClipTime), 2);
-		float lineAlphaThreshold = static_cast<float>(GetParam(SDK_PROCAMP_LINE_ALPHA_THRESH, inRenderParams->inClipTime).mFloat64);
+		const int spawnSource = NormalizePopupParam(GetParam(OST_WINDYLINES_SPAWN_SOURCE, inRenderParams->inClipTime), 2);
+		float lineAlphaThreshold = static_cast<float>(GetParam(OST_WINDYLINES_LINE_ALPHA_THRESH, inRenderParams->inClipTime).mFloat64);
 		if (spawnSource == SPAWN_SOURCE_FULL_FRAME) {
 			lineAlphaThreshold = 1.0f;  // Full frame: ignore alpha, spawn everywhere
 		}
 		
-		const int lineOriginMode = NormalizePopupParam(GetParam(SDK_PROCAMP_LINE_ORIGIN_MODE, inRenderParams->inClipTime), 3);
+		const int lineOriginMode = NormalizePopupParam(GetParam(OST_WINDYLINES_LINE_ORIGIN_MODE, inRenderParams->inClipTime), 3);
 		const float dsx = inRenderParams->inDownsampleFactorX;
 		const float dsy = inRenderParams->inDownsampleFactorY;
 		const float dsMax = dsx > dsy ? dsx : dsy;
 		const float dsScale = dsMax >= 1.0f ? (1.0f / dsMax) : (dsMax > 0.0f ? dsMax : 1.0f);
 		const int lineDownsample = dsMax > 1.0f ? (int)(dsMax + 0.5f) : 1;
-		const float lineCountF = static_cast<float>(GetParam(SDK_PROCAMP_LINE_COUNT, inRenderParams->inClipTime).mFloat64);
-		const float lineLifetime = static_cast<float>(GetParam(SDK_PROCAMP_LINE_LIFETIME, inRenderParams->inClipTime).mFloat64);
-		const float lineInterval = static_cast<float>(GetParam(SDK_PROCAMP_LINE_INTERVAL, inRenderParams->inClipTime).mFloat64);
-		const float lineStartTime = static_cast<float>(GetParam(SDK_PROCAMP_LINE_START_TIME, inRenderParams->inClipTime).mFloat64);
-		const float lineDuration = static_cast<float>(GetParam(SDK_PROCAMP_LINE_DURATION, inRenderParams->inClipTime).mFloat64);
-		const float lineSeedF = static_cast<float>(GetParam(SDK_PROCAMP_LINE_SEED, inRenderParams->inClipTime).mFloat64);
-		const int lineEasing = NormalizePopupParam(GetParam(SDK_PROCAMP_LINE_EASING, inRenderParams->inClipTime), 28);
-		const float lineTravel = static_cast<float>(GetParam(SDK_PROCAMP_LINE_TRAVEL, inRenderParams->inClipTime).mFloat64);
-		const float lineTailFade = static_cast<float>(GetParam(SDK_PROCAMP_LINE_TAIL_FADE, inRenderParams->inClipTime).mFloat64);
-		const float lineDepthStrength = static_cast<float>(GetParam(SDK_PROCAMP_LINE_DEPTH_STRENGTH, inRenderParams->inClipTime).mFloat64) / 10.0f; // Normalize 0-10 to 0-1
+		const float lineCountF = static_cast<float>(GetParam(OST_WINDYLINES_LINE_COUNT, inRenderParams->inClipTime).mFloat64);
+		const float lineLifetime = static_cast<float>(GetParam(OST_WINDYLINES_LINE_LIFETIME, inRenderParams->inClipTime).mFloat64);
+		const float lineInterval = static_cast<float>(GetParam(OST_WINDYLINES_LINE_INTERVAL, inRenderParams->inClipTime).mFloat64);
+		const float lineStartTime = static_cast<float>(GetParam(OST_WINDYLINES_LINE_START_TIME, inRenderParams->inClipTime).mFloat64);
+		const float lineDuration = static_cast<float>(GetParam(OST_WINDYLINES_LINE_DURATION, inRenderParams->inClipTime).mFloat64);
+		const float lineSeedF = static_cast<float>(GetParam(OST_WINDYLINES_LINE_SEED, inRenderParams->inClipTime).mFloat64);
+		const int lineEasing = NormalizePopupParam(GetParam(OST_WINDYLINES_LINE_EASING, inRenderParams->inClipTime), 28);
+		const float lineTravel = static_cast<float>(GetParam(OST_WINDYLINES_LINE_TRAVEL, inRenderParams->inClipTime).mFloat64);
+		const float lineTailFade = static_cast<float>(GetParam(OST_WINDYLINES_LINE_TAIL_FADE, inRenderParams->inClipTime).mFloat64);
+		const float lineDepthStrength = static_cast<float>(GetParam(OST_WINDYLINES_LINE_DEPTH_STRENGTH, inRenderParams->inClipTime).mFloat64) / 10.0f; // Normalize 0-10 to 0-1
 		
 		// Linkage parameters - will be applied after alphaBounds calculation
-		const int lengthLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_LENGTH_LINKAGE, inRenderParams->inClipTime), 3);
-		const float lengthLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_LENGTH_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
-		const int thicknessLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_THICKNESS_LINKAGE, inRenderParams->inClipTime), 3);
-		const float thicknessLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_THICKNESS_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
-		const int travelLinkage = NormalizePopupParam(GetParam(SDK_PROCAMP_TRAVEL_LINKAGE, inRenderParams->inClipTime), 3);
-		const float travelLinkageRate = static_cast<float>(GetParam(SDK_PROCAMP_TRAVEL_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		const int lengthLinkage = NormalizePopupParam(GetParam(OST_WINDYLINES_LENGTH_LINKAGE, inRenderParams->inClipTime), 3);
+		const float lengthLinkageRate = static_cast<float>(GetParam(OST_WINDYLINES_LENGTH_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		const int thicknessLinkage = NormalizePopupParam(GetParam(OST_WINDYLINES_THICKNESS_LINKAGE, inRenderParams->inClipTime), 3);
+		const float thicknessLinkageRate = static_cast<float>(GetParam(OST_WINDYLINES_THICKNESS_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
+		const int travelLinkage = NormalizePopupParam(GetParam(OST_WINDYLINES_TRAVEL_LINKAGE, inRenderParams->inClipTime), 3);
+		const float travelLinkageRate = static_cast<float>(GetParam(OST_WINDYLINES_TRAVEL_LINKAGE_RATE, inRenderParams->inClipTime).mFloat64) / 100.0f;
 		
 		const int allowMidPlayInt = allowMidPlay ? 1 : 0;
 		// Center is now controlled by Origin Offset X/Y only
@@ -1441,9 +1441,9 @@ public:
 		params.mFocusRange = 0.0f;
 		params.mFocusBlurStrength = 0.0f;
 		// Motion Blur parameters
-		const bool motionBlurEnable = GetParam(SDK_PROCAMP_MOTION_BLUR_ENABLE, inRenderParams->inClipTime).mBool;
-		const int motionBlurSamples = static_cast<int>(GetParam(SDK_PROCAMP_MOTION_BLUR_SAMPLES, inRenderParams->inClipTime).mFloat64 + 0.5f);
-		const float motionBlurStrength = static_cast<float>(GetParam(SDK_PROCAMP_MOTION_BLUR_STRENGTH, inRenderParams->inClipTime).mFloat64);
+		const bool motionBlurEnable = GetParam(OST_WINDYLINES_MOTION_BLUR_ENABLE, inRenderParams->inClipTime).mBool;
+		const int motionBlurSamples = static_cast<int>(GetParam(OST_WINDYLINES_MOTION_BLUR_SAMPLES, inRenderParams->inClipTime).mFloat64 + 0.5f);
+		const float motionBlurStrength = static_cast<float>(GetParam(OST_WINDYLINES_MOTION_BLUR_STRENGTH, inRenderParams->inClipTime).mFloat64);
 		const int motionBlurType = 0;  // Always use Trail mode (unified behavior)
 		const float motionBlurVelocity = 0.0f;  // Removed parameter, use default
 		params.mMotionBlurEnable = motionBlurEnable ? 1 : 0;

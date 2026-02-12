@@ -5,19 +5,19 @@
 新機能を追加する際は、**必ず以下の3箇所すべて**に実装してください：
 
 ### 1. CPU実装
-**ファイル**: `SDK_ProcAmp_CPU.cpp`
+**ファイル**: `OST_WindyLines_CPU.cpp`
 - 用途: CPUフォールバック、GPUが使えない環境
 - 注意: GPU実装と完全に同じ結果を出力する必要あり
 
 ### 2. CUDA実装 (Windows)
-**ファイル**: `SDK_ProcAmp.cu`
+**ファイル**: `OST_WindyLines.cu`
 - 用途: Windows環境でのGPU処理
 - 行数: 674行 (v51時点)
 - 注意: これが**リファレンス実装**
 
 ### 3. OpenCL/Metal実装 (Mac)
-**ファイル**: `SDK_ProcAmp.cl` (実体)
-**ファイル**: `SDK_ProcAmp.metal` (単に`#include "SDK_ProcAmp.cl"`するだけ)
+**ファイル**: `OST_WindyLines.cl` (実体)
+**ファイル**: `OST_WindyLines.metal` (単に`#include "OST_WindyLines.cl"`するだけ)
 - 用途: Mac環境でのGPU処理
 - 行数: 511行 (v51時点)
 - 注意: MetalはOpenCLを流用（メンテナンスが1箇所で済む）
@@ -27,12 +27,12 @@
 ## 実装の流れ (推奨)
 
 ### ステップ1: CUDA実装 (基準)
-1. `SDK_ProcAmp.cu` に新機能を実装
+1. `OST_WindyLines.cu` に新機能を実装
 2. Windows環境でビルド・テスト
 3. 動作確認完了
 
 ### ステップ2: OpenCL/Metal実装
-1. `SDK_ProcAmp.cl` に同じロジックを移植
+1. `OST_WindyLines.cl` に同じロジックを移植
    - `__device__` → (何もつけない)
    - `__forceinline__` → `inline` (省略可)
    - `cosf/sinf/powf` → `cos/sin/pow`
@@ -40,7 +40,7 @@
 3. 動作確認完了
 
 ### ステップ3: CPU実装
-1. `SDK_ProcAmp_CPU.cpp` に同じロジックを実装
+1. `OST_WindyLines_CPU.cpp` に同じロジックを実装
 2. GPU実装と結果が一致するかテスト
 
 ---
@@ -49,11 +49,11 @@
 
 新しいパラメータを追加する場合：
 
-- [ ] `SDK_ProcAmp.h` にパラメータID定義を追加
-- [ ] `SDK_ProcAmp_GPU.cpp` のホスト側コードにパラメータ取得処理を追加
-- [ ] `SDK_ProcAmp.cu` (CUDA) にパラメータを追加
-- [ ] `SDK_ProcAmp.cl` (OpenCL/Metal) にパラメータを追加
-- [ ] `SDK_ProcAmp_CPU.cpp` にパラメータを追加
+- [ ] `OST_WindyLines.h` にパラメータID定義を追加
+- [ ] `OST_WindyLines_GPU.cpp` のホスト側コードにパラメータ取得処理を追加
+- [ ] `OST_WindyLines.cu` (CUDA) にパラメータを追加
+- [ ] `OST_WindyLines.cl` (OpenCL/Metal) にパラメータを追加
+- [ ] `OST_WindyLines_CPU.cpp` にパラメータを追加
 - [ ] 3つの実装すべてで同じ結果が出ることを確認
 
 ---
@@ -122,7 +122,7 @@ atomicAdd(&counter[0], 1);
 ## トラブルシューティング
 
 ### 「CUDAで動くのにMetalで動かない」場合
-1. `SDK_ProcAmp.cl` に該当機能が移植されているか確認
+1. `OST_WindyLines.cl` に該当機能が移植されているか確認
 2. 関数名・型名の違いを確認（上記の表参照）
 3. Atomic操作をMetal形式に変換しているか確認
 4. バッファ初期化でnullptrを使っていないか確認
@@ -138,10 +138,10 @@ atomicAdd(&counter[0], 1);
 ### Mac (arm64) - Xcodeで手動ビルド
 
 1. **プロジェクトを開く**
-   - `SDK_ProcAmp/Mac/SDK_ProcAmp.xcodeproj` をXcodeで開く
+   - `OST_WindyLines/Mac/OST_WindyLines.xcodeproj` をXcodeで開く
 
 2. **ビルド設定を確認**
-   - Scheme: `SDK_ProcAmp`
+   - Scheme: `OST_WindyLines`
    - Configuration: `Debug` または `Release`
    - Architecture: `arm64`
 
@@ -149,7 +149,7 @@ atomicAdd(&counter[0], 1);
    - `Cmd + B` または メニュー → Product → Build
 
 4. **プラグインをインストール**
-   - ビルド成功後、生成された `SDK_ProcAmp.plugin` を以下にコピー:
+   - ビルド成功後、生成された `OST_WindyLines.plugin` を以下にコピー:
    ```
    /Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/
    ```

@@ -20,8 +20,8 @@
 /*******************************************************************/
 
 
-#ifndef SDK_PROCAMP_H
-#define SDK_PROCAMP_H
+#ifndef OST_WINDYLINES_H
+#define OST_WINDYLINES_H
 
 #include "AEConfig.h"
 
@@ -48,7 +48,7 @@
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
 // Set to 0 to disable completely (zero performance impact)
-#define ENABLE_DEBUG_RENDER_MARKERS 1
+#define ENABLE_DEBUG_RENDER_MARKERS 0
 // ========== DEBUG LOGGING (Common) ==========
 static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)
@@ -58,14 +58,14 @@ static void WriteLog(const char* format, ...)
 	// Platform-specific log paths
 #ifdef _WIN32
 	const char* paths[] = {
-		"C:\\Temp\\SDK_ProcAmp_Log.txt",
-		"C:\\Users\\Owner\\Desktop\\SDK_ProcAmp_Log.txt"
+		"C:\\Temp\\OST_WindyLines_Log.txt",
+		"C:\\Users\\Owner\\Desktop\\OST_WindyLines_Log.txt"
 	};
 #else
 	// Mac/Unix paths
 	const char* pathTemplates[] = {
-		"/tmp/SDK_ProcAmp_Log.txt",
-		"~/Desktop/SDK_ProcAmp_Log.txt"
+		"/tmp/OST_WindyLines_Log.txt",
+		"~/Desktop/OST_WindyLines_Log.txt"
 	};
 	// Expand ~ for home directory on Unix
 	char expandedPath[512] = "";
@@ -135,94 +135,94 @@ static void WriteLog(const char* format, ...)
 */
 enum
 {
-	SDK_PROCAMP_INPUT = 0,
+	OST_WINDYLINES_INPUT = 0,
 	
 	// Effect Preset (top-level)
-	SDK_PROCAMP_EFFECT_PRESET,                // 1. Effect preset selector
-	SDK_PROCAMP_LINE_SEED,                    // 2. Random seed
+	OST_WINDYLINES_EFFECT_PRESET,                // 1. Effect preset selector
+	OST_WINDYLINES_LINE_SEED,                    // 2. Random seed
 	
 	// ▼ Basic Settings
-	SDK_PROCAMP_LINE_COUNT,                   // 3. Number of lines
-	SDK_PROCAMP_LINE_LIFETIME,                // 4. Line lifetime (frames)
-	SDK_PROCAMP_LINE_INTERVAL,                // 5. Spawn interval (frames)
+	OST_WINDYLINES_LINE_COUNT,                   // 3. Number of lines
+	OST_WINDYLINES_LINE_LIFETIME,                // 4. Line lifetime (frames)
+	OST_WINDYLINES_LINE_INTERVAL,                // 5. Spawn interval (frames)
 	
 	// ▼ Color Settings
-	SDK_PROCAMP_COLOR_MODE,                   // 6. Single/Preset/Custom
-	SDK_PROCAMP_COLOR_PRESET,                 // 8. Preset selection popup
-	SDK_PROCAMP_LINE_COLOR,                   // 9. Single color picker
-	SDK_PROCAMP_CUSTOM_COLOR_1,               // 10-17. Custom colors 1-8
-	SDK_PROCAMP_CUSTOM_COLOR_2,
-	SDK_PROCAMP_CUSTOM_COLOR_3,
-	SDK_PROCAMP_CUSTOM_COLOR_4,
-	SDK_PROCAMP_CUSTOM_COLOR_5,
-	SDK_PROCAMP_CUSTOM_COLOR_6,
-	SDK_PROCAMP_CUSTOM_COLOR_7,
-	SDK_PROCAMP_CUSTOM_COLOR_8,
-	SDK_PROCAMP_LINE_EASING,                  // Easing function
-	SDK_PROCAMP_TRAVEL_LINKAGE,               // Travel distance linkage (Off/Width/Height)
-	SDK_PROCAMP_TRAVEL_LINKAGE_RATE,          // 19. Travel distance linkage rate (%)
-	SDK_PROCAMP_LINE_TRAVEL,                  // 20. Travel distance (px)
+	OST_WINDYLINES_COLOR_MODE,                   // 6. Single/Preset/Custom
+	OST_WINDYLINES_COLOR_PRESET,                 // 8. Preset selection popup
+	OST_WINDYLINES_LINE_COLOR,                   // 9. Single color picker
+	OST_WINDYLINES_CUSTOM_COLOR_1,               // 10-17. Custom colors 1-8
+	OST_WINDYLINES_CUSTOM_COLOR_2,
+	OST_WINDYLINES_CUSTOM_COLOR_3,
+	OST_WINDYLINES_CUSTOM_COLOR_4,
+	OST_WINDYLINES_CUSTOM_COLOR_5,
+	OST_WINDYLINES_CUSTOM_COLOR_6,
+	OST_WINDYLINES_CUSTOM_COLOR_7,
+	OST_WINDYLINES_CUSTOM_COLOR_8,
+	OST_WINDYLINES_LINE_EASING,                  // Easing function
+	OST_WINDYLINES_TRAVEL_LINKAGE,               // Travel distance linkage (Off/Width/Height)
+	OST_WINDYLINES_TRAVEL_LINKAGE_RATE,          // 19. Travel distance linkage rate (%)
+	OST_WINDYLINES_LINE_TRAVEL,                  // 20. Travel distance (px)
 	
 	// ▼ Appearance
-	SDK_PROCAMP_THICKNESS_LINKAGE,            // 21. Thickness linkage (Off/Width/Height)
-	SDK_PROCAMP_THICKNESS_LINKAGE_RATE,       // 22. Thickness linkage rate (%)
-	SDK_PROCAMP_LINE_THICKNESS,               // 23. Line thickness (px)
-	SDK_PROCAMP_LENGTH_LINKAGE,               // 24. Length linkage (Off/Width/Height)
-	SDK_PROCAMP_LENGTH_LINKAGE_RATE,          // 25. Length linkage rate (%)
-	SDK_PROCAMP_LINE_LENGTH,                  // 26. Line length (px)
-	SDK_PROCAMP_LINE_ANGLE,                   // 27. Line angle (degrees)
-	SDK_PROCAMP_LINE_CAP,                     // 28. Line cap style
-	SDK_PROCAMP_LINE_TAIL_FADE,               // 29. Tail fade amount
+	OST_WINDYLINES_THICKNESS_LINKAGE,            // 21. Thickness linkage (Off/Width/Height)
+	OST_WINDYLINES_THICKNESS_LINKAGE_RATE,       // 22. Thickness linkage rate (%)
+	OST_WINDYLINES_LINE_THICKNESS,               // 23. Line thickness (px)
+	OST_WINDYLINES_LENGTH_LINKAGE,               // 24. Length linkage (Off/Width/Height)
+	OST_WINDYLINES_LENGTH_LINKAGE_RATE,          // 25. Length linkage rate (%)
+	OST_WINDYLINES_LINE_LENGTH,                  // 26. Line length (px)
+	OST_WINDYLINES_LINE_ANGLE,                   // 27. Line angle (degrees)
+	OST_WINDYLINES_LINE_CAP,                     // 28. Line cap style
+	OST_WINDYLINES_LINE_TAIL_FADE,               // 29. Tail fade amount
 	
 	// ▼ Position & Spawn - Line Origin
-	SDK_PROCAMP_POSITION_HEADER,              // 30. Line origin topic start
-	SDK_PROCAMP_SPAWN_SOURCE,                 // 31. Spawn source (Full Frame / Element Bounds)
-	SDK_PROCAMP_LINE_ALPHA_THRESH,            // 32. Alpha threshold
-	SDK_PROCAMP_LINE_ORIGIN_MODE,             // 33. Wind origin mode
-	SDK_PROCAMP_ANIM_PATTERN,                 // 34. Animation pattern (direction)
-	SDK_PROCAMP_LINE_START_TIME,              // 35. Start time (frames)
-	SDK_PROCAMP_LINE_DURATION,                // 36. Duration (frames)
-	SDK_PROCAMP_LINE_DEPTH_STRENGTH,          // 37. Depth strength
-	SDK_PROCAMP_CENTER_GAP,                   // 38. Center gap
-	SDK_PROCAMP_ORIGIN_OFFSET_X,              // 39. Origin Offset X (px)
-	SDK_PROCAMP_ORIGIN_OFFSET_Y,              // 40. Origin Offset Y (px)
-	SDK_PROCAMP_LINE_SPAWN_SCALE_X,           // 41. Spawn area scale X (%)
-	SDK_PROCAMP_LINE_SPAWN_SCALE_Y,           // 42. Spawn area scale Y (%)
-	SDK_PROCAMP_LINE_SPAWN_ROTATION,          // 43. Spawn area rotation (degrees)
-	SDK_PROCAMP_LINE_SHOW_SPAWN_AREA,         // 44. Show spawn area preview
-	SDK_PROCAMP_LINE_SPAWN_AREA_COLOR,        // 45. Spawn area color
-	SDK_PROCAMP_POSITION_TOPIC_END,           // 46. Line origin topic end
+	OST_WINDYLINES_POSITION_HEADER,              // 30. Line origin topic start
+	OST_WINDYLINES_SPAWN_SOURCE,                 // 31. Spawn source (Full Frame / Element Bounds)
+	OST_WINDYLINES_LINE_ALPHA_THRESH,            // 32. Alpha threshold
+	OST_WINDYLINES_LINE_ORIGIN_MODE,             // 33. Wind origin mode
+	OST_WINDYLINES_ANIM_PATTERN,                 // 34. Animation pattern (direction)
+	OST_WINDYLINES_LINE_START_TIME,              // 35. Start time (frames)
+	OST_WINDYLINES_LINE_DURATION,                // 36. Duration (frames)
+	OST_WINDYLINES_LINE_DEPTH_STRENGTH,          // 37. Depth strength
+	OST_WINDYLINES_CENTER_GAP,                   // 38. Center gap
+	OST_WINDYLINES_ORIGIN_OFFSET_X,              // 39. Origin Offset X (px)
+	OST_WINDYLINES_ORIGIN_OFFSET_Y,              // 40. Origin Offset Y (px)
+	OST_WINDYLINES_LINE_SPAWN_SCALE_X,           // 41. Spawn area scale X (%)
+	OST_WINDYLINES_LINE_SPAWN_SCALE_Y,           // 42. Spawn area scale Y (%)
+	OST_WINDYLINES_LINE_SPAWN_ROTATION,          // 43. Spawn area rotation (degrees)
+	OST_WINDYLINES_LINE_SHOW_SPAWN_AREA,         // 44. Show spawn area preview
+	OST_WINDYLINES_LINE_SPAWN_AREA_COLOR,        // 45. Spawn area color
+	OST_WINDYLINES_POSITION_TOPIC_END,           // 46. Line origin topic end
 	
 	// ▼ Shadow - Topic group
-	SDK_PROCAMP_SHADOW_HEADER,                // 47. Shadow topic start
-	SDK_PROCAMP_SHADOW_ENABLE,                // 48. Shadow on/off
-	SDK_PROCAMP_SHADOW_COLOR,                 // 49. Shadow color
-	SDK_PROCAMP_SHADOW_OFFSET_X,              // 50. Shadow offset X (px)
-	SDK_PROCAMP_SHADOW_OFFSET_Y,              // 51. Shadow offset Y (px)
-	SDK_PROCAMP_SHADOW_OPACITY,               // 52. Shadow opacity (0-1)
-	SDK_PROCAMP_SHADOW_TOPIC_END,             // 53. Shadow topic end
+	OST_WINDYLINES_SHADOW_HEADER,                // 47. Shadow topic start
+	OST_WINDYLINES_SHADOW_ENABLE,                // 48. Shadow on/off
+	OST_WINDYLINES_SHADOW_COLOR,                 // 49. Shadow color
+	OST_WINDYLINES_SHADOW_OFFSET_X,              // 50. Shadow offset X (px)
+	OST_WINDYLINES_SHADOW_OFFSET_Y,              // 51. Shadow offset Y (px)
+	OST_WINDYLINES_SHADOW_OPACITY,               // 52. Shadow opacity (0-1)
+	OST_WINDYLINES_SHADOW_TOPIC_END,             // 53. Shadow topic end
 	
 	// ▼ Motion Blur - Topic group
-	SDK_PROCAMP_MOTION_BLUR_HEADER,           // 54. Motion blur topic start
-	SDK_PROCAMP_MOTION_BLUR_ENABLE,           // 55. Motion blur on/off
-	SDK_PROCAMP_MOTION_BLUR_SAMPLES,          // 56. Motion blur quality (samples)
-	SDK_PROCAMP_MOTION_BLUR_STRENGTH,         // 57. Motion blur strength
-	SDK_PROCAMP_MOTION_BLUR_TOPIC_END,        // 58. Motion blur topic end
+	OST_WINDYLINES_MOTION_BLUR_HEADER,           // 54. Motion blur topic start
+	OST_WINDYLINES_MOTION_BLUR_ENABLE,           // 55. Motion blur on/off
+	OST_WINDYLINES_MOTION_BLUR_SAMPLES,          // 56. Motion blur quality (samples)
+	OST_WINDYLINES_MOTION_BLUR_STRENGTH,         // 57. Motion blur strength
+	OST_WINDYLINES_MOTION_BLUR_TOPIC_END,        // 58. Motion blur topic end
 	
 	// ▼ Advanced - Topic group
-	SDK_PROCAMP_ADVANCED_HEADER,              // 59. Advanced topic start
-	SDK_PROCAMP_LINE_AA,                      // 60. Anti-aliasing
-	SDK_PROCAMP_HIDE_ELEMENT,                 // 61. Hide original element (lines only)
-	SDK_PROCAMP_BLEND_MODE,                   // 62. Blend mode with element
-	SDK_PROCAMP_ADVANCED_TOPIC_END,           // 63. Advanced topic end
+	OST_WINDYLINES_ADVANCED_HEADER,              // 59. Advanced topic start
+	OST_WINDYLINES_LINE_AA,                      // 60. Anti-aliasing
+	OST_WINDYLINES_HIDE_ELEMENT,                 // 61. Hide original element (lines only)
+	OST_WINDYLINES_BLEND_MODE,                   // 62. Blend mode with element
+	OST_WINDYLINES_ADVANCED_TOPIC_END,           // 63. Advanced topic end
 	
 	// Hidden params (for backwards compatibility)
-	SDK_PROCAMP_LINE_ALLOW_MIDPLAY,           // 64. (hidden)
-	SDK_PROCAMP_LINE_COLOR_R,                 // 65. (hidden)
-	SDK_PROCAMP_LINE_COLOR_G,                 // 66. (hidden)
-	SDK_PROCAMP_LINE_COLOR_B,                 // 67. (hidden)
+	OST_WINDYLINES_LINE_ALLOW_MIDPLAY,           // 64. (hidden)
+	OST_WINDYLINES_LINE_COLOR_R,                 // 65. (hidden)
+	OST_WINDYLINES_LINE_COLOR_G,                 // 66. (hidden)
+	OST_WINDYLINES_LINE_COLOR_B,                 // 67. (hidden)
 	
-	SDK_PROCAMP_NUM_PARAMS
+	OST_WINDYLINES_NUM_PARAMS
 };
 
 // Color Mode enum
@@ -303,8 +303,8 @@ struct EffectPreset
 };
 
 // Preset data array - auto-generated from presets.tsv
-// Run preset_converter.py to regenerate SDK_ProcAmp_Presets.h
-#include "SDK_ProcAmp_Presets.h"
+// Run preset_converter.py to regenerate OST_WindyLines_Presets.h
+#include "OST_WindyLines_Presets.h"
 
 /*
 **
@@ -523,8 +523,8 @@ struct EffectPreset
 #ifdef __cplusplus
 
 // Color preset definitions - auto-generated from color_presets.tsv
-// Run color_preset_converter.py to regenerate SDK_ProcAmp_ColorPresets.h
-#include "SDK_ProcAmp_ColorPresets.h"
+// Run color_preset_converter.py to regenerate OST_WindyLines_ColorPresets.h
+#include "OST_WindyLines_ColorPresets.h"
 
 #endif // __cplusplus
 

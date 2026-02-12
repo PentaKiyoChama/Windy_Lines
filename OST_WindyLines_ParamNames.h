@@ -1,5 +1,5 @@
 /**
- * SDK_ProcAmp_ParamNames.h
+ * OST_WindyLines_ParamNames.h
  * 
  * Version: v51 - DevGuide approach: clipTime-based with GPU fallback estimation
  * 
@@ -15,8 +15,8 @@
  * - Mac: ランタイムで iconv を使って Shift_JIS に変換
  */
 
-#ifndef SDK_PROCAMP_PARAM_NAMES_H
-#define SDK_PROCAMP_PARAM_NAMES_H
+#ifndef OST_WINDYLINES_PARAM_NAMES_H
+#define OST_WINDYLINES_PARAM_NAMES_H
 
 #include <cstring>
 #include <string>
@@ -178,7 +178,7 @@ namespace ParamNames
     constexpr const char* BLUR_SAMPLES      = "サンプル数"; 
     constexpr const char* BLUR_ANGLE        = "シャッター角度";
     constexpr const char* BLUR_VELOCITY     = "速度連動";
-    constexpr const char* EFFECT_PRESET     = "エフェクトプリセット";
+    constexpr const char* EFFECT_PRESET     = "プリセットパラメーター";
     constexpr const char* DEFAULT           = "デフォルト";
     constexpr const char* LINKAGE_HEADER    = "連動設定";
     constexpr const char* LENGTH_LINKAGE    = "長さの連動";
@@ -290,4 +290,4 @@ namespace ParamNames
 #define PM_BLEND_MODE       PARAM_MENU(ParamNames::BLEND_MODE_MENU)
 #define PM_LINKAGE_MODE     PARAM_MENU(ParamNames::LINKAGE_MODE_MENU)
 
-#endif // SDK_PROCAMP_PARAM_NAMES_H
+#endif // OST_WINDYLINES_PARAM_NAMES_H

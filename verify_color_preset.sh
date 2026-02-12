@@ -27,8 +27,8 @@ if [ ! -f "color_presets.tsv" ]; then
     exit 1
 fi
 
-if [ ! -f "SDK_ProcAmp_ColorPresets.h" ]; then
-    echo "❌ エラー: SDK_ProcAmp_ColorPresets.h が見つかりません"
+if [ ! -f "OST_WindyLines_ColorPresets.h" ]; then
+    echo "❌ エラー: OST_WindyLines_ColorPresets.h が見つかりません"
     echo "   python color_preset_converter.py を実行してください"
     exit 1
 fi
@@ -70,12 +70,12 @@ echo "$PRESET2_TSV_COLORS"
 echo ""
 
 # Compare generated header colors
-echo "2. SDK_ProcAmp_ColorPresets.h の色データ:"
+echo "2. OST_WindyLines_ColorPresets.h の色データ:"
 echo ""
 
 # Find color arrays in header
-PRESET1_H_ARRAY=$(awk "/const PresetColor k$PRESET1_EN\[8\]/{getline; print; getline; print}" SDK_ProcAmp_ColorPresets.h | tr -d '\t\n ')
-PRESET2_H_ARRAY=$(awk "/const PresetColor k$PRESET2_EN\[8\]/{getline; print; getline; print}" SDK_ProcAmp_ColorPresets.h | tr -d '\t\n ')
+PRESET1_H_ARRAY=$(awk "/const PresetColor k$PRESET1_EN\[8\]/{getline; print; getline; print}" OST_WindyLines_ColorPresets.h | tr -d '\t\n ')
+PRESET2_H_ARRAY=$(awk "/const PresetColor k$PRESET2_EN\[8\]/{getline; print; getline; print}" OST_WindyLines_ColorPresets.h | tr -d '\t\n ')
 
 echo "【k$PRESET1_EN】:"
 if [ -z "$PRESET1_H_ARRAY" ]; then
@@ -127,10 +127,10 @@ if [ $TSV_MATCH -eq 1 ] && [ $HEADER_MATCH -eq 1 ]; then
     echo ""
     echo "【必須手順】"
     echo "1. プラグインを再ビルド:"
-    echo "   cd SDK_ProcAmp"
+    echo "   cd OST_WindyLines"
     echo "   make clean && make"
     echo "   または"
-    echo "   MSBuild SDK_ProcAmp.sln /t:Clean,Build /p:Configuration=Debug"
+    echo "   MSBuild OST_WindyLines.sln /t:Clean,Build /p:Configuration=Debug"
     echo ""
     echo "2. 再ビルドしたプラグインをAfter Effectsプラグインフォルダにコピー"
     echo ""

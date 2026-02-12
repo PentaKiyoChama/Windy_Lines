@@ -10,7 +10,7 @@
 
 ### 1. Adobe SDK ライセンス確認 【最重要】
 - [ ] **Adobe Developer Program** での商用利用条件確認
-- [ ] SDK_ProcAmp.h のAdobe著作権表記問題解決
+- [ ] OST_WindyLines.h のAdobe著作権表記問題解決
   ```
   現在: "ADOBE CONFIDENTIAL / Copyright 2012 Adobe Systems"
   対策: 独自ヘッダーへの変更またはライセンス取得

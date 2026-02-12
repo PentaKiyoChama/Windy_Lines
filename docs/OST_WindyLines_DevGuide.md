@@ -1,4 +1,4 @@
-# SDK_ProcAmp 開発ガイド
+# OST_WindyLines 開発ガイド
 
 ## ステータス: 安定版 (2026-01-20)
 
@@ -17,14 +17,14 @@ CPU側で取得した `clipStartFrame` を、静的なグローバルマップ�
 ### 実装
 
 ```
-SDK_ProcAmp.h:
+OST_WindyLines.h:
   SharedClipData 構造体（静的マップ + mutex）
 
-SDK_ProcAmp_CPU.cpp:
+OST_WindyLines_CPU.cpp:
   PF_UtilitySuite::GetClipStart() で clipStartFrame を取得
   SharedClipData::SetClipStart() で共有マップに保存
 
-SDK_ProcAmp_GPU.cpp:
+OST_WindyLines_GPU.cpp:
   SharedClipData::GetClipStart() で clipStartFrame を取得
   frameIndex = mediaFrameIndex - clipStartFrame（0から始まる）
 ```
@@ -129,18 +129,18 @@ const float centerY = alphaCenterY + (ry - 0.5f) * alphaBoundsHeightSafe
 
 | ファイル | 役割 |
 |---------|------|
-| `SDK_ProcAmp.h` | パラメータ定義、SharedClipData 構造体 |
-| `SDK_ProcAmp_CPU.cpp` | CPUレンダリング、clipStartFrame の取得と共有 |
-| `SDK_ProcAmp_GPU.cpp` | GPUレンダリング（DirectX/CUDA/OpenCL/Metal） |
-| `SDK_ProcAmp.hlsl` | DirectXシェーダー |
-| `SDK_ProcAmp_Notes.json` | AI向け技術ノート |
+| `OST_WindyLines.h` | パラメータ定義、SharedClipData 構造体 |
+| `OST_WindyLines_CPU.cpp` | CPUレンダリング、clipStartFrame の取得と共有 |
+| `OST_WindyLines_GPU.cpp` | GPUレンダリング（DirectX/CUDA/OpenCL/Metal） |
+| `OST_WindyLines.hlsl` | DirectXシェーダー |
+| `OST_WindyLines_Notes.json` | AI向け技術ノート |
 
 ---
 
 ## デバッグ
 
 ### ログファイル
-- 出力先: `SDK_ProcAmp_Debug.log`（同ディレクトリ）
+- 出力先: `OST_WindyLines_Debug.log`（同ディレクトリ）
 
 ### ログフォーマット
 ```
@@ -187,10 +187,10 @@ const float centerY = alphaCenterY + (ry - 0.5f) * alphaBoundsHeightSafe
    - 再現手順を明記
 
 2. **デバッグログを活用**
-   - `SDK_ProcAmp_Debug.log` の関連部分を共有
+   - `OST_WindyLines_Debug.log` の関連部分を共有
    - `clipStart` と `relF` の値を確認
 
-3. **SDK_ProcAmp_Notes.json を参照**
+3. **OST_WindyLines_Notes.json を参照**
    - AI向けの技術ノートが記載されています
    - 「なぜこの実装になったか」が説明されています
 

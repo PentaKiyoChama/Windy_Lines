@@ -14,10 +14,10 @@
 #### ✅ Step 0: 基礎実装
 - `color_presets.tsv` 作成（全33プリセット → 現在35プリセット）
 - `color_preset_converter.py` 実装
-- `SDK_ProcAmp_ColorPresets.h` 自動生成
+- `OST_WindyLines_ColorPresets.h` 自動生成
 
 #### ✅ Step 1: 安全な統合
-- SDK_ProcAmp.h に `#if 0` で無効化した新ヘッダーinclude追加
+- OST_WindyLines.h に `#if 0` で無効化した新ヘッダーinclude追加
 - 本番環境への影響: ゼロ
 
 #### ✅ Step 2: システム有効化
@@ -62,7 +62,7 @@
    - GetPresetPalette() 関数生成
    - バリデーション（ARGB 0-255）
 
-3. **SDK_ProcAmp_ColorPresets.h** (自動生成)
+3. **OST_WindyLines_ColorPresets.h** (自動生成)
    - enum ColorPreset（35個の定数）
    - struct PresetColor
    - namespace ColorPresets { 35個の配列 }
@@ -70,15 +70,15 @@
    - kColorPresetCount = 35
    - kColorPresetNames[35]（日本語名）
 
-4. **SDK_ProcAmp_CPU.cpp**
+4. **OST_WindyLines_CPU.cpp**
    - 動的UIラベル生成（line 1143-1160）
    - kColorPresetCount使用（ハードコード削除）
    - normalizePopup更新（line 1719）
 
-5. **SDK_ProcAmp.h**
+5. **OST_WindyLines.h**
    - 手動enum削除（38行削除）
    - 古いコード削除（211行削除）
-   - `#include "SDK_ProcAmp_ColorPresets.h"` のみ
+   - `#include "OST_WindyLines_ColorPresets.h"` のみ
 
 ---
 
@@ -90,7 +90,7 @@
 |------|-------------------|-----------------|------|
 | データソース | presets.tsv | color_presets.tsv | ✅ |
 | 変換スクリプト | preset_converter.py | color_preset_converter.py | ✅ |
-| 生成ヘッダー | SDK_ProcAmp_Presets.h | SDK_ProcAmp_ColorPresets.h | ✅ |
+| 生成ヘッダー | OST_WindyLines_Presets.h | OST_WindyLines_ColorPresets.h | ✅ |
 | enum自動生成 | ❌ 不要 | ✅ あり | ✅ |
 | カウント定数 | kEffectPresetCount | kColorPresetCount | ✅ |
 | 名前配列 | kEffectPresets[].name | kColorPresetNames[] | ✅ |
@@ -198,7 +198,7 @@ bash /tmp/test_step2.sh
 ```bash
 make clean && make
 # または
-MSBuild SDK_ProcAmp.sln /t:Clean,Build
+MSBuild OST_WindyLines.sln /t:Clean,Build
 ```
 
 ---
@@ -230,7 +230,7 @@ MSBuild SDK_ProcAmp.sln /t:Clean,Build
 
 Gitで簡単に戻せます:
 ```bash
-git checkout <commit_before_changes> -- SDK_ProcAmp.h SDK_ProcAmp_CPU.cpp color_preset_converter.py
+git checkout <commit_before_changes> -- OST_WindyLines.h OST_WindyLines_CPU.cpp color_preset_converter.py
 python color_preset_converter.py
 ```
 

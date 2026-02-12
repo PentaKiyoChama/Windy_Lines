@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Extract Color Presets from SDK_ProcAmp.h to TSV
+Extract Color Presets from OST_WindyLines.h to TSV
 
-This script extracts the hardcoded color preset definitions from SDK_ProcAmp.h
+This script extracts the hardcoded color preset definitions from OST_WindyLines.h
 and generates a color_presets.tsv file. This is a one-time migration tool to
 convert the existing hardcoded presets to the new TSV-based system.
 
@@ -79,8 +79,8 @@ def extract_preset_colors(header_content, preset_cpp_name):
     return [(int(a), int(r), int(g), int(b)) for a, r, g, b in colors]
 
 def main():
-    # Read SDK_ProcAmp.h
-    header_path = 'SDK_ProcAmp.h'
+    # Read OST_WindyLines.h
+    header_path = 'OST_WindyLines.h'
     try:
         with open(header_path, 'r', encoding='utf-8') as f:
             header_content = f.read()
@@ -133,8 +133,8 @@ def main():
     print(f"\nNext steps:")
     print(f"  1. Review {output_file} to ensure all data is correct")
     print(f"  2. Run: python color_preset_converter.py")
-    print(f"  3. Replace the hardcoded presets in SDK_ProcAmp.h with:")
-    print(f"     #include \"SDK_ProcAmp_ColorPresets.h\"")
+    print(f"  3. Replace the hardcoded presets in OST_WindyLines.h with:")
+    print(f"     #include \"OST_WindyLines_ColorPresets.h\"")
     
     return 0
 

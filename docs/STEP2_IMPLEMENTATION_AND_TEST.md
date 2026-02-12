@@ -12,16 +12,16 @@
 
 ### 変更したファイル
 
-1. **SDK_ProcAmp.h** - 新ヘッダーを有効化、既存定義をコメントアウト
+1. **OST_WindyLines.h** - 新ヘッダーを有効化、既存定義をコメントアウト
 
 ### 実装の詳細
 
-#### SDK_ProcAmp.h の変更
+#### OST_WindyLines.h の変更
 
 **変更前（Step 1の状態）**:
 ```cpp
 #if 0  // まだ有効化しない
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 #endif
 
 struct PresetColor {
@@ -41,7 +41,7 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 **変更後（Step 2の状態）**:
 ```cpp
 // 新しい色プリセットシステム（有効化）
-#include "SDK_ProcAmp_ColorPresets.h"
+#include "OST_WindyLines_ColorPresets.h"
 
 /*
 struct PresetColor {
@@ -85,8 +85,8 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 cd /home/runner/work/Windy_Lines/Windy_Lines
 
 # クリーンビルド
-MSBuild SDK_ProcAmp.sln /t:Clean
-MSBuild SDK_ProcAmp.sln /t:Build /p:Configuration=Debug
+MSBuild OST_WindyLines.sln /t:Clean
+MSBuild OST_WindyLines.sln /t:Build /p:Configuration=Debug
 
 # ビルドログを確認
 # エラー: 0
@@ -96,8 +96,8 @@ MSBuild SDK_ProcAmp.sln /t:Build /p:Configuration=Debug
 **Mac (Xcode)**:
 ```bash
 # クリーンビルド
-xcodebuild clean -project SDK_ProcAmp.xcodeproj -configuration Debug
-xcodebuild build -project SDK_ProcAmp.xcodeproj -configuration Debug
+xcodebuild clean -project OST_WindyLines.xcodeproj -configuration Debug
+xcodebuild build -project OST_WindyLines.xcodeproj -configuration Debug
 
 # ビルド結果を確認
 # ** BUILD SUCCEEDED **
@@ -121,9 +121,9 @@ echo $?  # 0 であるべき
 #### トラブルシューティング
 **エラー: "redefinition of struct PresetColor"**
 - 原因: 既存の定義がコメントアウトされていない
-- 解決: SDK_ProcAmp.hの既存定義を確認し、すべて`/* */`で囲まれているか確認
+- 解決: OST_WindyLines.hの既存定義を確認し、すべて`/* */`で囲まれているか確認
 
-**エラー: "SDK_ProcAmp_ColorPresets.h: No such file"**
+**エラー: "OST_WindyLines_ColorPresets.h: No such file"**
 - 原因: ヘッダーファイルが生成されていない
 - 解決: `python color_preset_converter.py`を実行
 
@@ -140,13 +140,13 @@ cd /home/runner/work/Windy_Lines/Windy_Lines
 
 # 生成されたヘッダーのプリセット数を確認
 echo "新ヘッダーのプリセット数:"
-grep -c "const PresetColor k" SDK_ProcAmp_ColorPresets.h
+grep -c "const PresetColor k" OST_WindyLines_ColorPresets.h
 
 # 期待値: 33 または 34（ユーザーが追加した場合）
 
 # GetPresetPalette関数のケース数を確認
 echo "GetPresetPalette関数のケース数:"
-grep -c "case.*return ColorPresets::" SDK_ProcAmp_ColorPresets.h
+grep -c "case.*return ColorPresets::" OST_WindyLines_ColorPresets.h
 
 # 期待値: 33 または 34
 ```
@@ -168,12 +168,12 @@ cd /home/runner/work/Windy_Lines/Windy_Lines
 
 # レインボープリセットの最初の色を確認
 echo "レインボープリセット（新）:"
-grep -A 1 "const PresetColor kRainbow\[8\]" SDK_ProcAmp_ColorPresets.h | tail -1 | grep -o "{[^}]*}" | head -1
+grep -A 1 "const PresetColor kRainbow\[8\]" OST_WindyLines_ColorPresets.h | tail -1 | grep -o "{[^}]*}" | head -1
 # 期待値: {255, 255, 0, 0}
 
 # モノクロプリセットの最後の色を確認
 echo "モノクロプリセット（新）:"
-grep -A 2 "const PresetColor kMonochrome\[8\]" SDK_ProcAmp_ColorPresets.h | tail -1 | grep -o "{[^}]*}" | tail -1
+grep -A 2 "const PresetColor kMonochrome\[8\]" OST_WindyLines_ColorPresets.h | tail -1 | grep -o "{[^}]*}" | tail -1
 # 期待値: {255, 0, 0, 0}
 ```
 
@@ -194,7 +194,7 @@ grep -A 2 "const PresetColor kMonochrome\[8\]" SDK_ProcAmp_ColorPresets.h | tail
 2. After Effectsを起動
 3. 新規コンポジション作成
 4. 平面レイヤー作成
-5. SDK_ProcAmpエフェクトを適用
+5. OST_WindyLinesエフェクトを適用
 
 #### 確認項目
 - [ ] エフェクトが正常に読み込まれる
@@ -224,7 +224,7 @@ grep -A 2 "const PresetColor kMonochrome\[8\]" SDK_ProcAmp_ColorPresets.h | tail
 既存の.aepファイルが新システムでも正常に動作することを確認する。
 
 #### 手順
-1. SDK_ProcAmpを使用している既存の.aepファイルを開く
+1. OST_WindyLinesを使用している既存の.aepファイルを開く
 2. 以下を確認:
    - [ ] プロジェクトが正常に開ける
    - [ ] エラーメッセージがない
@@ -320,14 +320,14 @@ echo ""
 
 echo "✓ テスト1: ファイル変更の確認"
 echo "  新ヘッダーinclude確認:"
-if grep -q "^#include \"SDK_ProcAmp_ColorPresets.h\"" SDK_ProcAmp.h; then
+if grep -q "^#include \"OST_WindyLines_ColorPresets.h\"" OST_WindyLines.h; then
     echo "    ✅ 新ヘッダーが有効化されています"
 else
     echo "    ❌ 新ヘッダーが有効化されていません"
 fi
 
 echo "  既存定義のコメントアウト確認:"
-if grep -q "^/\* *$" SDK_ProcAmp.h | head -1; then
+if grep -q "^/\* *$" OST_WindyLines.h | head -1; then
     echo "    ✅ 既存定義がコメントアウトされています"
 else
     echo "    ⚠️  既存定義の状態を確認してください"
@@ -335,7 +335,7 @@ fi
 echo ""
 
 echo "✓ テスト2: プリセット数確認"
-PRESET_COUNT=$(grep -c "const PresetColor k" SDK_ProcAmp_ColorPresets.h)
+PRESET_COUNT=$(grep -c "const PresetColor k" OST_WindyLines_ColorPresets.h)
 echo "  新ヘッダーのプリセット数: ${PRESET_COUNT}"
 if [ "$PRESET_COUNT" -ge 33 ]; then
     echo "    ✅ プリセット数が正しい"
@@ -346,7 +346,7 @@ echo ""
 
 echo "✓ テスト3: 色データ検証"
 echo "  レインボープリセット（新）:"
-RAINBOW_COLOR=$(grep -A 1 "const PresetColor kRainbow\[8\]" SDK_ProcAmp_ColorPresets.h | tail -1 | grep -o "{[^}]*}" | head -1)
+RAINBOW_COLOR=$(grep -A 1 "const PresetColor kRainbow\[8\]" OST_WindyLines_ColorPresets.h | tail -1 | grep -o "{[^}]*}" | head -1)
 echo "    ${RAINBOW_COLOR}"
 if [[ "$RAINBOW_COLOR" == *"255, 255, 0, 0"* ]]; then
     echo "    ✅ 色データが正しい"
@@ -395,7 +395,7 @@ echo "詳細は STEP2_IMPLEMENTATION_AND_TEST.md を参照してください"
 **解決**:
 ```bash
 # 既存定義がコメントアウトされているか確認
-grep -A 3 "struct PresetColor" SDK_ProcAmp.h
+grep -A 3 "struct PresetColor" OST_WindyLines.h
 
 # コメントアウトされていない場合、手動で /* */ を追加
 ```
@@ -404,9 +404,9 @@ grep -A 3 "struct PresetColor" SDK_ProcAmp.h
 
 **原因**: GetPresetPalette関数がコメントアウトされている
 
-**解決**: SDK_ProcAmp_ColorPresets.hに関数が定義されているか確認
+**解決**: OST_WindyLines_ColorPresets.hに関数が定義されているか確認
 ```bash
-grep "GetPresetPalette" SDK_ProcAmp_ColorPresets.h
+grep "GetPresetPalette" OST_WindyLines_ColorPresets.h
 ```
 
 ### 警告: After Effectsで色が違う
@@ -429,7 +429,7 @@ python color_preset_converter.py
 **解決**:
 ```bash
 # プリセットIDを確認
-grep "case.*return ColorPresets::" SDK_ProcAmp_ColorPresets.h
+grep "case.*return ColorPresets::" OST_WindyLines_ColorPresets.h
 
 # enum定義と一致しているか確認
 ```
@@ -452,7 +452,7 @@ grep "case.*return ColorPresets::" SDK_ProcAmp_ColorPresets.h
 
 **本番への影響**: ⚠️ **低** - 新システムを使用するが、内容は既存と同じ
 
-**ロールバック方法**: 簡単 - `git checkout HEAD~1 -- SDK_ProcAmp.h`または手動で`#include`をコメントアウト
+**ロールバック方法**: 簡単 - `git checkout HEAD~1 -- OST_WindyLines.h`または手動で`#include`をコメントアウト
 
 **次のステップ**: ステップ3（既存定義の完全削除）へ進む
 
