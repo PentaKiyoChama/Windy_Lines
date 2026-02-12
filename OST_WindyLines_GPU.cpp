@@ -949,7 +949,8 @@ public:
 			@autoreleasepool{
 				prSuiteError result = suiteError_NoError;
 
-                NSString *pluginBundlePath = [[NSBundle bundleWithIdentifier:@"MyCompany.SDK-ProcAmp"] bundlePath];
+                // Use correct bundle identifier for this plugin
+                NSString *pluginBundlePath = [[NSBundle bundleWithIdentifier:@"MyCompany.OST-WindyLines"] bundlePath];
                 NSString *metalLibPath = [pluginBundlePath stringByAppendingPathComponent:@"Contents/Resources/MetalLib/OST_WindyLines.metallib"];
                 if(!(metalLibPath && [[NSFileManager defaultManager] fileExistsAtPath:metalLibPath]))
                 {

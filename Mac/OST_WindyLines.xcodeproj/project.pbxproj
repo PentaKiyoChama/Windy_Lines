@@ -48,7 +48,7 @@
 		7E83C109170F4840008B8043 /* OST_WindyLines-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OST_WindyLines-Prefix.pch"; sourceTree = "<group>"; };
 		7E83C113170F489B008B8043 /* OST_WindyLines_CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OST_WindyLines_CPU.cpp; path = ../OST_WindyLines_CPU.cpp; sourceTree = SOURCE_ROOT; };
 		7E83C114170F489B008B8043 /* OST_WindyLines_GPU.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = OST_WindyLines_GPU.cpp; path = ../OST_WindyLines_GPU.cpp; sourceTree = SOURCE_ROOT; };
-		7E83C116170F489B008B8043 /* OST_WindyLines.r */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.rez; name = OST_WindyLines.r; path = ../OST_WindyLines.r; sourceTree = SOURCE_ROOT; };
+		7E83C116170F489B008B8043 /* OST_WindyLines.r */ = {isa = PBXFileReference; fileEncoding = 2147486209; lastKnownFileType = sourcecode.rez; name = OST_WindyLines.r; path = ../OST_WindyLines.r; sourceTree = SOURCE_ROOT; };
 		7E83C124170F4EE9008B8043 /* AEConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AEConfig.h; path = Examples/Headers/AEConfig.h; sourceTree = AE_SDK_BASE_PATH; };
 		7E83C128170F519D008B8043 /* AE_Effect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AE_Effect.h; path = Examples/Headers/AE_Effect.h; sourceTree = AE_SDK_BASE_PATH; };
 		7E83C136170F8622008B8043 /* PrGPUFilterModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PrGPUFilterModule.h; path = ../../Utils/PrGPUFilterModule.h; sourceTree = SOURCE_ROOT; };
@@ -160,7 +160,6 @@
 				3F57A75326FE9DE9004786EA /* ShellScript */,
 			);
 			buildRules = (
-				3F577B5526FE86D4004786EA /* PBXBuildRule */,
 			);
 			dependencies = (
 			);
@@ -244,7 +243,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				7E83C117170F489B008B8043 /* OST_WindyLines_CPU.cpp in Sources */,
-				3F57A74326FE89EF004786EA /* OST_WindyLines.metal in Sources */,
 				7E83C118170F489B008B8043 /* OST_WindyLines_GPU.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
