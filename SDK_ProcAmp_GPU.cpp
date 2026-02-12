@@ -2546,4 +2546,6 @@ private:
 	cl_kernel mKernelOpenCLAlpha = nullptr;
 };
 
+#if ENABLE_GPU_RENDERING
 DECLARE_GPUFILTER_ENTRY(PrGPUFilterModule<ProcAmp2>)
+#endif

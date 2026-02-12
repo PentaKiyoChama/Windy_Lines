@@ -1826,8 +1826,8 @@ static PF_Err Render(
 		const float dsy = (in_data->downsample_y.den != 0) ? ((float)in_data->downsample_y.num / (float)in_data->downsample_y.den) : 1.0f;
 		const float dsMax = dsx > dsy ? dsx : dsy;
 		const float dsScale = dsMax >= 1.0f ? (1.0f / dsMax) : (dsMax > 0.0f ? dsMax : 1.0f);
-		const float lineThicknessScaled = lineThickness * dsScale;
-		const float lineLengthScaled = lineLength * dsScale;
+		// Note: lineThicknessScaled/lineLengthScaled/lineTravelScaled are calculated
+		// after alphaBounds + linkage application below
 		const float lineAAScaled = lineAA * dsScale;
 		const float effectiveAA = lineAAScaled > 0.0f ? lineAAScaled : 1.0f;
 		// Center is now controlled by Origin Offset X/Y only
@@ -1837,7 +1837,7 @@ static PF_Err Render(
 		const int lineSeed = (int)params[SDK_PROCAMP_LINE_SEED]->u.fs_d.value;
 		const int lineEasing = normalizePopup(params[SDK_PROCAMP_LINE_EASING]->u.pd.value, 28);
 		const float lineTravel = (float)params[SDK_PROCAMP_LINE_TRAVEL]->u.fs_d.value;
-		const float lineTravelScaled = lineTravel * dsScale;
+		// Note: lineTravelScaled will be recalculated after linkage application below
 		const float lineTailFade = (float)params[SDK_PROCAMP_LINE_TAIL_FADE]->u.fs_d.value;
 		const float lineDepthStrength = (float)params[SDK_PROCAMP_LINE_DEPTH_STRENGTH]->u.fs_d.value / 10.0f; // Normalize 0-10 to 0-1
 		// allowMidPlay is now replaced by negative Start Time - kept for backward compatibility but ignored
@@ -1937,8 +1937,10 @@ static PF_Err Render(
 			LineParams lp;
 			lp.posX = rx;
 			lp.posY = ry;
-			lp.baseLen = lineLengthScaled * depthScale;
-			lp.baseThick = lineThicknessScaled * depthScale;
+			// Store raw depth-scaled values as multipliers; actual scaled values
+			// will be applied after linkage calculation (which needs alphaBounds first)
+			lp.baseLen = depthScale;   // Temporary: store depthScale, will be recalculated
+			lp.baseThick = depthScale; // Temporary: store depthScale, will be recalculated
 			lp.angle = lineAngle;
 			const float life = lineLifetime > 1.0f ? lineLifetime : 1.0f;
 			const float interval = intervalFrames > 0 ? (float)intervalFrames : 0.0f;
@@ -1992,6 +1994,61 @@ static PF_Err Render(
 		const float alphaBoundsMinY = (float)alphaMinY + centerOffsetY;
 		const float alphaBoundsWidth = (float)(alphaMaxX - alphaMinX + 1);
 		const float alphaBoundsHeight = (float)(alphaMaxY - alphaMinY + 1);
+		const float alphaBoundsWidthSafe = alphaBoundsWidth > 0.0f ? alphaBoundsWidth : (float)output->width;
+		const float alphaBoundsHeightSafe = alphaBoundsHeight > 0.0f ? alphaBoundsHeight : (float)output->height;
+		
+		// Apply linkage using spawn area bounds (matches GPU behavior)
+		// CPU popup values are 1-based, normalize to 0-based LINKAGE_MODE_* constants
+		const int lengthLinkage = normalizePopup(params[SDK_PROCAMP_LENGTH_LINKAGE]->u.pd.value, 3);
+		const float lengthLinkageRate = (float)params[SDK_PROCAMP_LENGTH_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		const int thicknessLinkage = normalizePopup(params[SDK_PROCAMP_THICKNESS_LINKAGE]->u.pd.value, 3);
+		const float thicknessLinkageRate = (float)params[SDK_PROCAMP_THICKNESS_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		const int travelLinkage = normalizePopup(params[SDK_PROCAMP_TRAVEL_LINKAGE]->u.pd.value, 3);
+		const float travelLinkageRate = (float)params[SDK_PROCAMP_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
+		
+		float finalLineLength = lineLength;
+		float finalLineThickness = lineThickness;
+		float finalLineTravel = lineTravel;
+		
+		// Length linkage (use bounds directly - they represent actual visible size)
+		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineLength = alphaBoundsWidthSafe * lengthLinkageRate;
+		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineLength = alphaBoundsHeightSafe * lengthLinkageRate;
+		}
+		
+		// Thickness linkage (use bounds directly - they represent actual visible size)
+		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineThickness = alphaBoundsWidthSafe * thicknessLinkageRate;
+		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineThickness = alphaBoundsHeightSafe * thicknessLinkageRate;
+		}
+		
+		// Travel linkage (use bounds directly - they represent actual visible size)
+		if (travelLinkage == LINKAGE_MODE_WIDTH) {
+			finalLineTravel = alphaBoundsWidthSafe * travelLinkageRate;
+		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
+			finalLineTravel = alphaBoundsHeightSafe * travelLinkageRate;
+		}
+		
+		// Recalculate scaled values with linkage applied
+		// Apply dsScale only when linkage is OFF (user input is full-resolution)
+		// When linkage is ON, values are already in downsampled space
+		const float lineLengthScaledFinal = (lengthLinkage == LINKAGE_MODE_OFF) ? (finalLineLength * dsScale) : finalLineLength;
+		const float lineThicknessScaledFinal_temp = (thicknessLinkage == LINKAGE_MODE_OFF) ? (finalLineThickness * dsScale) : finalLineThickness;
+		const float lineThicknessScaledFinal = lineThicknessScaledFinal_temp < 1.0f ? 1.0f : lineThicknessScaledFinal_temp;
+		const float lineTravelScaled = (travelLinkage == LINKAGE_MODE_OFF) ? (finalLineTravel * dsScale) : finalLineTravel;
+		
+		// Now recalculate lineParams baseLen/baseThick with final linkage-applied values
+		for (int i = 0; i < lineState->lineCount; ++i)
+		{
+			LineParams& lp = lineState->lineParams[i];
+			const float depthScale = lp.depthScale; // Was stored during initial loop
+			const float baseLenTemp = lineLengthScaledFinal * depthScale;
+			const float baseThickTemp = lineThicknessScaledFinal * depthScale;
+			lp.baseLen = baseLenTemp < 1.0f ? 1.0f : baseLenTemp;
+			lp.baseThick = baseThickTemp < 1.0f ? 1.0f : baseThickTemp;
+		}
 	
 	// Start Time + Duration: control when lines spawn
 	const float lineStartTime = (float)params[SDK_PROCAMP_LINE_START_TIME]->u.fs_d.value;
@@ -2106,8 +2163,8 @@ static PF_Err Render(
 		
 		const float halfLen = currentLength * 0.5f * appearScale;
 
-		// Skip if thickness is less than 1px (effectively invisible)
-		const bool isTiny = (lp.baseThick * appearScale < 1.0f);
+		// Skip only if line has zero length (GPU doesn't skip on thickness)
+		const bool isTiny = (halfLen < 0.01f && appearScale < 0.01f);
 		lineState->lineActive[i] = isTiny ? 0 : 1;
 		if (isTiny)
 		{
@@ -2202,7 +2259,9 @@ static PF_Err Render(
 		ld.depth = lp.depthValue;  // Store depth value for consistent blend mode
 
 		// Focus (Depth of Field) disabled
-		ld.halfThick = lp.baseThick * 0.5f * appearScale;
+		// Don't multiply by appearScale - GPU handles appear/disappear via alpha only,
+		// not by physical size reduction. This prevents thin lines from disappearing.
+		ld.halfThick = lp.baseThick * 0.5f;
 		ld.focusAlpha = 1.0f;
 		ld.appearAlpha = appearAlpha;  // Appear/disappear fade alpha
 		ld.lineVelocity = ApplyEasingDerivative(t, lineEasing);  // Motion blur velocity
@@ -2357,8 +2416,9 @@ static PF_Err Render(
 					const LineDerived& ld = lineState->lineDerived[lineState->tileIndices[start + i]];
 					const float depthAlpha = ld.depthAlpha;  // Use pre-computed
 
-					// === STEP 1-4: Skip extremely tiny lines (< 1 pixel thick) ===
-					if (ld.halfThick < 0.5f)
+					// === STEP 1-4: Skip extremely tiny lines ===
+					// Use very low threshold - GPU/CUDA kernel has no thickness skip
+					if (ld.halfThick < 0.01f)
 					{
 						continue;  // Invisible line - skip all processing
 					}
