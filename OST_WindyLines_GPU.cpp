@@ -41,6 +41,7 @@
 #include <unordered_map>
 #include <ctime>
 #include <cstdlib>
+#include <thread>
 
 // Debug logging function is now in OST_WindyLines.h
 
@@ -75,6 +76,8 @@
     #endif
     #include "DirectXUtils.h"
     #include <vector>
+    #include <winhttp.h>
+    #pragma comment(lib, "winhttp.lib")
     #define HAS_CUDA    1
     #define HAS_DIRECTX 1
     #define HAS_METAL   0
@@ -359,6 +362,8 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	return true;
 }
 
+static void TriggerGpuBackgroundCacheRefresh(); // forward declaration
+
 static bool IsGpuLicenseAuthenticated()
 {
 	const uint32_t nowMs = GetCurrentTimeMsGPU();
@@ -374,12 +379,240 @@ static bool IsGpuLicenseAuthenticated()
 		else
 		{
 			sGpuLicenseAuthenticated.store(false, std::memory_order_relaxed);
+			TriggerGpuBackgroundCacheRefresh();
 		}
 	}
 	return sGpuLicenseAuthenticated.load(std::memory_order_relaxed);
 }
 
-// No state tracking needed - using period-based approach for cache consistency
+// === GPU-side license auto-refresh: background API check when cache expires ===
+static const char* kGpuLicenseApiEndpoint = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test";
+static const int kGpuAutoRefreshCacheTtlSec = 600; // 10 min TTL
+static std::atomic<bool> sGpuAutoRefreshInProgress{false};
+static std::atomic<uint32_t> sGpuLastAutoRefreshAttemptMs{0};
+static const uint32_t kGpuMinAutoRefreshIntervalMs = 60000; // min 60s between API calls
+
+static void TriggerGpuBackgroundCacheRefresh()
+{
+	bool expected = false;
+	if (!sGpuAutoRefreshInProgress.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+	{
+		return; // already in progress
+	}
+
+	const uint32_t nowMs = GetCurrentTimeMsGPU();
+	const uint32_t lastMs = sGpuLastAutoRefreshAttemptMs.load(std::memory_order_relaxed);
+	if (nowMs - lastMs < kGpuMinAutoRefreshIntervalMs)
+	{
+		sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+		return;
+	}
+	sGpuLastAutoRefreshAttemptMs.store(nowMs, std::memory_order_relaxed);
+
+#ifdef _WIN32
+	// WinHTTP-based background API call (runs in detached thread, does not block render)
+	std::thread([]() {
+		DebugLog("[GPU License] background cache refresh started (WinHTTP)");
+
+		// Build cache path
+		std::string cachePath;
+		{
+			char appData[MAX_PATH] = { 0 };
+			DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
+			if (appDataLen > 0 && appDataLen < MAX_PATH)
+			{
+				cachePath = std::string(appData) + "\\OST\\WindyLines\\license_cache_v1.txt";
+			}
+			else
+			{
+				const char* userProfile = std::getenv("USERPROFILE");
+				if (userProfile && *userProfile)
+				{
+					cachePath = std::string(userProfile) + "\\AppData\\Roaming\\OST\\WindyLines\\license_cache_v1.txt";
+				}
+			}
+		}
+		if (cachePath.empty())
+		{
+			DebugLog("[GPU License] failed to determine cache path");
+			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		// Ensure directory exists
+		std::string cacheDir = cachePath;
+		const size_t lastBackslash = cacheDir.find_last_of('\\');
+		if (lastBackslash != std::string::npos)
+		{
+			cacheDir = cacheDir.substr(0, lastBackslash);
+		}
+		CreateDirectoryA(cacheDir.c_str(), nullptr); // ignore error if exists
+		// Also create parent
+		std::string parentDir = cacheDir;
+		const size_t parentSlash = parentDir.find_last_of('\\');
+		if (parentSlash != std::string::npos)
+		{
+			CreateDirectoryA(parentDir.substr(0, parentSlash).c_str(), nullptr);
+			CreateDirectoryA(cacheDir.c_str(), nullptr);
+		}
+
+		// Build JSON body
+		std::string body = "{\"action\":\"verify\",\"product\":\"OST_WindyLines\","
+			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\"}";
+
+		HINTERNET hSession = WinHttpOpen(
+			L"OST_WindyLines/1.0",
+			WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+			WINHTTP_NO_PROXY_NAME,
+			WINHTTP_NO_PROXY_BYPASS, 0);
+		if (!hSession)
+		{
+			DebugLog("[GPU License] WinHttpOpen failed: %lu", GetLastError());
+			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		HINTERNET hConnect = WinHttpConnect(hSession,
+			L"penta.bubbleapps.io",
+			INTERNET_DEFAULT_HTTPS_PORT, 0);
+		if (!hConnect)
+		{
+			DebugLog("[GPU License] WinHttpConnect failed: %lu", GetLastError());
+			WinHttpCloseHandle(hSession);
+			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		HINTERNET hRequest = WinHttpOpenRequest(hConnect,
+			L"POST",
+			L"/version-test/api/1.1/wf/ppplugin_test",
+			NULL, WINHTTP_NO_REFERER,
+			WINHTTP_DEFAULT_ACCEPT_TYPES,
+			WINHTTP_FLAG_SECURE);
+		if (!hRequest)
+		{
+			DebugLog("[GPU License] WinHttpOpenRequest failed: %lu", GetLastError());
+			WinHttpCloseHandle(hConnect);
+			WinHttpCloseHandle(hSession);
+			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		// Set timeout (10 seconds)
+		DWORD timeout = 10000;
+		WinHttpSetOption(hRequest, WINHTTP_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
+		WinHttpSetOption(hRequest, WINHTTP_OPTION_SEND_TIMEOUT, &timeout, sizeof(timeout));
+		WinHttpSetOption(hRequest, WINHTTP_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
+
+		BOOL bResult = WinHttpSendRequest(hRequest,
+			L"Content-Type: application/json", -1,
+			(LPVOID)body.c_str(), (DWORD)body.size(), (DWORD)body.size(), 0);
+		if (!bResult)
+		{
+			DebugLog("[GPU License] WinHttpSendRequest failed: %lu", GetLastError());
+			WinHttpCloseHandle(hRequest);
+			WinHttpCloseHandle(hConnect);
+			WinHttpCloseHandle(hSession);
+			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		bResult = WinHttpReceiveResponse(hRequest, NULL);
+		if (!bResult)
+		{
+			DebugLog("[GPU License] WinHttpReceiveResponse failed: %lu", GetLastError());
+			WinHttpCloseHandle(hRequest);
+			WinHttpCloseHandle(hConnect);
+			WinHttpCloseHandle(hSession);
+			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		// Read response body
+		std::string responseBody;
+		DWORD bytesAvailable = 0;
+		while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0)
+		{
+			std::vector<char> buf(bytesAvailable);
+			DWORD bytesRead = 0;
+			if (WinHttpReadData(hRequest, buf.data(), bytesAvailable, &bytesRead))
+			{
+				responseBody.append(buf.data(), bytesRead);
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		WinHttpCloseHandle(hRequest);
+		WinHttpCloseHandle(hConnect);
+		WinHttpCloseHandle(hSession);
+
+		DebugLog("[GPU License] API response: %s", responseBody.c_str());
+
+		// Parse "authorized": true/false from response (simple grep approach matching Mac version)
+		bool authorized = false;
+		std::string reason = "unknown";
+		if (responseBody.find("\"authorized\"") != std::string::npos)
+		{
+			// Check for "authorized":true or "authorized": true (with optional spaces)
+			if (responseBody.find("\"authorized\":true") != std::string::npos ||
+				responseBody.find("\"authorized\": true") != std::string::npos ||
+				responseBody.find("\"authorized\" : true") != std::string::npos)
+			{
+				authorized = true;
+				reason = "ok";
+			}
+			else
+			{
+				authorized = false;
+				reason = "denied";
+			}
+		}
+		else
+		{
+			DebugLog("[GPU License] API response missing 'authorized' field");
+			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		// Write cache file (atomic: write to temp then rename)
+		const long long nowUnix = static_cast<long long>(std::time(nullptr));
+		const long long expireUnix = nowUnix + kGpuAutoRefreshCacheTtlSec;
+
+		char content[512];
+		snprintf(content, sizeof(content),
+			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
+			"license_key_masked=\nmachine_id_hash=auto_refresh_gpu\n",
+			authorized ? "true" : "false",
+			reason.c_str(),
+			nowUnix, expireUnix);
+
+		// Write directly (Windows doesn't have easy atomic rename across drives)
+		FILE* fp = std::fopen(cachePath.c_str(), "wb");
+		if (fp)
+		{
+			std::fputs(content, fp);
+			std::fclose(fp);
+			DebugLog("[GPU License] cache updated: authorized=%s path=%s", authorized ? "true" : "false", cachePath.c_str());
+		}
+		else
+		{
+			DebugLog("[GPU License] failed to write cache file: %s", cachePath.c_str());
+		}
+
+		// Immediately update in-memory state
+		sGpuLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
+
+		sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+	}).detach();
+#else
+	// Mac: system() + curl (same as CPU side)
+	DebugLog("[GPU License] auto-refresh not implemented for GPU on Mac (uses CPU fallback)");
+	sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
+#endif
+}
 
 #if HAS_METAL
 
