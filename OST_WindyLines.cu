@@ -906,6 +906,124 @@
 			alphaThreshold);
 		cudaDeviceSynchronize();
 	}
+
+	// ── GPU Watermark Overlay ──────────────────────────────────────────
+	// Draws the license watermark on the GPU frame buffer after the main
+	// rendering kernel.  Each thread handles one pixel in the (scaled)
+	// watermark region, keeping the kernel grid small (~412×28).
+	__global__ void WatermarkOverlayKernelCUDA(
+		float4* ioImage,
+		const unsigned char* fillMask,
+		const unsigned char* outlineMask,
+		int inPitch,
+		int in16f,
+		int inIsBGRA,
+		unsigned int inWidth,
+		unsigned int inHeight,
+		int inMaskWidth,
+		int inMaskHeight,
+		int inMarginX,
+		int inMarginY,
+		float inDsScale)
+	{
+		const int tx = blockIdx.x * blockDim.x + threadIdx.x;
+		const int ty = blockIdx.y * blockDim.y + threadIdx.y;
+
+		const float scale = inDsScale > 0.0f ? inDsScale : 1.0f;
+		const int scaledMarginX = (int)(inMarginX * scale + 0.5f);
+		const int scaledMarginY = (int)(inMarginY * scale + 0.5f);
+		const int scaledWidth  = max(1, (int)(inMaskWidth  * scale + 0.5f));
+		const int scaledHeight = max(1, (int)(inMaskHeight * scale + 0.5f));
+
+		if (tx >= scaledWidth || ty >= scaledHeight) return;
+
+		const int x = scaledMarginX + tx;
+		const int y = scaledMarginY + ty;
+		if (x >= (int)inWidth || y >= (int)inHeight) return;
+
+		// Map back to mask coordinates
+		const int sampleX = min((int)(tx / scale), inMaskWidth  - 1);
+		const int sampleY = min((int)(ty / scale), inMaskHeight - 1);
+
+		const int  maskIdx = sampleY * inMaskWidth + sampleX;
+		const float fAlpha = fillMask[maskIdx]    / 255.0f;
+		const float oAlpha = outlineMask[maskIdx] / 255.0f;
+
+		const bool fill    = (fAlpha > 0.0f);
+		const bool outline = (!fill) && (oAlpha > 0.0f);
+		if (!fill && !outline) return;
+
+		const float baseAlpha    = fill ? 0.92f : 0.78f;
+		const float overlayAlpha = baseAlpha * (fill ? fAlpha : oAlpha);
+
+		const int pixelIdx = y * inPitch + x;
+		float4 pixel = ReadFloat4(ioImage, pixelIdx, !!in16f);
+
+		// Composite watermark
+		// VUYA: fill → (V=0, U=0, Y=1)  outline → (0,0,0)
+		// BGRA: fill → (B=1, G=1, R=1)  outline → (0,0,0)
+		if (fill) {
+			if (inIsBGRA) {
+				pixel.x += (1.0f - pixel.x) * overlayAlpha;
+				pixel.y += (1.0f - pixel.y) * overlayAlpha;
+				pixel.z += (1.0f - pixel.z) * overlayAlpha;
+			} else {
+				pixel.x -= pixel.x * overlayAlpha;              // V → 0
+				pixel.y -= pixel.y * overlayAlpha;              // U → 0
+				pixel.z += (1.0f - pixel.z) * overlayAlpha;    // Y → 1
+			}
+		} else {
+			pixel.x -= pixel.x * overlayAlpha;
+			pixel.y -= pixel.y * overlayAlpha;
+			pixel.z -= pixel.z * overlayAlpha;
+		}
+		pixel.w = fmaxf(pixel.w, overlayAlpha);
+
+		WriteFloat4(pixel, ioImage, pixelIdx, !!in16f);
+	}
+
+	void WatermarkOverlay_CUDA(
+		float* ioBuffer,
+		int pitch,
+		int is16f,
+		int isBGRA,
+		int width,
+		int height,
+		unsigned char* fillMask,
+		unsigned char* outlineMask,
+		int maskWidth,
+		int maskHeight,
+		int marginX,
+		int marginY,
+		float dsScale)
+	{
+		float scale = dsScale > 0.0f ? dsScale : 1.0f;
+		int scaledWidth  = max(1, (int)(maskWidth  * scale + 0.5f));
+		int scaledHeight = max(1, (int)(maskHeight * scale + 0.5f));
+
+		dim3 blockDim(16, 16, 1);
+		dim3 gridDim(
+			(scaledWidth  + blockDim.x - 1) / blockDim.x,
+			(scaledHeight + blockDim.y - 1) / blockDim.y,
+			1);
+
+		WatermarkOverlayKernelCUDA<<<gridDim, blockDim, 0>>>(
+			(float4*)ioBuffer,
+			fillMask,
+			outlineMask,
+			pitch,
+			is16f,
+			isBGRA,
+			(unsigned int)width,
+			(unsigned int)height,
+			maskWidth,
+			maskHeight,
+			marginX,
+			marginY,
+			dsScale);
+
+		cudaDeviceSynchronize();
+	}
 #endif
 
 #endif

@@ -10695,5 +10695,61 @@ static __inline__ float saturate(float inX)
 	}
 }
 
-#line 765 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
-#line 766 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
+		
+		
+		static __inline__ void WatermarkOverlayKernel_Delegate( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale  , uint2 inXY    ); __kernel void WatermarkOverlayKernel( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale  ) {   WatermarkOverlayKernel_Delegate( ioImage, fillMask, outlineMask  , inPitch, in16f, inIsBGRA, inWidth, inHeight, inMaskWidth, inMaskHeight, inMarginX, inMarginY, inDsScale  , KernelXYUnsigned()    ); } static __inline__ void WatermarkOverlayKernel_Delegate( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale  , uint2 inXY    )
+#line 781 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
+		{
+			float scale = inDsScale > 0.0f ? inDsScale : 1.0f;
+			int scaledMarginX = (int)(inMarginX * scale + 0.5f);
+			int scaledMarginY = (int)(inMarginY * scale + 0.5f);
+			int scaledWidth  = (inMaskWidth  * scale + 0.5f) > 1.0f ? (int)(inMaskWidth  * scale + 0.5f) : 1;
+			int scaledHeight = (inMaskHeight * scale + 0.5f) > 1.0f ? (int)(inMaskHeight * scale + 0.5f) : 1;
+
+			if ((int)inXY.x >= scaledWidth || (int)inXY.y >= scaledHeight) return;
+
+			int x = scaledMarginX + (int)inXY.x;
+			int y = scaledMarginY + (int)inXY.y;
+			if (x >= (int)inWidth || y >= (int)inHeight) return;
+
+			int sampleX = (int)((float)inXY.x / scale);
+			int sampleY = (int)((float)inXY.y / scale);
+			if (sampleX >= inMaskWidth)  sampleX = inMaskWidth  - 1;
+			if (sampleY >= inMaskHeight) sampleY = inMaskHeight - 1;
+
+			int  maskIdx = sampleY * inMaskWidth + sampleX;
+			float fAlpha = (float)fillMask[maskIdx]    / 255.0f;
+			float oAlpha = (float)outlineMask[maskIdx] / 255.0f;
+
+			int fill    = (fAlpha > 0.0f) ? 1 : 0;
+			int outline = (!fill && oAlpha > 0.0f) ? 1 : 0;
+			if (!fill && !outline) return;
+
+			float baseAlpha    = fill ? 0.92f : 0.78f;
+			float overlayAlpha = baseAlpha * (fill ? fAlpha : oAlpha);
+
+			int pixelIdx = y * inPitch + x;
+			float4 pixel = ReadFloat4(ioImage, pixelIdx, !!in16f);
+
+			if (fill) {
+				if (inIsBGRA) {
+					pixel.x = pixel.x + (1.0f - pixel.x) * overlayAlpha;
+					pixel.y = pixel.y + (1.0f - pixel.y) * overlayAlpha;
+					pixel.z = pixel.z + (1.0f - pixel.z) * overlayAlpha;
+				} else {
+					pixel.x = pixel.x - pixel.x * overlayAlpha;
+					pixel.y = pixel.y - pixel.y * overlayAlpha;
+					pixel.z = pixel.z + (1.0f - pixel.z) * overlayAlpha;
+				}
+			} else {
+				pixel.x = pixel.x - pixel.x * overlayAlpha;
+				pixel.y = pixel.y - pixel.y * overlayAlpha;
+				pixel.z = pixel.z - pixel.z * overlayAlpha;
+			}
+			pixel.w = fmax(pixel.w, overlayAlpha);
+
+			WriteFloat4(pixel, ioImage, pixelIdx, !!in16f);
+		}
+
+#line 834 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
+#line 835 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"

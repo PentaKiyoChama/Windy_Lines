@@ -17,6 +17,7 @@
 
 #include "OST_WindyLines.h"
 #include "OST_WindyLines_Version.h"
+#include "OST_WindyLines_WatermarkMask.h"
 #include "PrGPUFilterModule.h"
 #include "PrSDKVideoSegmentProperties.h"
 
@@ -89,6 +90,10 @@ static size_t sCudaTileOffsetsBytes = 0;
 static size_t sCudaTileCountsBytes = 0;
 static size_t sCudaLineIndicesBytes = 0;
 static size_t sCudaAlphaBoundsBytes = 0;
+static unsigned char* sCudaWatermarkFill = nullptr;
+static unsigned char* sCudaWatermarkOutline = nullptr;
+static size_t sCudaWatermarkFillBytes = 0;
+static size_t sCudaWatermarkOutlineBytes = 0;
 
 static void EnsureCudaBuffer(void** buffer, size_t& capacityBytes, size_t requiredBytes)
 {
@@ -466,6 +471,20 @@ extern void ProcAmp2_CUDA_ComputeAlphaBounds(
 	int* outBounds,
 	int stride,
 	float alphaThreshold);
+extern void WatermarkOverlay_CUDA(
+	float* ioBuffer,
+	int pitch,
+	int is16f,
+	int isBGRA,
+	int width,
+	int height,
+	unsigned char* fillMask,
+	unsigned char* outlineMask,
+	int maskWidth,
+	int maskHeight,
+	int marginX,
+	int marginY,
+	float dsScale);
 #endif // HAS_CUDA
 
 size_t DivideRoundUp(
@@ -916,9 +935,11 @@ static bool BoolParamFromPrParam(const PrParam& param)
 enum {kMaxDevices = 12};
 static cl_kernel sKernelCache[kMaxDevices] = {};
 static cl_kernel sKernelCacheAlpha[kMaxDevices] = {};
+static cl_kernel sKernelCacheWatermark[kMaxDevices] = {};
 #if HAS_METAL
 static id<MTLComputePipelineState> sMetalPipelineStateCache[kMaxDevices] = {};
 static id<MTLComputePipelineState> sMetalAlphaPipelineStateCache[kMaxDevices] = {};
+static id<MTLComputePipelineState> sMetalWatermarkPipelineStateCache[kMaxDevices] = {};
 #endif
 
 /*
@@ -975,6 +996,7 @@ public:
 		{
 			mKernelOpenCL = sKernelCache[mDeviceIndex];
 			mKernelOpenCLAlpha = sKernelCacheAlpha[mDeviceIndex];
+			mKernelOpenCLWatermark = sKernelCacheWatermark[mDeviceIndex];
 			if (!mKernelOpenCL)
 			{
 				cl_int result = CL_SUCCESS;
@@ -1045,9 +1067,15 @@ public:
 				{
 					return suiteError_Fail;
 				}
+				mKernelOpenCLWatermark = clCreateKernel(program, "WatermarkOverlayKernel", &result);
+				if (result != CL_SUCCESS)
+				{
+					return suiteError_Fail;
+				}
 
 				sKernelCache[mDeviceIndex] = mKernelOpenCL;
 				sKernelCacheAlpha[mDeviceIndex] = mKernelOpenCLAlpha;
+				sKernelCacheWatermark[mDeviceIndex] = mKernelOpenCLWatermark;
 			}
 			return suiteError_NoError;
 		}
@@ -1159,6 +1187,15 @@ public:
 					sMetalAlphaPipelineStateCache[mDeviceIndex] = [device newComputePipelineStateWithFunction:function error:&error];
 					result = CheckForMetalError(error);
 				}
+				if (result == suiteError_NoError)
+				{
+					id<MTLFunction> function = nil;
+					NSString *name = [NSString stringWithCString:"WatermarkOverlayKernel" encoding:NSUTF8StringEncoding];
+					function = [[library newFunctionWithName:name] autorelease];
+
+					sMetalWatermarkPipelineStateCache[mDeviceIndex] = [device newComputePipelineStateWithFunction:function error:&error];
+					result = CheckForMetalError(error);
+				}
 				
 				return result;
 			}
@@ -1176,11 +1213,15 @@ public:
 		csSDK_size_t inFrameCount,
 		PPixHand* outFrame)
 	{
-		if (!IsGpuLicenseAuthenticated())
-		{
-			// Force CPU fallback in unauthenticated mode so CPU watermark logic is always applied.
-			return suiteError_Fail;
-		}
+		// NOTE: GPU fallback disabled on Windows.
+		// Returning suiteError_Fail here causes Premiere Pro on Windows to render
+		// a black frame instead of falling back to CPU.  Watermark is drawn by
+		// the CPU SmartRender path when the sequence is exported or when GPU is
+		// unavailable, so this guard is not needed for copy-protection.
+		// if (!IsGpuLicenseAuthenticated())
+		// {
+		// 	return suiteError_Fail;
+		// }
 
 		auto normalizePopup = [](int value, int maxValue) {
 			if (value >= 1 && value <= maxValue)
@@ -2416,6 +2457,30 @@ public:
 			params.mMotionBlurSamples,
 			params.mMotionBlurStrength);
 
+			// --- Watermark overlay (free mode) ---
+			if (!IsGpuLicenseAuthenticated())
+			{
+				const size_t wmMaskBytes = (size_t)FreeModeWatermark::kMaskWidth * FreeModeWatermark::kMaskHeight;
+				EnsureCudaBuffer((void**)&sCudaWatermarkFill, sCudaWatermarkFillBytes, wmMaskBytes);
+				EnsureCudaBuffer((void**)&sCudaWatermarkOutline, sCudaWatermarkOutlineBytes, wmMaskBytes);
+				cudaMemcpy(sCudaWatermarkFill, FreeModeWatermark::kFillMask, wmMaskBytes, cudaMemcpyHostToDevice);
+				cudaMemcpy(sCudaWatermarkOutline, FreeModeWatermark::kOutlineMask, wmMaskBytes, cudaMemcpyHostToDevice);
+				WatermarkOverlay_CUDA(
+					ioBuffer,
+					params.mPitch,
+					params.m16f,
+					params.mIsBGRA,
+					params.mWidth,
+					params.mHeight,
+					sCudaWatermarkFill,
+					sCudaWatermarkOutline,
+					FreeModeWatermark::kMaskWidth,
+					FreeModeWatermark::kMaskHeight,
+					FreeModeWatermark::kMarginX,
+					FreeModeWatermark::kMarginY,
+					dsScale);
+			}
+
 			return cudaPeekAtLastError() == cudaSuccess ? suiteError_NoError : suiteError_Fail;
 #else
 			return suiteError_NotImplemented;
@@ -2528,6 +2593,56 @@ public:
 			if (tileOffsetsBuffer) { clReleaseMemObject(tileOffsetsBuffer); }
 			if (tileCountsBuffer) { clReleaseMemObject(tileCountsBuffer); }
 			if (lineIndicesBuffer) { clReleaseMemObject(lineIndicesBuffer); }
+
+			// --- Watermark overlay (free mode) ---
+			if (result == CL_SUCCESS && !IsGpuLicenseAuthenticated())
+			{
+				const size_t wmMaskBytes = (size_t)FreeModeWatermark::kMaskWidth * FreeModeWatermark::kMaskHeight;
+				cl_mem wmFillBuf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, wmMaskBytes, (void*)FreeModeWatermark::kFillMask, &clResult);
+				cl_mem wmOutlineBuf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, wmMaskBytes, (void*)FreeModeWatermark::kOutlineMask, &clResult);
+
+				int wmMaskW = FreeModeWatermark::kMaskWidth;
+				int wmMaskH = FreeModeWatermark::kMaskHeight;
+				int wmMarginX = FreeModeWatermark::kMarginX;
+				int wmMarginY = FreeModeWatermark::kMarginY;
+				int wmWidth = (int)params.mWidth;
+				int wmHeight = (int)params.mHeight;
+				int wmPitch = params.mPitch;
+				int wm16f = params.m16f;
+				int wmIsBGRA = params.mIsBGRA;
+
+				cl_int argIdx = 0;
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(cl_mem), &buffer);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(cl_mem), &wmFillBuf);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(cl_mem), &wmOutlineBuf);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmPitch);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wm16f);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmIsBGRA);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmWidth);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmHeight);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmMaskW);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmMaskH);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmMarginX);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmMarginY);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(float), &dsScale);
+
+				int scaledW = (int)(FreeModeWatermark::kMaskWidth * dsScale);
+				int scaledH = (int)(FreeModeWatermark::kMaskHeight * dsScale);
+				if (scaledW < 1) scaledW = 1;
+				if (scaledH < 1) scaledH = 1;
+				size_t wmThreadBlock[2] = { 16, 16 };
+				size_t wmGrid[2] = { RoundUp((unsigned int)scaledW, (unsigned int)wmThreadBlock[0]),
+				                     RoundUp((unsigned int)scaledH, (unsigned int)wmThreadBlock[1]) };
+
+				clEnqueueNDRangeKernel(
+					(cl_command_queue)mDeviceInfo.outCommandQueueHandle,
+					mKernelOpenCLWatermark,
+					2, 0, wmGrid, wmThreadBlock, 0, 0, 0);
+
+				if (wmFillBuf) { clReleaseMemObject(wmFillBuf); }
+				if (wmOutlineBuf) { clReleaseMemObject(wmOutlineBuf); }
+			}
+
 			return result == CL_SUCCESS ? suiteError_NoError : suiteError_Fail;
 		}
 #if HAS_DIRECTX
@@ -2671,6 +2786,67 @@ public:
                 [commandBuffer commit];
                 [commandBuffer waitUntilCompleted];  // Wait for GPU to finish
                 // result = CheckForMetalError([commandBuffer error]);
+
+				// --- Watermark overlay (free mode) ---
+				if (result == suiteError_NoError && !IsGpuLicenseAuthenticated())
+				{
+					const size_t wmMaskBytes = (size_t)FreeModeWatermark::kMaskWidth * FreeModeWatermark::kMaskHeight;
+					id<MTLBuffer> wmFillBuf = [[device newBufferWithBytes:FreeModeWatermark::kFillMask
+						length:(NSUInteger)wmMaskBytes
+						options:MTLResourceStorageModeManaged] autorelease];
+					id<MTLBuffer> wmOutlineBuf = [[device newBufferWithBytes:FreeModeWatermark::kOutlineMask
+						length:(NSUInteger)wmMaskBytes
+						options:MTLResourceStorageModeManaged] autorelease];
+
+					// Scalar parameters packed into a struct
+					struct WatermarkParams {
+						int pitch;
+						int is16f;
+						int isBGRA;
+						unsigned int width;
+						unsigned int height;
+						int maskWidth;
+						int maskHeight;
+						int marginX;
+						int marginY;
+						float dsScale;
+					};
+					WatermarkParams wmParams;
+					wmParams.pitch = params.mPitch;
+					wmParams.is16f = params.m16f;
+					wmParams.isBGRA = params.mIsBGRA;
+					wmParams.width = params.mWidth;
+					wmParams.height = params.mHeight;
+					wmParams.maskWidth = FreeModeWatermark::kMaskWidth;
+					wmParams.maskHeight = FreeModeWatermark::kMaskHeight;
+					wmParams.marginX = FreeModeWatermark::kMarginX;
+					wmParams.marginY = FreeModeWatermark::kMarginY;
+					wmParams.dsScale = dsScale;
+
+					id<MTLBuffer> wmParamBuffer = [[device newBufferWithBytes:&wmParams
+						length:sizeof(wmParams)
+						options:MTLResourceStorageModeManaged] autorelease];
+
+					int scaledW = (int)(FreeModeWatermark::kMaskWidth * dsScale);
+					int scaledH = (int)(FreeModeWatermark::kMaskHeight * dsScale);
+					if (scaledW < 1) scaledW = 1;
+					if (scaledH < 1) scaledH = 1;
+
+					id<MTLCommandBuffer> wmCmdBuf = [queue commandBuffer];
+					id<MTLComputeCommandEncoder> wmEncoder = [wmCmdBuf computeCommandEncoder];
+					[wmEncoder setComputePipelineState:sMetalWatermarkPipelineStateCache[mDeviceIndex]];
+					[wmEncoder setBuffer:ioBuffer offset:0 atIndex:0];
+					[wmEncoder setBuffer:wmFillBuf offset:0 atIndex:1];
+					[wmEncoder setBuffer:wmOutlineBuf offset:0 atIndex:2];
+					[wmEncoder setBuffer:wmParamBuffer offset:0 atIndex:3];
+
+					MTLSize wmThreadsPerGroup = {[sMetalWatermarkPipelineStateCache[mDeviceIndex] threadExecutionWidth], 16, 1};
+					MTLSize wmNumThreadgroups = {DivideRoundUp((size_t)scaledW, wmThreadsPerGroup.width), DivideRoundUp((size_t)scaledH, wmThreadsPerGroup.height), 1};
+					[wmEncoder dispatchThreadgroups:wmNumThreadgroups threadsPerThreadgroup:wmThreadsPerGroup];
+					[wmEncoder endEncoding];
+					[wmCmdBuf commit];
+					[wmCmdBuf waitUntilCompleted];
+				}
                 
                 return result;
             }
@@ -2712,6 +2888,11 @@ public:
 				[sMetalAlphaPipelineStateCache[inIndex] release];
 				sMetalAlphaPipelineStateCache[inIndex] = nil;
             }
+			if (sMetalWatermarkPipelineStateCache[inIndex])
+			{
+				[sMetalWatermarkPipelineStateCache[inIndex] release];
+				sMetalWatermarkPipelineStateCache[inIndex] = nil;
+			}
         }
 #endif
 #if HAS_CUDA
@@ -2720,6 +2901,8 @@ public:
 		if (sCudaTileCounts) { cudaFree(sCudaTileCounts); sCudaTileCounts = nullptr; sCudaTileCountsBytes = 0; }
 		if (sCudaLineIndices) { cudaFree(sCudaLineIndices); sCudaLineIndices = nullptr; sCudaLineIndicesBytes = 0; }
 		if (sCudaAlphaBounds) { cudaFree(sCudaAlphaBounds); sCudaAlphaBounds = nullptr; sCudaAlphaBoundsBytes = 0; }
+		if (sCudaWatermarkFill) { cudaFree(sCudaWatermarkFill); sCudaWatermarkFill = nullptr; sCudaWatermarkFillBytes = 0; }
+		if (sCudaWatermarkOutline) { cudaFree(sCudaWatermarkOutline); sCudaWatermarkOutline = nullptr; sCudaWatermarkOutlineBytes = 0; }
 #endif
 		return suiteError_NoError;
 	}
@@ -2727,6 +2910,7 @@ public:
 private:
 	cl_kernel mKernelOpenCL;
 	cl_kernel mKernelOpenCLAlpha = nullptr;
+	cl_kernel mKernelOpenCLWatermark = nullptr;
 };
 
 #if ENABLE_GPU_RENDERING
