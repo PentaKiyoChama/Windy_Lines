@@ -210,6 +210,11 @@ namespace ParamNames
         "バウンスイン|バウンスアウト|バウンスインアウト"; 
     constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ";
     constexpr const char* LINKAGE_MODE_MENU = "オフ（直接入力）|範囲の幅に連動|範囲の高さに連動";
+
+    // License
+    constexpr const char* LICENSE_HEADER      = "ライセンス";
+    constexpr const char* LICENSE_STATUS      = "認証状態";
+    constexpr const char* LICENSE_STATUS_MENU = "Free版（未認証）|アクティベート...";
 }
 
 // ========================================
@@ -289,5 +294,10 @@ namespace ParamNames
 #define PM_EASING           PARAM_MENU(ParamNames::EASING_MENU)
 #define PM_BLEND_MODE       PARAM_MENU(ParamNames::BLEND_MODE_MENU)
 #define PM_LINKAGE_MODE     PARAM_MENU(ParamNames::LINKAGE_MODE_MENU)
+
+// License
+#define P_LICENSE_HEADER    PARAM(ParamNames::LICENSE_HEADER)
+#define P_LICENSE_STATUS    PARAM(ParamNames::LICENSE_STATUS)
+#define PM_LICENSE_STATUS   PARAM_MENU(ParamNames::LICENSE_STATUS_MENU)
 
 #endif // OST_WINDYLINES_PARAM_NAMES_H

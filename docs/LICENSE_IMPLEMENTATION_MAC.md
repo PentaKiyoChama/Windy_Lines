@@ -59,10 +59,13 @@ machine_id_hash=auto_refresh
 ### キャッシュ読込ロジック（CPU/GPU共通）
 ```
 1. ファイルを開く（複数候補パスを順に試す）
-2. authorized= と cache_expire_unix= を読み取る
-3. 両方存在しなければ → return false（キャッシュ無効）
+2. authorized=, cache_expire_unix=, machine_id_hash= を読み取る
+3. authorized と cache_expire_unix が両方存在しなければ → return false（キャッシュ無効）
 4. cache_expire_unix <= 現在時刻 → return false（期限切れ）
-5. outAuthenticated = authorized の値を返す
+5. machine_id_hash が空でなければ → 現在のPCのハッシュと比較
+   - 不一致 → return false（コピーされたキャッシュ）
+   - 一致 or 空（レガシー） → 通過
+6. outAuthenticated = authorized の値を返す
 ```
 
 ---
@@ -277,7 +280,45 @@ CloseHandle(pi.hThread); CloseHandle(pi.hProcess);
 
 ---
 
-## 7. 補助ツール
+## 7. プラグインUIアクティベーション機能
+
+### 概要
+エフェクトコントロールパネル内に「ライセンス」トピックグループを追加。
+ユーザーがポップアップから「アクティベート...」を選択するとブラウザが起動し、
+Webサイト上でライセンス認証を完了するフロー。
+
+### プラグインUI
+- **ライセンス** トピックグループ
+  - **ステータス** ポップアップ: `Free版（未認証）|アクティベート...`
+  - ユーザーが「アクティベート...」（index=2）を選択 → ブラウザ起動 → value=1にリセット
+
+### ブラウザ起動URL
+```
+https://penta.bubbleapps.io/version-test/activate
+  ?token=<32hex>       ← ワンタイムトークン（activation_token.txt に永続化）
+  &mid=<16hex>         ← machine_id_hash
+  &product=OST_WindyLines
+  &ver=<バージョン文字列>
+```
+
+### 内部関数（OST_WindyLines_CPU.cpp）
+| 関数名 | 役割 |
+|--------|------|
+| `SimpleHash32()` | 軽量DJB2ハッシュ |
+| `GetMachineIdHash()` | hostname+platform → 16 hex文字 machine ID |
+| `GenerateActivationToken()` | time+pid+usec → 32 hex文字トークン |
+| `LoadOrCreateActivationToken()` | トークンのファイル読込/生成/保存 |
+| `OpenActivationPage()` | URL構築 + ブラウザ起動（macOS:`open`, Win:`ShellExecuteA`） |
+
+### Machine IDキャッシュコピー対策
+- キャッシュファイル内の `machine_id_hash` フィールドと、実行中PCの `GetMachineIdHash()` を比較
+- 不一致の場合、認証済みキャッシュでも `authorized=false` として扱う
+- レガシーキャッシュ（machine_id_hash が空）は後方互換で通過させる
+- CPU側・GPU側両方で同一ロジックを実装
+
+---
+
+## 8. 補助ツール
 
 ### activate_license_cache.py（手動即時反映）
 ```bash
@@ -293,3 +334,29 @@ python3 ./activate_license_cache.py \
 python3 ./set_license_cache_state.py --state authorized --ttl 86400
 python3 ./set_license_cache_state.py --state unauthorized --ttl 86400
 ```
+
+---
+
+## 9. Bubble用データタイプ定義メモ
+
+### 推奨Data Type: `LicenseBinding`
+
+| フィールド名 | 型 | 必須 | 用途 |
+|-------------|----|------|------|
+| `machine_id` | text | Yes | プラグインから送られるPC識別子（`machine_id` / `mid`） |
+| `product` | text | Yes | 製品識別子（固定: `OST_WindyLines`） |
+| `authorized` | yes/no | Yes | 認証状態（verify APIの判定元） |
+| `license_key` | text | No | ライセンスキー原文またはマスク済み値 |
+| `activation_token` | text | No | activate URLの `token` を保存（監査用） |
+| `platform` | text | No | `mac` / `win` |
+| `plugin_version` | text | No | 例: `v53.0.0` |
+| `activated_at` | date | No | 初回または最終アクティベート日時 |
+
+### 検索キー（verify時）
+- `machine_id` + `product` の組み合わせで1件特定
+- ヒットしない場合は `authorized=false` を返す
+
+### 運用メモ
+- 停止対応は `authorized=false` に切り替えるだけでOK
+- `mid`（activateページ）と `machine_id`（verify API）は同じ値を同じフィールドに保存する
+- verifyレスポンスの `authorized` は **boolean**（`true/false`）で返す（文字列は不可）

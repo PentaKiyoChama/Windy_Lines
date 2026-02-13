@@ -148,6 +148,9 @@ static std::vector<std::string> GetLicenseCachePaths()
 #endif
 }
 
+// Forward declaration (defined after SimpleHash32)
+static std::string GetMachineIdHash();
+
 static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 {
 	if (!outAuthenticated)
@@ -185,6 +188,7 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	bool authorized = false;
 	bool hasExpire = false;
 	long long expireUnix = 0;
+	std::string cachedMachineIdHash;
 
 	char line[512];
 	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
@@ -217,6 +221,10 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 				hasExpire = true;
 			}
 		}
+		else if (key == "machine_id_hash")
+		{
+			cachedMachineIdHash = value;
+		}
 	}
 
 	std::fclose(file);
@@ -240,12 +248,162 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 		return false;
 	}
 
+	// --- Machine ID verification (anti-copy) ---
+	if (!cachedMachineIdHash.empty())
+	{
+		const std::string localMid = GetMachineIdHash();
+		if (cachedMachineIdHash != localMid)
+		{
+			DebugLog("[License] machine_id mismatch: cached=%s local=%s",
+				cachedMachineIdHash.c_str(), localMid.c_str());
+			return false;
+		}
+	}
+	// If machine_id_hash is empty, treat as legacy cache → allow
+
 	*outAuthenticated = authorized;
 	DebugLog("[License] cache loaded: authenticated=%s path=%s", authorized ? "true" : "false", cachePath.c_str());
 	return true;
 }
 
 static std::atomic<bool> sLicenseAuthenticated{ false };
+
+// === Machine ID hash (simple, no OpenSSL dependency) ===
+static uint32_t SimpleHash32(const char* str)
+{
+	uint32_t hash = 5381;
+	while (*str)
+	{
+		hash = ((hash << 5) + hash) + static_cast<unsigned char>(*str);
+		++str;
+	}
+	return hash;
+}
+
+static std::string GetMachineIdHash()
+{
+	char hostname[256] = {0};
+#ifdef _WIN32
+	DWORD size = sizeof(hostname);
+	GetComputerNameA(hostname, &size);
+	std::string raw = std::string(hostname) + "|win|" + std::to_string(sizeof(void*));
+#else
+	gethostname(hostname, sizeof(hostname) - 1);
+	std::string raw = std::string(hostname) + "|mac|" + std::to_string(sizeof(void*));
+#endif
+	uint32_t h1 = SimpleHash32(raw.c_str());
+	uint32_t h2 = SimpleHash32((raw + "_salt_ost").c_str());
+	char buf[20];
+	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
+	return std::string(buf);
+}
+
+// === Activation token generation & persistence ===
+static std::string GenerateActivationToken()
+{
+	uint32_t parts[4];
+	parts[0] = static_cast<uint32_t>(std::time(nullptr));
+	parts[1] = GetCurrentTimeMs();
+#ifdef _WIN32
+	parts[2] = GetCurrentProcessId();
+	parts[3] = GetTickCount();
+#else
+	parts[2] = static_cast<uint32_t>(getpid());
+	struct timeval tv;
+	gettimeofday(&tv, nullptr);
+	parts[3] = static_cast<uint32_t>(tv.tv_usec);
+#endif
+	char buf[40];
+	std::snprintf(buf, sizeof(buf), "%08x%08x%08x%08x",
+		SimpleHash32(reinterpret_cast<const char*>(&parts[0])),
+		SimpleHash32(reinterpret_cast<const char*>(&parts[1])),
+		parts[2], parts[3]);
+	return std::string(buf);
+}
+
+static std::string GetActivationTokenPath()
+{
+	const std::vector<std::string> paths = GetLicenseCachePaths();
+	if (paths.empty()) return "";
+	std::string dir = paths.front();
+	const size_t lastSep = dir.find_last_of("/\\");
+	if (lastSep != std::string::npos)
+		dir = dir.substr(0, lastSep);
+#ifdef _WIN32
+	return dir + "\\activation_token.txt";
+#else
+	return dir + "/activation_token.txt";
+#endif
+}
+
+static std::string LoadOrCreateActivationToken()
+{
+	const std::string path = GetActivationTokenPath();
+	if (path.empty()) return GenerateActivationToken();
+
+	FILE* f = std::fopen(path.c_str(), "rb");
+	if (f)
+	{
+		char buf[128] = {0};
+		if (std::fgets(buf, sizeof(buf), f))
+		{
+			std::fclose(f);
+			std::string token = TrimAscii(std::string(buf));
+			if (!token.empty()) return token;
+		}
+		else
+		{
+			std::fclose(f);
+		}
+	}
+
+	std::string token = GenerateActivationToken();
+#ifdef _WIN32
+	const size_t lastSep = path.find_last_of('\\');
+	if (lastSep != std::string::npos)
+	{
+		CreateDirectoryA(path.substr(0, lastSep).c_str(), nullptr);
+	}
+#else
+	const size_t lastSep = path.find_last_of('/');
+	if (lastSep != std::string::npos)
+	{
+		std::string mkdirCmd = "/bin/mkdir -p '" + path.substr(0, lastSep) + "'";
+		system(mkdirCmd.c_str());
+	}
+#endif
+	FILE* fw = std::fopen(path.c_str(), "wb");
+	if (fw)
+	{
+		std::fputs(token.c_str(), fw);
+		std::fputs("\n", fw);
+		std::fclose(fw);
+	}
+	return token;
+}
+
+// === Open browser for activation ===
+static const char* kActivatePageUrl = "https://penta.bubbleapps.io/version-test/activate";
+
+static void OpenActivationPage()
+{
+	const std::string mid = GetMachineIdHash();
+	const std::string token = LoadOrCreateActivationToken();
+	const std::string url = std::string(kActivatePageUrl)
+		+ "?token=" + token
+		+ "&mid=" + mid
+		+ "&product=OST_WindyLines"
+		+ "&ver=" OST_WINDYLINES_VERSION_FULL;
+
+	DebugLog("[License] Opening activation page: token=%s mid=%s", token.c_str(), mid.c_str());
+
+#ifdef _WIN32
+	ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+#else
+	std::string cmd = "open '" + url + "' &";
+	system(cmd.c_str());
+#endif
+}
 
 // === License auto-refresh: background API check when cache expires ===
 static const char* kLicenseApiEndpoint = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test";
@@ -289,11 +447,12 @@ static void TriggerBackgroundCacheRefresh()
 #ifndef _WIN32
 	const std::string endpoint(kLicenseApiEndpoint);
 	const int ttlSec = kAutoRefreshCacheTtlSec;
+	const std::string mid = GetMachineIdHash();
 
 	std::string cmd =
 		"(resp=$(/usr/bin/curl -s -m 10 -X POST "
 		"-H 'Content-Type: application/json' "
-		"-d '{\"action\":\"verify\",\"product\":\"OST_WindyLines\",\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"mac\"}' "
+		"-d '{\"action\":\"verify\",\"product\":\"OST_WindyLines\",\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"mac\",\"machine_id\":\"" + mid + "\"}' "
 		"'" + endpoint + "' 2>/dev/null); "
 		"if /usr/bin/printf '%s' \"$resp\" | /usr/bin/grep -q '\"authorized\"'; then "
 		"if /usr/bin/printf '%s' \"$resp\" | /usr/bin/grep -q '\"authorized\"[[:space:]]*:[[:space:]]*true'; then "
@@ -305,7 +464,7 @@ static void TriggerBackgroundCacheRefresh()
 		"expire=$((now + " + std::to_string(ttlSec) + ")); "
 		"/bin/mkdir -p '" + cacheDir + "'; "
 		"tmp=$(/usr/bin/mktemp /tmp/ost_wl_cache_XXXXXX); "
-		"/usr/bin/printf 'authorized=%s\\nreason=%s\\nvalidated_unix=%s\\ncache_expire_unix=%s\\nlicense_key_masked=\\nmachine_id_hash=auto_refresh\\n' "
+		"/usr/bin/printf 'authorized=%s\\nreason=%s\\nvalidated_unix=%s\\ncache_expire_unix=%s\\nlicense_key_masked=\\nmachine_id_hash=" + mid + "\\n' "
 		"\"$auth\" \"$reason\" \"$now\" \"$expire\" > \"$tmp\" && "
 		"/bin/mv \"$tmp\" '" + cachePath + "'; "
 		"fi"
@@ -2120,6 +2279,24 @@ static PF_Err ParamsSetup(
 		LINE_COLOR_CH_MIN_SLIDER, LINE_COLOR_CH_MAX_SLIDER, LINE_COLOR_CH_DFLT,
 		PF_Precision_TENTHS, 0, 0, OST_WINDYLINES_LINE_COLOR_B);
 
+	// ============================================================
+	// License Section
+	// ============================================================
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_TOPIC(P_LICENSE_HEADER, OST_WINDYLINES_LICENSE_HEADER);
+
+	AEFX_CLR_STRUCT(def);
+	def.flags = PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE;
+	PF_ADD_POPUP(
+		P_LICENSE_STATUS,
+		2,
+		1,
+		PM_LICENSE_STATUS,
+		OST_WINDYLINES_LICENSE_STATUS);
+
+	AEFX_CLR_STRUCT(def);
+	PF_END_TOPIC(OST_WINDYLINES_LICENSE_TOPIC_END);
+
 	out_data->num_params = OST_WINDYLINES_NUM_PARAMS;
 	return PF_Err_NONE;
 }
@@ -3372,6 +3549,27 @@ extern "C" DllExport PF_Err EffectMain(
 			DebugLog("Color Mode parameter changed");
 			UpdatePseudoGroupVisibility(in_data, params);
 			out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
+		}
+		
+		// License Status popup: "Activate" selected (value 2)
+		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_LICENSE_STATUS)
+		{
+			const int licenseValue = params[OST_WINDYLINES_LICENSE_STATUS]->u.pd.value;
+			DebugLog("[License] License status popup changed: value=%d", licenseValue);
+			if (licenseValue == 2)
+			{
+				// Open browser for activation
+				OpenActivationPage();
+				
+				// Reset popup back to value 1 to avoid "project changed" state
+				params[OST_WINDYLINES_LICENSE_STATUS]->u.pd.value = 1;
+				params[OST_WINDYLINES_LICENSE_STATUS]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
+				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
+				if (paramUtils.get())
+				{
+					paramUtils->PF_UpdateParamUI(in_data->effect_ref, OST_WINDYLINES_LICENSE_STATUS, params[OST_WINDYLINES_LICENSE_STATUS]);
+				}
+			}
 		}
 		
 		ApplyRectColorUi(in_data, out_data, params);

@@ -254,6 +254,36 @@ static bool ParseBoolLikeGPU(const std::string& value, bool* outValue)
 	return false;
 }
 
+// === GPU-side Machine ID hash (mirrors CPU SimpleHash32 + GetMachineIdHash) ===
+static uint32_t GpuSimpleHash32(const char* str)
+{
+	uint32_t hash = 5381;
+	while (*str)
+	{
+		hash = ((hash << 5) + hash) + static_cast<unsigned char>(*str);
+		++str;
+	}
+	return hash;
+}
+
+static std::string GetGpuMachineIdHash()
+{
+	char hostname[256] = {0};
+#ifdef _WIN32
+	DWORD size = sizeof(hostname);
+	GetComputerNameA(hostname, &size);
+	std::string raw = std::string(hostname) + "|win|" + std::to_string(sizeof(void*));
+#else
+	gethostname(hostname, sizeof(hostname) - 1);
+	std::string raw = std::string(hostname) + "|mac|" + std::to_string(sizeof(void*));
+#endif
+	uint32_t h1 = GpuSimpleHash32(raw.c_str());
+	uint32_t h2 = GpuSimpleHash32((raw + "_salt_ost").c_str());
+	char buf[20];
+	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
+	return std::string(buf);
+}
+
 static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 {
 	if (!outAuthenticated)
@@ -312,6 +342,7 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	bool authorized = false;
 	bool hasExpire = false;
 	long long expireUnix = 0;
+	std::string cachedMachineIdHash;
 
 	char line[512];
 	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
@@ -343,6 +374,10 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 				hasExpire = true;
 			}
 		}
+		else if (key == "machine_id_hash")
+		{
+			cachedMachineIdHash = value;
+		}
 	}
 
 	std::fclose(file);
@@ -355,6 +390,18 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	if (expireUnix <= nowUnix)
 	{
 		return false;
+	}
+
+	// --- Machine ID verification (anti-copy) ---
+	if (!cachedMachineIdHash.empty())
+	{
+		const std::string localMid = GetGpuMachineIdHash();
+		if (cachedMachineIdHash != localMid)
+		{
+			DebugLog("[GPU License] machine_id mismatch: cached=%s local=%s",
+				cachedMachineIdHash.c_str(), localMid.c_str());
+			return false;
+		}
 	}
 
 	*outAuthenticated = authorized;

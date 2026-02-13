@@ -219,6 +219,11 @@ enum
 	OST_WINDYLINES_LINE_COLOR_G,                 // 66. (hidden)
 	OST_WINDYLINES_LINE_COLOR_B,                 // 67. (hidden)
 	
+	// ▼ License
+	OST_WINDYLINES_LICENSE_HEADER,               // 68. License topic start
+	OST_WINDYLINES_LICENSE_STATUS,               // 69. License status / activate popup
+	OST_WINDYLINES_LICENSE_TOPIC_END,            // 70. License topic end
+	
 	OST_WINDYLINES_NUM_PARAMS
 };
 
