@@ -311,7 +311,60 @@ static void TriggerBackgroundCacheRefresh()
 	system(cmd.c_str());
 	DebugLog("[License] background cache refresh triggered");
 #else
-	DebugLog("[License] auto-refresh: Windows impl pending, run activate_license_cache.py manually");
+	// Windows: use PowerShell to POST and update cache in background
+	const std::string endpoint(kLicenseApiEndpoint);
+	const int ttlSec = kAutoRefreshCacheTtlSec;
+
+	// Backslash-escape the cache path for PowerShell
+	std::string winCacheDir = cachePath;
+	const size_t lastBackslash = winCacheDir.find_last_of('\\');
+	if (lastBackslash != std::string::npos)
+	{
+		winCacheDir = winCacheDir.substr(0, lastBackslash);
+	}
+
+	std::string psScript =
+		"$ErrorActionPreference='SilentlyContinue'; "
+		"try { "
+		"$body='{\"action\":\"verify\",\"product\":\"OST_WindyLines\",\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\"}'; "
+		"$r=Invoke-RestMethod -Uri '" + endpoint + "' -Method POST -ContentType 'application/json' -Body $body -TimeoutSec 10; "
+		"$auth=$false; $reason='denied'; "
+		"if ($r.response -and $r.response.authorized -eq $true) { $auth=$true; $reason='ok' } "
+		"elseif ($r.authorized -eq $true) { $auth=$true; $reason='ok' }; "
+		"$now=[int][double]::Parse((Get-Date -UFormat '%s')); "
+		"$expire=$now+" + std::to_string(ttlSec) + "; "
+		"$dir='" + winCacheDir + "'; "
+		"if (!(Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }; "
+		"$content=\"authorized=$($auth.ToString().ToLower())`nreason=$reason`nvalidated_unix=$now`ncache_expire_unix=$expire`nlicense_key_masked=`nmachine_id_hash=auto_refresh`n\"; "
+		"$tmp=[System.IO.Path]::GetTempFileName(); "
+		"[System.IO.File]::WriteAllText($tmp,$content,[System.Text.Encoding]::UTF8); "
+		"Move-Item -Force $tmp '" + cachePath + "' "
+		"} catch {}";
+
+	std::string cmd = "powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -Command \"" + psScript + "\"";
+
+	// Launch detached via CreateProcess
+	STARTUPINFOA si = {};
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_HIDE;
+	PROCESS_INFORMATION pi = {};
+	if (CreateProcessA(
+		nullptr,
+		const_cast<char*>(cmd.c_str()),
+		nullptr, nullptr, FALSE,
+		CREATE_NO_WINDOW | DETACHED_PROCESS,
+		nullptr, nullptr,
+		&si, &pi))
+	{
+		CloseHandle(pi.hThread);
+		CloseHandle(pi.hProcess);
+		DebugLog("[License] background cache refresh triggered (Windows)");
+	}
+	else
+	{
+		DebugLog("[License] auto-refresh: CreateProcess failed, err=%lu", GetLastError());
+	}
 #endif
 
 	sAutoRefreshInProgress.store(false, std::memory_order_release);
