@@ -1,21 +1,16 @@
 /*******************************************************************/
 /*                                                                 */
-/*                      ADOBE CONFIDENTIAL                         */
-/*                   _ _ _ _ _ _ _ _ _ _ _ _ _                     */
+/*  OST_WindyLines - Particle Line Effect Plugin                   */
+/*  for Adobe Premiere Pro                                         */
 /*                                                                 */
-/* Copyright 2012 Adobe Systems Incorporated                       */
-/* All Rights Reserved.                                            */
+/*  Copyright (c) 2026 Kiyoto Nakamura. All rights reserved.       */
 /*                                                                 */
-/* NOTICE:  All information contained herein is, and remains the   */
-/* property of Adobe Systems Incorporated and its suppliers, if    */
-/* any.  The intellectual and technical concepts contained         */
-/* herein are proprietary to Adobe Systems Incorporated and its    */
-/* suppliers and may be covered by U.S. and Foreign Patents,       */
-/* patents in process, and are protected by trade secret or        */
-/* copyright law.  Dissemination of this information or            */
-/* reproduction of this material is strictly forbidden unless      */
-/* prior written permission is obtained from Adobe Systems         */
-/* Incorporated.                                                   */
+/*  This plugin was developed using the Adobe Premiere Pro SDK.    */
+/*  Portions based on SDK sample code:                             */
+/*    Copyright 2012 Adobe Systems Incorporated.                   */
+/*    Used in accordance with the Adobe Developer SDK License.     */
+/*                                                                 */
+/*  This software is not affiliated with or endorsed by Adobe.     */
 /*                                                                 */
 /*******************************************************************/
 
@@ -50,6 +45,7 @@
 // Set to 0 to disable completely (zero performance impact)
 #define ENABLE_DEBUG_RENDER_MARKERS 0
 // ========== DEBUG LOGGING (Common) ==========
+#ifdef _DEBUG
 static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)
 {
@@ -120,6 +116,7 @@ static void WriteLog(const char* format, ...)
 		}
 	}
 }
+#endif // _DEBUG
 
 // Release builds disable logging for performance and security
 #ifdef _DEBUG

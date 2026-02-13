@@ -1,21 +1,16 @@
-	/*******************************************************************/
+/*******************************************************************/
 /*                                                                 */
-/*                      ADOBE CONFIDENTIAL                         */
-/*                   _ _ _ _ _ _ _ _ _ _ _ _ _                     */
+/*  OST_WindyLines - Particle Line Effect Plugin                   */
+/*  for Adobe Premiere Pro                                         */
 /*                                                                 */
-/* Copyright 2012 Adobe Systems Incorporated                       */
-/* All Rights Reserved.                                            */
+/*  Copyright (c) 2026 Kiyoto Nakamura. All rights reserved.       */
 /*                                                                 */
-/* NOTICE:  All information contained herein is, and remains the   */
-/* property of Adobe Systems Incorporated and its suppliers, if    */
-/* any.  The intellectual and technical concepts contained         */
-/* herein are proprietary to Adobe Systems Incorporated and its    */
-/* suppliers and may be covered by U.S. and Foreign Patents,       */
-/* patents in process, and are protected by trade secret or        */
-/* copyright law.  Dissemination of this information or            */
-/* reproduction of this material is strictly forbidden unless      */
-/* prior written permission is obtained from Adobe Systems         */
-/* Incorporated.                                                   */
+/*  This plugin was developed using the Adobe Premiere Pro SDK.    */
+/*  Portions based on SDK sample code:                             */
+/*    Copyright 2012 Adobe Systems Incorporated.                   */
+/*    Used in accordance with the Adobe Developer SDK License.     */
+/*                                                                 */
+/*  This software is not affiliated with or endorsed by Adobe.     */
 /*                                                                 */
 /*******************************************************************/
 
@@ -30,6 +25,8 @@
     #include <CL/cl.h>
 #else
     #include <OpenCL/cl.h>
+	#include <pwd.h>
+	#include <unistd.h>
 #endif
 #include <atomic>
 #include <cstdarg>
@@ -41,6 +38,8 @@
 #include <cstdint>
 #include <climits>
 #include <unordered_map>
+#include <ctime>
+#include <cstdlib>
 
 // Debug logging function is now in OST_WindyLines.h
 
@@ -197,6 +196,183 @@ static std::vector<DXContextPtr> sDXContextCache;
 static std::vector<ShaderObjectPtr> sShaderObjectCache;
 static std::vector<ShaderObjectPtr> sShaderObjectAlphaCache;
 #endif //HAS_DIRECTX
+
+static std::atomic<bool> sGpuLicenseAuthenticated{ false };
+static std::atomic<uint32_t> sGpuLicenseRefreshMs{ 0 };
+static const uint32_t kGpuLicenseRefreshIntervalMs = 200;
+
+static uint32_t GetCurrentTimeMsGPU()
+{
+#ifdef _WIN32
+	return GetTickCount();
+#else
+	struct timeval tv;
+	gettimeofday(&tv, nullptr);
+	return static_cast<uint32_t>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
+#endif
+}
+
+static std::string TrimAsciiGPU(const std::string& value)
+{
+	size_t begin = 0;
+	size_t end = value.size();
+	while (begin < end && (value[begin] == ' ' || value[begin] == '\t' || value[begin] == '\r' || value[begin] == '\n'))
+	{
+		++begin;
+	}
+	while (end > begin && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r' || value[end - 1] == '\n'))
+	{
+		--end;
+	}
+	return value.substr(begin, end - begin);
+}
+
+static bool ParseBoolLikeGPU(const std::string& value, bool* outValue)
+{
+	if (!outValue)
+	{
+		return false;
+	}
+	if (value == "1" || value == "true" || value == "TRUE" || value == "True")
+	{
+		*outValue = true;
+		return true;
+	}
+	if (value == "0" || value == "false" || value == "FALSE" || value == "False")
+	{
+		*outValue = false;
+		return true;
+	}
+	return false;
+}
+
+static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
+{
+	if (!outAuthenticated)
+	{
+		return false;
+	}
+
+	FILE* file = nullptr;
+	std::string loadedPath;
+
+#ifdef _WIN32
+	char appData[MAX_PATH] = { 0 };
+	DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
+	if (appDataLen > 0 && appDataLen < MAX_PATH)
+	{
+		const std::string path = std::string(appData) + "\\OST\\WindyLines\\license_cache_v1.txt";
+		file = std::fopen(path.c_str(), "rb");
+		if (file) loadedPath = path;
+	}
+	if (!file)
+	{
+		const char* userProfile = std::getenv("USERPROFILE");
+		if (userProfile && *userProfile)
+		{
+			const std::string path = std::string(userProfile) + "\\AppData\\Roaming\\OST\\WindyLines\\license_cache_v1.txt";
+			file = std::fopen(path.c_str(), "rb");
+			if (file) loadedPath = path;
+		}
+	}
+#else
+	const char* home = std::getenv("HOME");
+	if (home && *home)
+	{
+		const std::string path = std::string(home) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt";
+		file = std::fopen(path.c_str(), "rb");
+		if (file) loadedPath = path;
+	}
+	if (!file)
+	{
+		struct passwd* pw = getpwuid(getuid());
+		if (pw && pw->pw_dir && *pw->pw_dir)
+		{
+			const std::string path = std::string(pw->pw_dir) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt";
+			file = std::fopen(path.c_str(), "rb");
+			if (file) loadedPath = path;
+		}
+	}
+#endif
+
+	if (!file)
+	{
+		return false;
+	}
+
+	bool hasAuthorized = false;
+	bool authorized = false;
+	bool hasExpire = false;
+	long long expireUnix = 0;
+
+	char line[512];
+	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
+	{
+		std::string rawLine(line);
+		const size_t sep = rawLine.find('=');
+		if (sep == std::string::npos)
+		{
+			continue;
+		}
+		const std::string key = TrimAsciiGPU(rawLine.substr(0, sep));
+		const std::string value = TrimAsciiGPU(rawLine.substr(sep + 1));
+		if (key == "authorized")
+		{
+			bool parsed = false;
+			if (ParseBoolLikeGPU(value, &parsed))
+			{
+				authorized = parsed;
+				hasAuthorized = true;
+			}
+		}
+		else if (key == "cache_expire_unix")
+		{
+			char* endPtr = nullptr;
+			const long long parsed = std::strtoll(value.c_str(), &endPtr, 10);
+			if (endPtr != value.c_str())
+			{
+				expireUnix = parsed;
+				hasExpire = true;
+			}
+		}
+	}
+
+	std::fclose(file);
+	if (!hasAuthorized || !hasExpire)
+	{
+		return false;
+	}
+
+	const long long nowUnix = static_cast<long long>(std::time(nullptr));
+	if (expireUnix <= nowUnix)
+	{
+		return false;
+	}
+
+	*outAuthenticated = authorized;
+	DebugLog("[GPU License] cache loaded: authenticated=%s path=%s", authorized ? "true" : "false", loadedPath.c_str());
+	return true;
+}
+
+static bool IsGpuLicenseAuthenticated()
+{
+	const uint32_t nowMs = GetCurrentTimeMsGPU();
+	const uint32_t lastMs = sGpuLicenseRefreshMs.load(std::memory_order_relaxed);
+	if (nowMs - lastMs >= kGpuLicenseRefreshIntervalMs)
+	{
+		sGpuLicenseRefreshMs.store(nowMs, std::memory_order_relaxed);
+		bool cached = false;
+		if (LoadGpuLicenseAuthenticatedFromCache(&cached))
+		{
+			sGpuLicenseAuthenticated.store(cached, std::memory_order_relaxed);
+		}
+		else
+		{
+			sGpuLicenseAuthenticated.store(false, std::memory_order_relaxed);
+		}
+	}
+	return sGpuLicenseAuthenticated.load(std::memory_order_relaxed);
+}
 
 // No state tracking needed - using period-based approach for cache consistency
 
@@ -1000,6 +1176,12 @@ public:
 		csSDK_size_t inFrameCount,
 		PPixHand* outFrame)
 	{
+		if (!IsGpuLicenseAuthenticated())
+		{
+			// Force CPU fallback in unauthenticated mode so CPU watermark logic is always applied.
+			return suiteError_Fail;
+		}
+
 		auto normalizePopup = [](int value, int maxValue) {
 			if (value >= 1 && value <= maxValue)
 			{

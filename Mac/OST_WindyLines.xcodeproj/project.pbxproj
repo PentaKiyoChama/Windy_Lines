@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		185D78901CFDC57E005B69BA /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 185D788F1CFDC57E005B69BA /* Metal.framework */; };
-		3F57A74326FE89EF004786EA /* OST_WindyLines.metal in Sources */ = {isa = PBXBuildFile; fileRef = 3F57A74226FE89EF004786EA /* OST_WindyLines.metal */; };
 		7E83C0FE170F4840008B8043 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E83C0FD170F4840008B8043 /* Cocoa.framework */; };
 		7E83C108170F4840008B8043 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 7E83C106170F4840008B8043 /* InfoPlist.strings */; };
 		7E83C117170F489B008B8043 /* OST_WindyLines_CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E83C113170F489B008B8043 /* OST_WindyLines_CPU.cpp */; };
@@ -16,22 +15,6 @@
 		7E9365E0172F7344006C8436 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7E9365DF172F7344006C8436 /* OpenCL.framework */; };
 		7EC22DD61FA7C99700D810DC /* OST_WindyLines.r in Rez */ = {isa = PBXBuildFile; fileRef = 7E83C116170F489B008B8043 /* OST_WindyLines.r */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXBuildRule section */
-		3F577B5526FE86D4004786EA /* PBXBuildRule */ = {
-			isa = PBXBuildRule;
-			compilerSpec = com.apple.compilers.proxy.script;
-			filePatterns = "*.metal";
-			fileType = pattern.proxy;
-			inputFiles = (
-			);
-			isEditable = 1;
-			outputFiles = (
-				"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metallib",
-			);
-			script = "set -e\nmkdir -p \"${DERIVED_FILE_DIR}/64/PTX/Metal/\"\nchmod 777 \"${DERIVED_FILE_DIR}/64/PTX/Metal/\"\n\nXCODE_PATH=`xcode-select -p`\nSDK_PATH=\"${XCODE_PATH}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk\"\n\n# Try to use xcrun first, fallback to direct path\nMETAL_CMD=\"$(xcrun --find metal 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/metal)\"\n\n# Check if metal command exists and is executable\nif [ ! -x \"${METAL_CMD}\" ]; then\n    echo \"error: metal command not found at ${METAL_CMD}\"\n    echo \"Please install Metal Toolchain: xcodebuild -downloadComponent MetalToolchain\"\n    exit 1\nfi\n\n# Use PREMIERE_SDK_BASE_PATH for Headers\nHEADERS_PATH=\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"\n\n# Debug: print paths to verify\necho \"[Metal Build] INPUT_FILE_PATH: ${INPUT_FILE_PATH}\"\necho \"[Metal Build] PREMIERE_SDK_BASE_PATH: ${PREMIERE_SDK_BASE_PATH}\"\necho \"[Metal Build] HEADERS_PATH: ${HEADERS_PATH}\"\nif [ ! -d \"${HEADERS_PATH}\" ]; then\n    echo \"[Metal Build] ERROR: Headers directory not found at ${HEADERS_PATH}\"\n    echo \"[Metal Build] Please set PREMIERE_SDK_BASE_PATH in build settings\"\n    exit 1\nfi\nif [ ! -f \"${HEADERS_PATH}/PrGPU/KernelSupport/KernelCore.h\" ]; then\n    echo \"[Metal Build] ERROR: KernelCore.h not found at ${HEADERS_PATH}/PrGPU/KernelSupport/KernelCore.h\"\n    ls -la \"${HEADERS_PATH}/PrGPU/KernelSupport/\" 2>/dev/null || echo \"[Metal Build] PrGPU/KernelSupport directory does not exist\"\n    exit 1\nfi\n\n# Auto-detect Boost if BOOST_BASE_PATH is not set\nif [ -z \"${BOOST_BASE_PATH}\" ] || [ ! -d \"${BOOST_BASE_PATH}\" ]; then\n    # Try common Homebrew locations\n    if [ -d \"/opt/homebrew/include\" ] && [ -f \"/opt/homebrew/include/boost/preprocessor/list/for_each.hpp\" ]; then\n        BOOST_BASE_PATH=\"/opt/homebrew/include\"\n    elif [ -d \"/usr/local/include\" ] && [ -f \"/usr/local/include/boost/preprocessor/list/for_each.hpp\" ]; then\n        BOOST_BASE_PATH=\"/usr/local/include\"\n    elif [ -d \"/opt/homebrew/Cellar/boost\" ]; then\n        # Find latest Boost version in Cellar\n        BOOST_VERSION=\"$(ls -t /opt/homebrew/Cellar/boost 2>/dev/null | head -1)\"\n        if [ -n \"${BOOST_VERSION}\" ] && [ -d \"/opt/homebrew/Cellar/boost/${BOOST_VERSION}/include\" ]; then\n            BOOST_BASE_PATH=\"/opt/homebrew/Cellar/boost/${BOOST_VERSION}/include\"\n        fi\n    fi\nfi\n\nif [ -n \"${BOOST_BASE_PATH}\" ] && [ -d \"${BOOST_BASE_PATH}\" ]; then\n    echo \"[Metal Build] Using Boost at: ${BOOST_BASE_PATH}\"\nelse\n    echo \"[Metal Build] WARNING: Boost not found. Install with: brew install boost\"\n    BOOST_BASE_PATH=\"\"\nfi\necho \"[Metal Build] Running metal compiler...\"\n\"${METAL_CMD}\" -arch air64 -emit-llvm -c -ffast-math -Wno-missing-prototypes -mmacosx-version-min=10.15 -std=osx-metal2.0 -isysroot \"${SDK_PATH}\" \"-I${HEADERS_PATH}\" \"-I${BOOST_BASE_PATH}\" -DGF_DEVICE_TARGET_METAL=1 -DGF_DEVICE_TARGET_METAL_IOS=0 -o \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.air\" \"${INPUT_FILE_PATH}\"\n\n# Try to find metal-ar or use standard ar\nMETAL_AR_CMD=\"$(xcrun --find metal-ar 2>/dev/null || xcrun --find ar 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/ar)\"\nif [ ! -x \"${METAL_AR_CMD}\" ]; then\n    echo \"error: metal-ar/ar command not found\"\n    exit 1\nfi\n\n# Create archive\n\"${METAL_AR_CMD}\" ru \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metal-ar\" \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.air\"\n\n# Try to find metallib\nMETALLIB_CMD=\"$(xcrun --find metallib 2>/dev/null || echo ${XCODE_PATH}/Toolchains/XcodeDefault.xctoolchain/usr/bin/metallib)\"\nif [ ! -x \"${METALLIB_CMD}\" ]; then\n    echo \"error: metallib command not found at ${METALLIB_CMD}\"\n    echo \"Please install Metal Toolchain: xcodebuild -downloadComponent MetalToolchain\"\n    exit 1\nfi\n\n# Create metallib\n\"${METALLIB_CMD}\" -o \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metallib\" \"${DERIVED_FILES_DIR}/64/PTX/Metal/${INPUT_FILE_BASE}.metal-ar\"\n";
-		};
-/* End PBXBuildRule section */
 
 /* Begin PBXFileReference section */
 		185D788F1CFDC57E005B69BA /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
@@ -158,6 +141,7 @@
 				7E83C0F8170F4840008B8043 /* Resources */,
 				7EC22DD51FA7C99000D810DC /* Rez */,
 				3F57A75326FE9DE9004786EA /* ShellScript */,
+				23ABEB212F3ED08C000697D8 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -218,6 +202,23 @@
 /* End PBXRezBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		23ABEB212F3ED08C000697D8 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nset -euo pipefail\n\nPLUGIN_SRC=\"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\"\n\n# 権限問題を避けたい場合はユーザー領域を推奨\n# DEST_DIR=\"${HOME}/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\nDEST_DIR=\"/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\n\nDEST_PLUGIN=\"${DEST_DIR}/${FULL_PRODUCT_NAME}\"\n\necho \"[INFO] Source: ${PLUGIN_SRC}\"\necho \"[INFO] Dest  : ${DEST_PLUGIN}\"\n\n[ -d \"${PLUGIN_SRC}\" ] || { echo \"[ERROR] Built plugin not found\"; exit 1; }\n\nmkdir -p \"${DEST_DIR}\"\n\n# 1) build成果物をクリーン化して再署名\nxattr -cr \"${PLUGIN_SRC}\" || true\nfind \"${PLUGIN_SRC}\" -name '._*' -type f -delete || true\nfind \"${PLUGIN_SRC}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${PLUGIN_SRC}\" || true\ncodesign --force --deep --sign - \"${PLUGIN_SRC}\"\n\n# 2) 配置先を丸ごと置き換え（古い残骸を消す）\nrm -rf \"${DEST_PLUGIN}\"\nditto \"${PLUGIN_SRC}\" \"${DEST_PLUGIN}\"\n\n# 3) 配置後もクリーン化して再署名\nxattr -cr \"${DEST_PLUGIN}\" || true\nfind \"${DEST_PLUGIN}\" -name '._*' -type f -delete || true\nfind \"${DEST_PLUGIN}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${DEST_PLUGIN}\" || true\ncodesign --force --deep --sign - \"${DEST_PLUGIN}\"\n\n# 4) 検証\ncodesign --verify --deep --strict --verbose=2 \"${DEST_PLUGIN}\"\n\necho \"[OK] Deploy + sanitize + sign + verify completed\"\n";
+		};
 		3F57A75326FE9DE9004786EA /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -339,7 +340,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
-				DSTROOT = "/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore";
+				DSTROOT = "$(PROJECT_DIR)/build/install-root";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
 				HEADER_SEARCH_PATHS = (
@@ -383,7 +384,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
-				DSTROOT = "/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore";
+				DSTROOT = "$(PROJECT_DIR)/build/install-root";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
 				HEADER_SEARCH_PATHS = (

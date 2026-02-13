@@ -1,6 +1,7 @@
 /*******************************************************************/
 /*                                                                 */
-/*                   SDK ProcAmp Version Management                */
+/*  OST_WindyLines - Version Management                            */
+/*  Copyright (c) 2026 Kiyoto Nakamura. All rights reserved.       */
 /*                                                                 */
 /*******************************************************************/
 

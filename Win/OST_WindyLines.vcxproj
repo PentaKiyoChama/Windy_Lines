@@ -120,7 +120,8 @@ if not defined BOOST_BASE_PATH echo "BOOST_BASE_PATH is not defined! Please make
     <ClCompile>
       <AdditionalIncludeDirectories>..\..\..\..\Headers;..\..\..\..\Headers\SP;..\..\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <PreprocessorDefinitions>MSWindows;_USE_MATH_DEFINES;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization>Full</Optimization>
+      <PreprocessorDefinitions>NDEBUG;MSWindows;_USE_MATH_DEFINES;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/source-charset:utf-8 /execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

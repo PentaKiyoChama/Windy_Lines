@@ -1,21 +1,16 @@
 /*******************************************************************/
 /*                                                                 */
-/*                      ADOBE CONFIDENTIAL                         */
-/*                   _ _ _ _ _ _ _ _ _ _ _ _ _                     */
+/*  OST_WindyLines - Particle Line Effect Plugin                   */
+/*  for Adobe Premiere Pro                                         */
 /*                                                                 */
-/* Copyright 2012 Adobe Systems Incorporated                       */
-/* All Rights Reserved.                                            */
+/*  Copyright (c) 2026 Kiyoto Nakamura. All rights reserved.       */
 /*                                                                 */
-/* NOTICE:  All information contained herein is, and remains the   */
-/* property of Adobe Systems Incorporated and its suppliers, if    */
-/* any.  The intellectual and technical concepts contained         */
-/* herein are proprietary to Adobe Systems Incorporated and its    */
-/* suppliers and may be covered by U.S. and Foreign Patents,       */
-/* patents in process, and are protected by trade secret or        */
-/* copyright law.  Dissemination of this information or            */
-/* reproduction of this material is strictly forbidden unless      */
-/* prior written permission is obtained from Adobe Systems         */
-/* Incorporated.                                                   */
+/*  This plugin was developed using the Adobe Premiere Pro SDK.    */
+/*  Portions based on SDK sample code:                             */
+/*    Copyright 2012 Adobe Systems Incorporated.                   */
+/*    Used in accordance with the Adobe Developer SDK License.     */
+/*                                                                 */
+/*  This software is not affiliated with or endorsed by Adobe.     */
 /*                                                                 */
 /*******************************************************************/
 
@@ -23,14 +18,18 @@
 #include "OST_WindyLines.h"
 #include "OST_WindyLines_ParamNames.h"
 #include "OST_WindyLines_Version.h"
+#include "OST_WindyLines_WatermarkMask.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <ctime>
 #include <unordered_map>
 #include <vector>
 #include <cstdarg>
@@ -38,7 +37,10 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
+#include <pwd.h>
+#include <sys/stat.h>
 #include <sys/time.h>
+#include <unistd.h>
 #endif
 
 // Debug logging function is now in OST_WindyLines.h
@@ -46,6 +48,8 @@
 // Debounce for preset button double-fire issue
 static std::atomic<uint32_t> sLastPresetClickTime{ 0 };
 static const uint32_t kPresetDebounceMs = 200;
+static std::atomic<uint32_t> sLastLicenseRefreshTimeMs{ 0 };
+static const uint32_t kLicenseRefreshIntervalMs = 200;
 
 static uint32_t GetCurrentTimeMs()
 {
@@ -58,6 +62,286 @@ static uint32_t GetCurrentTimeMs()
 #endif
 }
 
+static std::string TrimAscii(const std::string& value)
+{
+	size_t begin = 0;
+	size_t end = value.size();
+	while (begin < end && (value[begin] == ' ' || value[begin] == '\t' || value[begin] == '\r' || value[begin] == '\n'))
+	{
+		++begin;
+	}
+	while (end > begin && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r' || value[end - 1] == '\n'))
+	{
+		--end;
+	}
+	return value.substr(begin, end - begin);
+}
+
+static bool ParseBoolLike(const std::string& value, bool* outValue)
+{
+	if (!outValue)
+	{
+		return false;
+	}
+	if (value == "1" || value == "true" || value == "TRUE" || value == "True")
+	{
+		*outValue = true;
+		return true;
+	}
+	if (value == "0" || value == "false" || value == "FALSE" || value == "False")
+	{
+		*outValue = false;
+		return true;
+	}
+	return false;
+}
+
+static std::vector<std::string> GetLicenseCachePaths()
+{
+#ifdef _WIN32
+	std::vector<std::string> paths;
+	char appData[MAX_PATH] = { 0 };
+	DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
+	if (appDataLen > 0 && appDataLen < MAX_PATH)
+	{
+		paths.push_back(std::string(appData) + "\\OST\\WindyLines\\license_cache_v1.txt");
+	}
+	const char* userProfile = std::getenv("USERPROFILE");
+	if (userProfile && *userProfile)
+	{
+		paths.push_back(std::string(userProfile) + "\\AppData\\Roaming\\OST\\WindyLines\\license_cache_v1.txt");
+	}
+	paths.push_back(std::string("C:\\Temp\\ost_windylines_license_cache_v1.txt"));
+	return paths;
+#else
+	std::vector<std::string> paths;
+	const char* home = std::getenv("HOME");
+	if (home && *home)
+	{
+		paths.push_back(std::string(home) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt");
+	}
+
+	struct passwd* pw = getpwuid(getuid());
+	if (pw && pw->pw_dir && *pw->pw_dir)
+	{
+		const std::string pwHomePath = std::string(pw->pw_dir) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt";
+		bool exists = false;
+		for (const auto& path : paths)
+		{
+			if (path == pwHomePath)
+			{
+				exists = true;
+				break;
+			}
+		}
+		if (!exists)
+		{
+			paths.push_back(pwHomePath);
+		}
+	}
+
+	paths.push_back(std::string("/tmp/ost_windylines_license_cache_v1.txt"));
+	return paths;
+#endif
+}
+
+static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
+{
+	if (!outAuthenticated)
+	{
+		return false;
+	}
+
+	const std::vector<std::string> cachePaths = GetLicenseCachePaths();
+	std::string cachePath;
+	FILE* file = nullptr;
+	for (const auto& candidate : cachePaths)
+	{
+		file = std::fopen(candidate.c_str(), "rb");
+		if (file)
+		{
+			cachePath = candidate;
+			break;
+		}
+	}
+
+	if (!file)
+	{
+		if (!cachePaths.empty())
+		{
+			DebugLog("[License] cache file not found. first_path=%s", cachePaths.front().c_str());
+		}
+		else
+		{
+			DebugLog("[License] cache file not found. no candidate paths");
+		}
+		return false;
+	}
+
+	bool hasAuthorized = false;
+	bool authorized = false;
+	bool hasExpire = false;
+	long long expireUnix = 0;
+
+	char line[512];
+	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
+	{
+		std::string rawLine(line);
+		const size_t sep = rawLine.find('=');
+		if (sep == std::string::npos)
+		{
+			continue;
+		}
+		const std::string key = TrimAscii(rawLine.substr(0, sep));
+		const std::string value = TrimAscii(rawLine.substr(sep + 1));
+
+		if (key == "authorized")
+		{
+			bool parsed = false;
+			if (ParseBoolLike(value, &parsed))
+			{
+				authorized = parsed;
+				hasAuthorized = true;
+			}
+		}
+		else if (key == "cache_expire_unix")
+		{
+			char* endPtr = nullptr;
+			const long long parsed = std::strtoll(value.c_str(), &endPtr, 10);
+			if (endPtr != value.c_str())
+			{
+				expireUnix = parsed;
+				hasExpire = true;
+			}
+		}
+	}
+
+	std::fclose(file);
+
+	if (!hasAuthorized)
+	{
+		DebugLog("[License] cache invalid: authorized missing");
+		return false;
+	}
+
+	if (!hasExpire)
+	{
+		DebugLog("[License] cache invalid: cache_expire_unix missing");
+		return false;
+	}
+
+	const long long nowUnix = static_cast<long long>(std::time(nullptr));
+	if (expireUnix <= nowUnix)
+	{
+		DebugLog("[License] cache expired: now=%lld expire=%lld", nowUnix, expireUnix);
+		return false;
+	}
+
+	*outAuthenticated = authorized;
+	DebugLog("[License] cache loaded: authenticated=%s path=%s", authorized ? "true" : "false", cachePath.c_str());
+	return true;
+}
+
+static std::atomic<bool> sLicenseAuthenticated{ false };
+
+// === License auto-refresh: background API check when cache expires ===
+static const char* kLicenseApiEndpoint = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test";
+static const int kAutoRefreshCacheTtlSec = 600; // 10 min TTL for auto-refreshed cache
+static std::atomic<bool> sAutoRefreshInProgress{false};
+static std::atomic<uint32_t> sLastAutoRefreshAttemptMs{0};
+static const uint32_t kMinAutoRefreshIntervalMs = 60000; // min 60s between API calls
+
+static void TriggerBackgroundCacheRefresh()
+{
+	bool expected = false;
+	if (!sAutoRefreshInProgress.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+	{
+		return;
+	}
+
+	const uint32_t nowMs = GetCurrentTimeMs();
+	const uint32_t lastMs = sLastAutoRefreshAttemptMs.load(std::memory_order_relaxed);
+	if (nowMs - lastMs < kMinAutoRefreshIntervalMs)
+	{
+		sAutoRefreshInProgress.store(false, std::memory_order_release);
+		return;
+	}
+	sLastAutoRefreshAttemptMs.store(nowMs, std::memory_order_relaxed);
+
+	const std::vector<std::string> paths = GetLicenseCachePaths();
+	if (paths.empty())
+	{
+		sAutoRefreshInProgress.store(false, std::memory_order_release);
+		return;
+	}
+
+	const std::string cachePath = paths.front();
+	std::string cacheDir = cachePath;
+	const size_t lastSlash = cacheDir.find_last_of('/');
+	if (lastSlash != std::string::npos)
+	{
+		cacheDir = cacheDir.substr(0, lastSlash);
+	}
+
+#ifndef _WIN32
+	const std::string endpoint(kLicenseApiEndpoint);
+	const int ttlSec = kAutoRefreshCacheTtlSec;
+
+	std::string cmd =
+		"(resp=$(/usr/bin/curl -s -m 10 -X POST "
+		"-H 'Content-Type: application/json' "
+		"-d '{\"action\":\"verify\",\"product\":\"OST_WindyLines\",\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"mac\"}' "
+		"'" + endpoint + "' 2>/dev/null); "
+		"if /usr/bin/printf '%s' \"$resp\" | /usr/bin/grep -q '\"authorized\"'; then "
+		"if /usr/bin/printf '%s' \"$resp\" | /usr/bin/grep -q '\"authorized\"[[:space:]]*:[[:space:]]*true'; then "
+		"auth=true; reason=ok; "
+		"else "
+		"auth=false; reason=denied; "
+		"fi; "
+		"now=$(/bin/date +%s); "
+		"expire=$((now + " + std::to_string(ttlSec) + ")); "
+		"/bin/mkdir -p '" + cacheDir + "'; "
+		"tmp=$(/usr/bin/mktemp /tmp/ost_wl_cache_XXXXXX); "
+		"/usr/bin/printf 'authorized=%s\\nreason=%s\\nvalidated_unix=%s\\ncache_expire_unix=%s\\nlicense_key_masked=\\nmachine_id_hash=auto_refresh\\n' "
+		"\"$auth\" \"$reason\" \"$now\" \"$expire\" > \"$tmp\" && "
+		"/bin/mv \"$tmp\" '" + cachePath + "'; "
+		"fi"
+		") >/dev/null 2>&1 &";
+
+	system(cmd.c_str());
+	DebugLog("[License] background cache refresh triggered");
+#else
+	DebugLog("[License] auto-refresh: Windows impl pending, run activate_license_cache.py manually");
+#endif
+
+	sAutoRefreshInProgress.store(false, std::memory_order_release);
+}
+
+static void RefreshLicenseAuthenticatedState(bool force)
+{
+	const uint32_t nowMs = GetCurrentTimeMs();
+	if (!force)
+	{
+		const uint32_t lastMs = sLastLicenseRefreshTimeMs.load(std::memory_order_relaxed);
+		if (nowMs - lastMs < kLicenseRefreshIntervalMs)
+		{
+			return;
+		}
+	}
+
+	sLastLicenseRefreshTimeMs.store(nowMs, std::memory_order_relaxed);
+
+	bool cachedAuthenticated = false;
+	if (LoadLicenseAuthenticatedFromCache(&cachedAuthenticated))
+	{
+		sLicenseAuthenticated.store(cachedAuthenticated, std::memory_order_relaxed);
+	}
+	else
+	{
+		sLicenseAuthenticated.store(false, std::memory_order_relaxed);
+		TriggerBackgroundCacheRefresh();
+	}
+}
 static int NormalizePopupValue(int value, int maxValue)
 {
 	// Premiere Pro popup values are 1-based, convert to 0-based
@@ -317,6 +601,8 @@ static PF_Err GlobalSetup(
 	PF_ParamDef* params[],
 	PF_LayerDef* output)
 {
+	RefreshLicenseAuthenticatedState(true);
+
 	out_data->my_version	= PF_VERSION(MAJOR_VERSION, MINOR_VERSION, BUG_VERSION, STAGE_VERSION, BUILD_VERSION);
 
 	if (in_data->appl_id == 'PrMr')
@@ -428,6 +714,11 @@ struct InstanceState
 
 static std::unordered_map<const void*, std::shared_ptr<InstanceState>> sInstanceStates;
 static std::mutex sInstanceStatesMutex;
+
+static bool IsLicenseAuthenticated()
+{
+	return sLicenseAuthenticated.load(std::memory_order_relaxed);
+}
 
 static const void* GetInstanceKey(const PF_InData* in_data)
 {
@@ -1699,6 +1990,8 @@ static PF_Err Render(
 	PF_ParamDef* params[],
 	PF_LayerDef* output)
 {
+	RefreshLicenseAuthenticatedState(false);
+
 	auto normalizePopup = [](int value, int maxValue) {
 		if (value >= 1 && value <= maxValue)
 		{
@@ -2768,22 +3061,47 @@ static PF_Err Render(
 					}
 				}
 
-				// DEBUG: Draw RED CIRCLE in top-left corner to indicate CPU is being used
-				// Shape: Circle (CPU = fallback)
+				// License watermark (non-authenticated mode):
+				// top-left with margin, bitmap text height ~= 32px
+				if (!IsLicenseAuthenticated())
 				{
-					const float cx = 20.0f;  // Circle center X
-					const float cy = 20.0f;  // Circle center Y
-					const float radius = 15.0f;
-					const float dx = (x + 0.5f) - cx;
-					const float dy = (y + 0.5f) - cy;
-					if (dx * dx + dy * dy <= radius * radius)
+					const int textWidthPx = FreeModeWatermark::TextWidthPx();
+					const int textHeightPx = FreeModeWatermark::TextHeightPx();
+					const int marginX = FreeModeWatermark::kMarginX;
+					const int marginY = FreeModeWatermark::kMarginY;
+					const float watermarkScale = dsScale > 0.0f ? dsScale : 1.0f;
+					const int scaledMarginX = std::max(0, static_cast<int>(std::lround(static_cast<float>(marginX) * watermarkScale)));
+					const int scaledMarginY = std::max(0, static_cast<int>(std::lround(static_cast<float>(marginY) * watermarkScale)));
+					const int scaledTextWidthPx = std::max(1, static_cast<int>(std::lround(static_cast<float>(textWidthPx) * watermarkScale)));
+					const int scaledTextHeightPx = std::max(1, static_cast<int>(std::lround(static_cast<float>(textHeightPx) * watermarkScale)));
+
+					if (x >= scaledMarginX - 1 && x < scaledMarginX + scaledTextWidthPx + 1 &&
+						y >= scaledMarginY - 1 && y < scaledMarginY + scaledTextHeightPx + 1)
 					{
-					outV = 0.5f;   // V for red in YUV
-					outU = 0.0f;   // U for red in YUV
-					outY = 0.3f;   // Y for red in YUV (low luma)
-					a = 1.0f;      // A = 1
+						const int localX = x - scaledMarginX;
+						const int localY = y - scaledMarginY;
+						const int sampleX = marginX + static_cast<int>(static_cast<float>(localX) / watermarkScale);
+						const int sampleY = marginY + static_cast<int>(static_cast<float>(localY) / watermarkScale);
+						const float fillAlpha = static_cast<float>(FreeModeWatermark::FillAlphaAt(sampleX, sampleY)) / 255.0f;
+						const float outlineAlpha = static_cast<float>(FreeModeWatermark::OutlineAlphaAt(sampleX, sampleY)) / 255.0f;
+						const bool fill = fillAlpha > 0.0f;
+						const bool outline = (!fill) && (outlineAlpha > 0.0f);
+
+						if (fill || outline)
+						{
+							const float targetY = fill ? 1.0f : 0.0f;
+							const float targetU = 0.0f;
+							const float targetV = 0.0f;
+							const float baseAlpha = fill ? 0.92f : 0.78f;
+							const float overlayAlpha = baseAlpha * (fill ? fillAlpha : outlineAlpha);
+
+							outY = outY + (targetY - outY) * overlayAlpha;
+							outU = outU + (targetU - outU) * overlayAlpha;
+							outV = outV + (targetV - outV) * overlayAlpha;
+							a = std::max(a, overlayAlpha);
+						}
+					}
 				}
-			}
 			
 			// Note: Premultiplied alpha compositing already produces correctly weighted colors
 			// No additional premultiplication needed - output is straight alpha format
@@ -2830,41 +3148,41 @@ extern "C" DllExport PF_Err EffectMain(
 	{
 		PF_UserChangedParamExtra* changedExtra = reinterpret_cast<PF_UserChangedParamExtra*>(extra);
 		
-		WriteLog("USER_CHANGED_PARAM: changedExtra=%p, param_index=%d", 
+		DebugLog("USER_CHANGED_PARAM: changedExtra=%p, param_index=%d", 
 			changedExtra, changedExtra ? changedExtra->param_index : -1);
 		
 		// Effect Preset: apply preset parameters or defaults
 		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_EFFECT_PRESET)
 		{
 			const int presetValue = params[OST_WINDYLINES_EFFECT_PRESET]->u.pd.value;
-			WriteLog("Effect Preset changed: presetValue=%d (1=Default, 2+=Preset[n-2])", presetValue);
+			DebugLog("Effect Preset changed: presetValue=%d (1=Default, 2+=Preset[n-2])", presetValue);
 			
 			if (presetValue == 1)
 			{
-				WriteLog("Applying default effect params...");
+				DebugLog("Applying default effect params...");
 				ApplyDefaultEffectParams(in_data, out_data, params);
-				WriteLog("Default effect params applied.");
+				DebugLog("Default effect params applied.");
 			}
 			else if (presetValue > 1)
 			{
 				// Debounce: ignore double-fire within 200ms
 				const uint32_t currentTime = GetCurrentTimeMs();
 				const uint32_t lastTime = sLastPresetClickTime.load();
-				WriteLog("Debounce check: currentTime=%u, lastTime=%u, diff=%u, threshold=%u",
+				DebugLog("Debounce check: currentTime=%u, lastTime=%u, diff=%u, threshold=%u",
 					currentTime, lastTime, currentTime - lastTime, kPresetDebounceMs);
 				if (currentTime - lastTime < kPresetDebounceMs)
 				{
-					WriteLog("DEBOUNCE: Ignoring duplicate event");
+					DebugLog("DEBOUNCE: Ignoring duplicate event");
 					break;  // Ignore duplicate event
 				}
 				sLastPresetClickTime.store(currentTime);
-				WriteLog("Applying effect preset index=%d...", presetValue - 2);
+				DebugLog("Applying effect preset index=%d...", presetValue - 2);
 				ApplyEffectPreset(in_data, out_data, params, presetValue - 2);
-				WriteLog("Effect preset applied.");
+				DebugLog("Effect preset applied.");
 			}
 			else
 			{
-				WriteLog("presetValue <= 0, no action taken");
+				DebugLog("presetValue <= 0, no action taken");
 			}
 		}
 		
@@ -2882,7 +3200,7 @@ extern "C" DllExport PF_Err EffectMain(
 					paramUtils->PF_UpdateParamUI(in_data->effect_ref, OST_WINDYLINES_COLOR_PRESET, params[OST_WINDYLINES_COLOR_PRESET]);
 				}
 				out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
-				WriteLog("Single color changed: Auto-switched unified preset to 単色 (value=1)");
+				DebugLog("Single color changed: Auto-switched unified preset to 単色 (value=1)");
 			}
 		}
 		
@@ -2900,7 +3218,7 @@ extern "C" DllExport PF_Err EffectMain(
 			changedExtra->param_index == OST_WINDYLINES_THICKNESS_LINKAGE ||
 			changedExtra->param_index == OST_WINDYLINES_LENGTH_LINKAGE))
 		{
-			WriteLog("Linkage parameter changed: param_index=%d", changedExtra->param_index);
+			DebugLog("Linkage parameter changed: param_index=%d", changedExtra->param_index);
 			UpdatePseudoGroupVisibility(in_data, params);
 			out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 		}
@@ -2908,7 +3226,7 @@ extern "C" DllExport PF_Err EffectMain(
 		// Color Mode: update custom colors visibility
 		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_COLOR_MODE)
 		{
-			WriteLog("Color Mode parameter changed");
+			DebugLog("Color Mode parameter changed");
 			UpdatePseudoGroupVisibility(in_data, params);
 			out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 		}

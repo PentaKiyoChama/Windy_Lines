@@ -1,0 +1,95 @@
+OST WindyLines - 流れる線エフェクト
+インストール手順
+
+========================================
+Windows版
+========================================
+
+【システム要件】
+- Adobe Premiere Pro CC 2018 以降
+- Windows 10/11 (64bit)
+- NVIDIA GPU (推奨) または AMD/Intel GPU
+
+【インストール手順】
+
+1. Adobe Premiere Pro を終了してください
+
+2. OST_WindyLines.aex を以下のフォルダにコピーしてください:
+
+   C:\Program Files\Adobe\Common\Plug-ins\7.0\MediaCore\
+
+   ※ フォルダが存在しない場合は手動で作成してください
+   ※ 管理者権限が必要な場合があります
+
+3. Adobe Premiere Pro を起動してください
+
+4. エフェクトパネルで「おしゃれテロップ」→「流れる線」を確認してください
+
+【初回起動時の警告について】
+
+Windows Defender SmartScreen の警告が表示される場合:
+  1. "詳細情報" をクリック
+  2. "実行" をクリック
+
+このプラグインはコード署名されていませんが、安全です。
+
+【アンインストール】
+
+1. Adobe Premiere Pro を終了
+2. 以下のファイルを削除:
+   C:\Program Files\Adobe\Common\Plug-ins\7.0\MediaCore\OST_WindyLines.aex
+
+========================================
+macOS版
+========================================
+
+【システム要件】
+- Adobe Premiere Pro CC 2018 以降
+- macOS 11 (Big Sur) 以降
+- Apple Silicon / Intel Mac
+
+【インストール手順】
+
+1. Adobe Premiere Pro を終了してください
+
+2. OST_WindyLines.plugin を以下のフォルダにコピーしてください:
+
+   /Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/
+
+   ※ Finder で「移動」→「フォルダへ移動...」(⇧⌘G) を使用
+   ※ 管理者パスワードが必要な場合があります
+
+3. セキュリティ警告が表示される場合:
+   - システム設定を開く
+   - プライバシーとセキュリティ
+   - 「このまま許可」をクリック
+
+4. Adobe Premiere Pro を起動してください
+
+5. エフェクトパネルで「おしゃれテロップ」→「流れる線」を確認してください
+
+【アンインストール】
+
+1. Adobe Premiere Pro を終了
+2. 以下を削除:
+   /Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/OST_WindyLines.plugin
+
+========================================
+トラブルシューティング
+========================================
+
+Q: エフェクトが表示されない
+A: Premiere Pro を完全に再起動してください
+
+Q: GPU が認識されない
+A: GPU ドライバを最新版に更新してください
+
+Q: クラッシュする
+A: CPU レンダリングをお試しください（設定で GPU を無効化）
+
+詳細なサポート: [サポートURLを記入]
+
+========================================
+Copyright (c) 2026 Kiyoto Nakamura
+All rights reserved.
+========================================
