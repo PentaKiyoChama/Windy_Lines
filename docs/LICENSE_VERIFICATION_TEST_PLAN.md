@@ -44,7 +44,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ A：正規ユーザー（サブスク有効、Bubble に MID 登録済み）
+## ペルソナ A：正規ユーザー（サブスク有効、Bubble に MID 登録済み） `[Mac / CPU]`
 
 ### A-1. 初回起動（キャッシュなし）
 
@@ -122,7 +122,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ B：正規ユーザー（サブスク解約直後）
+## ペルソナ B：正規ユーザー（サブスク解約直後） `[Mac / CPU]`
 
 ### B-1. 解約後 → 最大 10 分で検知
 
@@ -161,7 +161,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ C：未課金ユーザー（Free 版、Bubble に MID 未登録）
+## ペルソナ C：未課金ユーザー（Free 版、Bubble に MID 未登録） `[Mac / CPU]`
 
 ### C-1. 常時ウォーターマーク
 
@@ -180,7 +180,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ D：新規ユーザー（初めてアクティベートするユーザー）
+## ペルソナ D：新規ユーザー（初めてアクティベートするユーザー） `[Mac / CPU]`
 
 ### D-1. 「アクティベート…」ボタン押下 → ブラウザ遷移
 
@@ -230,7 +230,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ E：カジュアル改ざんユーザー
+## ペルソナ E：カジュアル改ざんユーザー `[Mac / CPU]`
 
 ### E-1. authorized=true に手書き変更
 
@@ -296,7 +296,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ F：高度な改ざんユーザー
+## ペルソナ F：高度な改ざんユーザー `[Mac / CPU]`
 
 ### F-1. バイナリから salt を特定して署名を再計算
 
@@ -323,7 +323,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ G：プラグインアップデート後のユーザー
+## ペルソナ G：プラグインアップデート後のユーザー `[Mac / CPU]`
 
 ### G-1. v1.0 → v1.1 へアップデート後もキャッシュが引き継がれる
 
@@ -344,7 +344,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ H：複数 Mac 所有ユーザー（同一アカウント）
+## ペルソナ H：複数 Mac 所有ユーザー（同一アカウント） `[Mac / CPU]`
 
 ### H-1. 2 台目の Mac に初回インストール
 
@@ -377,7 +377,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ I：共有 Mac の別 macOS アカウント利用者
+## ペルソナ I：共有 Mac の別 macOS アカウント利用者 `[Mac / CPU]`
 
 ### I-1. 同一 Mac・別アカウント → キャッシュは完全独立
 
@@ -397,7 +397,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ J：GPU レンダラーで利用するユーザー
+## ペルソナ J：GPU レンダラーで利用するユーザー `[Mac / GPU]`
 
 > **背景**: GPU レンダラーは `LoadGpuLicenseAuthenticatedFromCache` / `TriggerGpuBackgroundCacheRefresh` という CPU とは完全に独立したコードパスでライセンスを検証する。キャッシュファイルは CPU と共通。
 
@@ -447,7 +447,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ K：Windows ユーザー
+## ペルソナ K：Windows ユーザー `[Win / CPU]`
 
 > **背景**: Windows では HTTP が `WinHTTP` API、パスが `%APPDATA%`、MID が `hostname|win|8`。Mac とは完全に異なる実装。
 
@@ -494,7 +494,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-## ペルソナ L：Mac⇔Win クロスプラットフォームユーザー
+## ペルソナ L：Mac⇔Win クロスプラットフォームユーザー `[Mac⇔Win]`
 
 ### L-1. Mac のキャッシュを Windows にコピーしても無効
 
