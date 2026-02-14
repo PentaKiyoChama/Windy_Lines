@@ -129,8 +129,8 @@
 - `machine_id_hash`
 
 保存先:
-- macOS: `~/Library/Application Support/OST/WindyLines/license_cache_v1.txt`
-- Windows: `%APPDATA%\\OST\\WindyLines\\license_cache_v1.txt`
+- macOS: `~/Library/Application Support/OshareTelop/license_cache_v1.txt`
+- Windows: `%APPDATA%\\OshareTelop\\license_cache_v1.txt`
 
 保存フォーマット（key=value）:
 - `authorized=true|false`

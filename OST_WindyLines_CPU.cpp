@@ -44,6 +44,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <thread>
 #endif
 
 // Debug logging function is now in OST_WindyLines.h
@@ -107,12 +108,12 @@ static std::vector<std::string> GetLicenseCachePaths()
 	DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
 	if (appDataLen > 0 && appDataLen < MAX_PATH)
 	{
-		paths.push_back(std::string(appData) + "\\OST\\WindyLines\\license_cache_v1.txt");
+		paths.push_back(std::string(appData) + "\\OshareTelop\\license_cache_v1.txt");
 	}
 	const char* userProfile = std::getenv("USERPROFILE");
 	if (userProfile && *userProfile)
 	{
-		paths.push_back(std::string(userProfile) + "\\AppData\\Roaming\\OST\\WindyLines\\license_cache_v1.txt");
+		paths.push_back(std::string(userProfile) + "\\AppData\\Roaming\\OshareTelop\\license_cache_v1.txt");
 	}
 	paths.push_back(std::string("C:\\Temp\\ost_windylines_license_cache_v1.txt"));
 	return paths;
@@ -121,13 +122,13 @@ static std::vector<std::string> GetLicenseCachePaths()
 	const char* home = std::getenv("HOME");
 	if (home && *home)
 	{
-		paths.push_back(std::string(home) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt");
+		paths.push_back(std::string(home) + "/Library/Application Support/OshareTelop/license_cache_v1.txt");
 	}
 
 	struct passwd* pw = getpwuid(getuid());
 	if (pw && pw->pw_dir && *pw->pw_dir)
 	{
-		const std::string pwHomePath = std::string(pw->pw_dir) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt";
+		const std::string pwHomePath = std::string(pw->pw_dir) + "/Library/Application Support/OshareTelop/license_cache_v1.txt";
 		bool exists = false;
 		for (const auto& path : paths)
 		{
@@ -148,8 +149,15 @@ static std::vector<std::string> GetLicenseCachePaths()
 #endif
 }
 
-// Forward declaration (defined after SimpleHash32)
+// Forward declarations (defined later in file)
 static std::string GetMachineIdHash();
+static std::string ComputeCacheSignature(const std::string& authorizedStr,
+                                          const std::string& validatedUnixStr,
+                                          const std::string& machineIdHash);
+
+// Offline grace: allow authorized state for 1h after last successful verification
+// even when cache TTL expires (e.g. network temporarily unavailable)
+static const int kOfflineGracePeriodSec = 3600;
 
 static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 {
@@ -189,6 +197,9 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	bool hasExpire = false;
 	long long expireUnix = 0;
 	std::string cachedMachineIdHash;
+	std::string authorizedRaw;
+	std::string validatedUnixRaw;
+	std::string cachedSignature;
 
 	char line[512];
 	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
@@ -204,6 +215,7 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 
 		if (key == "authorized")
 		{
+			authorizedRaw = value;
 			bool parsed = false;
 			if (ParseBoolLike(value, &parsed))
 			{
@@ -221,9 +233,17 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 				hasExpire = true;
 			}
 		}
+		else if (key == "validated_unix")
+		{
+			validatedUnixRaw = value;
+		}
 		else if (key == "machine_id_hash")
 		{
 			cachedMachineIdHash = value;
+		}
+		else if (key == "cache_signature")
+		{
+			cachedSignature = value;
 		}
 	}
 
@@ -241,13 +261,6 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 		return false;
 	}
 
-	const long long nowUnix = static_cast<long long>(std::time(nullptr));
-	if (expireUnix <= nowUnix)
-	{
-		DebugLog("[License] cache expired: now=%lld expire=%lld", nowUnix, expireUnix);
-		return false;
-	}
-
 	// --- Machine ID verification (anti-copy) ---
 	if (!cachedMachineIdHash.empty())
 	{
@@ -259,10 +272,53 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 			return false;
 		}
 	}
-	// If machine_id_hash is empty, treat as legacy cache → allow
+
+	// --- Signature verification (anti-tampering) ---
+	if (cachedSignature.empty())
+	{
+		// No signature = legacy or tampered cache → treat as unauthorized
+		DebugLog("[License] cache missing signature — treating as unauthorized");
+		*outAuthenticated = false;
+		return true;
+	}
+
+	const std::string expectedSig = ComputeCacheSignature(
+		authorizedRaw, validatedUnixRaw, cachedMachineIdHash);
+	if (cachedSignature != expectedSig)
+	{
+		DebugLog("[License] cache signature mismatch (tampering detected)");
+		*outAuthenticated = false;
+		return true;
+	}
+
+	const long long nowUnix = static_cast<long long>(std::time(nullptr));
+
+	// --- TTL check with offline grace ---
+	if (expireUnix <= nowUnix)
+	{
+		// Cache expired — check offline grace period (signature was valid)
+		long long validatedUnix = 0;
+		if (!validatedUnixRaw.empty())
+		{
+			char* endPtr = nullptr;
+			validatedUnix = std::strtoll(validatedUnixRaw.c_str(), &endPtr, 10);
+		}
+		const long long graceCutoff = validatedUnix + kOfflineGracePeriodSec;
+		if (authorized && graceCutoff > nowUnix)
+		{
+			// Within 1h grace: keep authorized state, but caller should try refresh
+			DebugLog("[License] cache expired but within offline grace (grace_remain=%llds)",
+				graceCutoff - nowUnix);
+			*outAuthenticated = true;
+			return true;
+		}
+		DebugLog("[License] cache expired beyond grace: now=%lld expire=%lld", nowUnix, expireUnix);
+		return false;
+	}
 
 	*outAuthenticated = authorized;
-	DebugLog("[License] cache loaded: authenticated=%s path=%s", authorized ? "true" : "false", cachePath.c_str());
+	DebugLog("[License] cache loaded: authenticated=%s sig=OK path=%s",
+		authorized ? "true" : "false", cachePath.c_str());
 	return true;
 }
 
@@ -407,10 +463,33 @@ static void OpenActivationPage()
 
 // === License auto-refresh: background API check when cache expires ===
 static const char* kLicenseApiEndpoint = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test";
-static const int kAutoRefreshCacheTtlSec = 600; // 10 min TTL for auto-refreshed cache
+static const int kAuthorizedCacheTtlSec = 600;     // 10 min TTL (periodic re-verification)
+static const int kDeniedCacheTtlSec = 600;          // 10 min TTL when denied
+static const char* kCacheSignatureSalt = "OST_WL_2026_SALT_K9x3";
 static std::atomic<bool> sAutoRefreshInProgress{false};
 static std::atomic<uint32_t> sLastAutoRefreshAttemptMs{0};
 static const uint32_t kMinAutoRefreshIntervalMs = 60000; // min 60s between API calls
+
+// Post-activation rapid check: after user clicks "Activate", check every 5s for 2 minutes
+static std::atomic<uint32_t> sActivationTriggeredAtMs{0};
+static const uint32_t kPostActivationRapidWindowMs = 120000; // 2 min window
+static const uint32_t kPostActivationCheckIntervalMs = 5000; // 5s interval during rapid window
+
+// === Cache signature: DJB2-based HMAC to detect tampering ===
+static std::string ComputeCacheSignature(const std::string& authorizedStr,
+                                          const std::string& validatedUnixStr,
+                                          const std::string& machineIdHash)
+{
+	// Build: "authorized_val|validated_unix|machine_id|salt"
+	std::string payload = authorizedStr + "|" + validatedUnixStr + "|" + machineIdHash + "|" + kCacheSignatureSalt;
+	uint32_t h1 = SimpleHash32(payload.c_str());
+	// Double-hash for extra diffusion
+	std::string pass2 = payload + "|" + std::to_string(h1);
+	uint32_t h2 = SimpleHash32(pass2.c_str());
+	char buf[20];
+	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
+	return std::string(buf);
+}
 
 static void TriggerBackgroundCacheRefresh()
 {
@@ -422,7 +501,13 @@ static void TriggerBackgroundCacheRefresh()
 
 	const uint32_t nowMs = GetCurrentTimeMs();
 	const uint32_t lastMs = sLastAutoRefreshAttemptMs.load(std::memory_order_relaxed);
-	if (nowMs - lastMs < kMinAutoRefreshIntervalMs)
+
+	// Use shorter interval during post-activation rapid check window
+	const uint32_t activatedAt = sActivationTriggeredAtMs.load(std::memory_order_relaxed);
+	const bool inRapidWindow = (activatedAt != 0) && (nowMs - activatedAt < kPostActivationRapidWindowMs);
+	const uint32_t minInterval = inRapidWindow ? kPostActivationCheckIntervalMs : kMinAutoRefreshIntervalMs;
+
+	if (nowMs - lastMs < minInterval)
 	{
 		sAutoRefreshInProgress.store(false, std::memory_order_release);
 		return;
@@ -446,43 +531,136 @@ static void TriggerBackgroundCacheRefresh()
 
 #ifndef _WIN32
 	const std::string endpoint(kLicenseApiEndpoint);
-	const int ttlSec = kAutoRefreshCacheTtlSec;
+	const int ttlSecOk = kAuthorizedCacheTtlSec;
+	const int ttlSecDenied = kDeniedCacheTtlSec;
 	const std::string mid = GetMachineIdHash();
 
-	std::string cmd =
-		"(resp=$(/usr/bin/curl -s -m 10 -X POST "
-		"-H 'Content-Type: application/json' "
-		"-d '{\"action\":\"verify\",\"product\":\"OST_WindyLines\",\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"mac\",\"machine_id\":\"" + mid + "\"}' "
-		"'" + endpoint + "' 2>/dev/null); "
-		"if /usr/bin/printf '%s' \"$resp\" | /usr/bin/grep -q '\"authorized\"'; then "
-		"if /usr/bin/printf '%s' \"$resp\" | /usr/bin/grep -q '\"authorized\"[[:space:]]*:[[:space:]]*true'; then "
-		"auth=true; reason=ok; "
-		"else "
-		"auth=false; reason=denied; "
-		"fi; "
-		"now=$(/bin/date +%s); "
-		"expire=$((now + " + std::to_string(ttlSec) + ")); "
-		"/bin/mkdir -p '" + cacheDir + "'; "
-		"tmp=$(/usr/bin/mktemp /tmp/ost_wl_cache_XXXXXX); "
-		"/usr/bin/printf 'authorized=%s\\nreason=%s\\nvalidated_unix=%s\\ncache_expire_unix=%s\\nlicense_key_masked=\\nmachine_id_hash=" + mid + "\\n' "
-		"\"$auth\" \"$reason\" \"$now\" \"$expire\" > \"$tmp\" && "
-		"/bin/mv \"$tmp\" '" + cachePath + "'; "
-		"fi"
-		") >/dev/null 2>&1 &";
+	std::thread([endpoint, ttlSecOk, ttlSecDenied, mid, cachePath, cacheDir]() {
+		DebugLog("[License] background cache refresh started (Mac/popen)");
 
-	system(cmd.c_str());
+		// Ensure directory exists
+		std::string mkdirCmd = "/bin/mkdir -p '" + cacheDir + "'";
+		system(mkdirCmd.c_str());
+
+		// Run curl and capture response
+		std::string curlCmd =
+			"/usr/bin/curl -s -m 10 -X POST "
+			"-H 'Content-Type: application/json' "
+			"-d '{\"action\":\"verify\",\"product\":\"OST_WindyLines\","
+			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\","
+			"\"platform\":\"mac\",\"machine_id\":\"" + mid + "\"}' "
+			"'" + endpoint + "' 2>/dev/null";
+
+		FILE* pipe = popen(curlCmd.c_str(), "r");
+		if (!pipe)
+		{
+			DebugLog("[License] popen failed for curl");
+			sAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		std::string responseBody;
+		char buf[512];
+		while (std::fgets(buf, sizeof(buf), pipe) != nullptr)
+		{
+			responseBody += buf;
+		}
+		pclose(pipe);
+
+		DebugLog("[License] API response: %s", responseBody.c_str());
+
+		// Parse "authorized" field
+		bool authorized = false;
+		std::string reason = "unknown";
+		if (responseBody.find("\"authorized\"") != std::string::npos)
+		{
+			if (responseBody.find("\"authorized\":true") != std::string::npos ||
+				responseBody.find("\"authorized\": true") != std::string::npos ||
+				responseBody.find("\"authorized\" : true") != std::string::npos)
+			{
+				authorized = true;
+				reason = "ok";
+			}
+			else
+			{
+				authorized = false;
+				reason = "denied";
+			}
+		}
+		else
+		{
+			DebugLog("[License] API response missing 'authorized' field");
+			sAutoRefreshInProgress.store(false, std::memory_order_release);
+			return;
+		}
+
+		// Build cache content with signature
+		const long long nowUnix = static_cast<long long>(std::time(nullptr));
+		const int ttlSec = authorized ? ttlSecOk : ttlSecDenied;
+		const long long expireUnix = nowUnix + ttlSec;
+		const std::string authStr = authorized ? "true" : "false";
+		const std::string nowStr = std::to_string(nowUnix);
+		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid);
+
+		char content[768];
+		snprintf(content, sizeof(content),
+			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
+			"license_key_masked=\nmachine_id_hash=%s\ncache_signature=%s\n",
+			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
+			mid.c_str(), sig.c_str());
+
+		// Atomic write: temp file then rename
+		std::string tmpPath = "/tmp/ost_wl_cache_XXXXXX";
+		char tmpBuf[64];
+		std::snprintf(tmpBuf, sizeof(tmpBuf), "/tmp/ost_wl_cache_%08x", static_cast<unsigned>(nowUnix));
+		std::string tmpFile(tmpBuf);
+
+		FILE* fp = std::fopen(tmpFile.c_str(), "wb");
+		if (fp)
+		{
+			std::fputs(content, fp);
+			std::fclose(fp);
+			if (std::rename(tmpFile.c_str(), cachePath.c_str()) != 0)
+			{
+				// rename failed (cross-device), try copy
+				fp = std::fopen(cachePath.c_str(), "wb");
+				if (fp)
+				{
+					std::fputs(content, fp);
+					std::fclose(fp);
+				}
+				std::remove(tmpFile.c_str());
+			}
+			DebugLog("[License] cache updated: authorized=%s sig=%s path=%s",
+				authStr.c_str(), sig.c_str(), cachePath.c_str());
+		}
+
+		sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
+
+		// If authorized, clear rapid-check window
+		if (authorized)
+		{
+			sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+		}
+
+		sAutoRefreshInProgress.store(false, std::memory_order_release);
+	}).detach();
+
 	DebugLog("[License] background cache refresh triggered");
 #else
 	// Windows: WinHTTP-based background API call (runs in detached thread)
-	const int ttlSec = kAutoRefreshCacheTtlSec;
-	std::thread([cachePath, cacheDir, ttlSec]() {
+	const int ttlSecOk = kAuthorizedCacheTtlSec;
+	const int ttlSecDenied = kDeniedCacheTtlSec;
+	const std::string mid = GetMachineIdHash();
+	std::thread([cachePath, cacheDir, ttlSecOk, ttlSecDenied, mid]() {
 		DebugLog("[License] background cache refresh started (WinHTTP)");
 
 		// Ensure directory exists
 		CreateDirectoryA(cacheDir.c_str(), nullptr);
 
 		std::string body = "{\"action\":\"verify\",\"product\":\"OST_WindyLines\","
-			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\"}";
+			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\","
+			"\"machine_id\":\"" + mid + "\"}";
 
 		HINTERNET hSession = WinHttpOpen(
 			L"OST_WindyLines/1.0",
@@ -595,25 +773,36 @@ static void TriggerBackgroundCacheRefresh()
 		}
 
 		const long long nowUnix = static_cast<long long>(std::time(nullptr));
+		const int ttlSec = authorized ? ttlSecOk : ttlSecDenied;
 		const long long expireUnix = nowUnix + ttlSec;
+		const std::string authStr = authorized ? "true" : "false";
+		const std::string nowStr = std::to_string(nowUnix);
+		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid);
 
-		char content[512];
+		char content[768];
 		snprintf(content, sizeof(content),
 			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
-			"license_key_masked=\nmachine_id_hash=auto_refresh\n",
-			authorized ? "true" : "false",
-			reason.c_str(),
-			nowUnix, expireUnix);
+			"license_key_masked=\nmachine_id_hash=%s\ncache_signature=%s\n",
+			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
+			mid.c_str(), sig.c_str());
 
 		FILE* fp = std::fopen(cachePath.c_str(), "wb");
 		if (fp)
 		{
 			std::fputs(content, fp);
 			std::fclose(fp);
-			DebugLog("[License] cache updated: authorized=%s path=%s", authorized ? "true" : "false", cachePath.c_str());
+			DebugLog("[License] cache updated: authorized=%s sig=%s path=%s",
+				authStr.c_str(), sig.c_str(), cachePath.c_str());
 		}
 
 		sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
+
+		// If authorized, clear rapid-check window (no need to keep polling)
+		if (authorized)
+		{
+			sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+		}
+
 		sAutoRefreshInProgress.store(false, std::memory_order_release);
 	}).detach();
 #endif
@@ -637,10 +826,28 @@ static void RefreshLicenseAuthenticatedState(bool force)
 	if (LoadLicenseAuthenticatedFromCache(&cachedAuthenticated))
 	{
 		sLicenseAuthenticated.store(cachedAuthenticated, std::memory_order_relaxed);
+
+		// If authorized during rapid check window, clear the window (no more polling needed)
+		if (cachedAuthenticated)
+		{
+			sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+		}
+		else
+		{
+			// Cache is valid but authorized=false — during rapid check window,
+			// force a background refresh to pick up server-side changes immediately
+			const uint32_t activatedAt = sActivationTriggeredAtMs.load(std::memory_order_relaxed);
+			if (activatedAt != 0 && (nowMs - activatedAt < kPostActivationRapidWindowMs))
+			{
+				TriggerBackgroundCacheRefresh();
+			}
+		}
 	}
 	else
 	{
 		sLicenseAuthenticated.store(false, std::memory_order_relaxed);
+
+		// Cache expired or missing — always attempt refresh
 		TriggerBackgroundCacheRefresh();
 	}
 }
@@ -3556,12 +3763,17 @@ extern "C" DllExport PF_Err EffectMain(
 		{
 			const int licenseValue = params[OST_WINDYLINES_LICENSE_STATUS]->u.pd.value;
 			DebugLog("[License] License status popup changed: value=%d", licenseValue);
-			if (licenseValue == 2)
+			if (licenseValue == 2) // "アクティベート..."
 			{
 				// Open browser for activation
 				OpenActivationPage();
+
+				// Start post-activation rapid check mode (5s interval for 2 minutes)
+				sActivationTriggeredAtMs.store(GetCurrentTimeMs(), std::memory_order_relaxed);
+				sLastAutoRefreshAttemptMs.store(0, std::memory_order_relaxed); // allow immediate refresh
+				RefreshLicenseAuthenticatedState(true); // force immediate check
 				
-				// Reset popup back to value 1 to avoid "project changed" state
+				// Reset popup back to "選択してください" (value 1)
 				params[OST_WINDYLINES_LICENSE_STATUS]->u.pd.value = 1;
 				params[OST_WINDYLINES_LICENSE_STATUS]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
 				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);

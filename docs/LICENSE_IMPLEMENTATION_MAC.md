@@ -43,8 +43,8 @@ Mac版では以下の仕組みでライセンス認証によるウォーター�
 ## 1. キャッシュファイル
 
 ### パス
-- macOS: `~/Library/Application Support/OST/WindyLines/license_cache_v1.txt`
-- Windows: `%APPDATA%\OST\WindyLines\license_cache_v1.txt`
+- macOS: `~/Library/Application Support/OshareTelop/license_cache_v1.txt`
+- Windows: `%APPDATA%\OshareTelop\license_cache_v1.txt`
 
 ### 形式（プレーンテキスト、key=value）
 ```
@@ -113,8 +113,10 @@ fi) >/dev/null 2>&1 &
 **ポイント**:
 - 末尾の `&` でバックグラウンド実行（レンダースレッドをブロックしない）
 - `/usr/bin/curl` 等フルパス指定（Premiere Pro環境ではPATHが制限される）
-- TTLは600秒（10分）
+- TTLは認証OK時86400秒（24時間）、認証NG時600秒（10分）
 - 最小60秒間隔で発動（連続呼び出し防止）
+- アクティベート後は2分間、5秒間隔で高頻度チェック（即時反映）
+- 認証OK確認後に高頻度チェック自動停止
 - `atomic<bool> sAutoRefreshInProgress` で多重発動防止
 
 ### Windows版の課題

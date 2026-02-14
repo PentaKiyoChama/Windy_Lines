@@ -284,6 +284,23 @@ static std::string GetGpuMachineIdHash()
 	return std::string(buf);
 }
 
+// === GPU Cache signature (mirrors CPU ComputeCacheSignature) ===
+static const char* kGpuCacheSignatureSalt = "OST_WL_2026_SALT_K9x3";
+static const int kGpuOfflineGracePeriodSec = 3600; // 1h offline grace
+
+static std::string ComputeGpuCacheSignature(const std::string& authorizedStr,
+                                             const std::string& validatedUnixStr,
+                                             const std::string& machineIdHash)
+{
+	std::string payload = authorizedStr + "|" + validatedUnixStr + "|" + machineIdHash + "|" + kGpuCacheSignatureSalt;
+	uint32_t h1 = GpuSimpleHash32(payload.c_str());
+	std::string pass2 = payload + "|" + std::to_string(h1);
+	uint32_t h2 = GpuSimpleHash32(pass2.c_str());
+	char buf[20];
+	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
+	return std::string(buf);
+}
+
 static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 {
 	if (!outAuthenticated)
@@ -299,7 +316,7 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
 	if (appDataLen > 0 && appDataLen < MAX_PATH)
 	{
-		const std::string path = std::string(appData) + "\\OST\\WindyLines\\license_cache_v1.txt";
+		const std::string path = std::string(appData) + "\\OshareTelop\\license_cache_v1.txt";
 		file = std::fopen(path.c_str(), "rb");
 		if (file) loadedPath = path;
 	}
@@ -308,7 +325,7 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 		const char* userProfile = std::getenv("USERPROFILE");
 		if (userProfile && *userProfile)
 		{
-			const std::string path = std::string(userProfile) + "\\AppData\\Roaming\\OST\\WindyLines\\license_cache_v1.txt";
+			const std::string path = std::string(userProfile) + "\\AppData\\Roaming\\OshareTelop\\license_cache_v1.txt";
 			file = std::fopen(path.c_str(), "rb");
 			if (file) loadedPath = path;
 		}
@@ -317,7 +334,7 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	const char* home = std::getenv("HOME");
 	if (home && *home)
 	{
-		const std::string path = std::string(home) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt";
+		const std::string path = std::string(home) + "/Library/Application Support/OshareTelop/license_cache_v1.txt";
 		file = std::fopen(path.c_str(), "rb");
 		if (file) loadedPath = path;
 	}
@@ -326,7 +343,7 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 		struct passwd* pw = getpwuid(getuid());
 		if (pw && pw->pw_dir && *pw->pw_dir)
 		{
-			const std::string path = std::string(pw->pw_dir) + "/Library/Application Support/OST/WindyLines/license_cache_v1.txt";
+			const std::string path = std::string(pw->pw_dir) + "/Library/Application Support/OshareTelop/license_cache_v1.txt";
 			file = std::fopen(path.c_str(), "rb");
 			if (file) loadedPath = path;
 		}
@@ -343,6 +360,9 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	bool hasExpire = false;
 	long long expireUnix = 0;
 	std::string cachedMachineIdHash;
+	std::string authorizedRaw;
+	std::string validatedUnixRaw;
+	std::string cachedSignature;
 
 	char line[512];
 	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
@@ -357,6 +377,7 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 		const std::string value = TrimAsciiGPU(rawLine.substr(sep + 1));
 		if (key == "authorized")
 		{
+			authorizedRaw = value;
 			bool parsed = false;
 			if (ParseBoolLikeGPU(value, &parsed))
 			{
@@ -374,20 +395,22 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 				hasExpire = true;
 			}
 		}
+		else if (key == "validated_unix")
+		{
+			validatedUnixRaw = value;
+		}
 		else if (key == "machine_id_hash")
 		{
 			cachedMachineIdHash = value;
+		}
+		else if (key == "cache_signature")
+		{
+			cachedSignature = value;
 		}
 	}
 
 	std::fclose(file);
 	if (!hasAuthorized || !hasExpire)
-	{
-		return false;
-	}
-
-	const long long nowUnix = static_cast<long long>(std::time(nullptr));
-	if (expireUnix <= nowUnix)
 	{
 		return false;
 	}
@@ -404,8 +427,47 @@ static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
 		}
 	}
 
+	// --- Signature verification (anti-tampering) ---
+	if (cachedSignature.empty())
+	{
+		DebugLog("[GPU License] cache missing signature — treating as unauthorized");
+		*outAuthenticated = false;
+		return true;
+	}
+
+	const std::string expectedSig = ComputeGpuCacheSignature(
+		authorizedRaw, validatedUnixRaw, cachedMachineIdHash);
+	if (cachedSignature != expectedSig)
+	{
+		DebugLog("[GPU License] cache signature mismatch (tampering detected)");
+		*outAuthenticated = false;
+		return true;
+	}
+
+	const long long nowUnix = static_cast<long long>(std::time(nullptr));
+
+	// --- TTL check with offline grace ---
+	if (expireUnix <= nowUnix)
+	{
+		long long validatedUnix = 0;
+		if (!validatedUnixRaw.empty())
+		{
+			char* endPtr = nullptr;
+			validatedUnix = std::strtoll(validatedUnixRaw.c_str(), &endPtr, 10);
+		}
+		const long long graceCutoff = validatedUnix + kGpuOfflineGracePeriodSec;
+		if (authorized && graceCutoff > nowUnix)
+		{
+			DebugLog("[GPU License] cache expired but within offline grace");
+			*outAuthenticated = true;
+			return true;
+		}
+		return false;
+	}
+
 	*outAuthenticated = authorized;
-	DebugLog("[GPU License] cache loaded: authenticated=%s path=%s", authorized ? "true" : "false", loadedPath.c_str());
+	DebugLog("[GPU License] cache loaded: authenticated=%s sig=OK path=%s",
+		authorized ? "true" : "false", loadedPath.c_str());
 	return true;
 }
 
@@ -468,14 +530,14 @@ static void TriggerGpuBackgroundCacheRefresh()
 			DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
 			if (appDataLen > 0 && appDataLen < MAX_PATH)
 			{
-				cachePath = std::string(appData) + "\\OST\\WindyLines\\license_cache_v1.txt";
+				cachePath = std::string(appData) + "\\OshareTelop\\license_cache_v1.txt";
 			}
 			else
 			{
 				const char* userProfile = std::getenv("USERPROFILE");
 				if (userProfile && *userProfile)
 				{
-					cachePath = std::string(userProfile) + "\\AppData\\Roaming\\OST\\WindyLines\\license_cache_v1.txt";
+					cachePath = std::string(userProfile) + "\\AppData\\Roaming\\OshareTelop\\license_cache_v1.txt";
 				}
 			}
 		}
@@ -504,8 +566,10 @@ static void TriggerGpuBackgroundCacheRefresh()
 		}
 
 		// Build JSON body
+		const std::string mid = GetGpuMachineIdHash();
 		std::string body = "{\"action\":\"verify\",\"product\":\"OST_WindyLines\","
-			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\"}";
+			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\","
+			"\"machine_id\":\"" + mid + "\"}";
 
 		HINTERNET hSession = WinHttpOpen(
 			L"OST_WindyLines/1.0",
@@ -624,17 +688,19 @@ static void TriggerGpuBackgroundCacheRefresh()
 			return;
 		}
 
-		// Write cache file (atomic: write to temp then rename)
+		// Write cache file with signature
 		const long long nowUnix = static_cast<long long>(std::time(nullptr));
 		const long long expireUnix = nowUnix + kGpuAutoRefreshCacheTtlSec;
+		const std::string authStr = authorized ? "true" : "false";
+		const std::string nowStr = std::to_string(nowUnix);
+		const std::string sig = ComputeGpuCacheSignature(authStr, nowStr, mid);
 
-		char content[512];
+		char content[768];
 		snprintf(content, sizeof(content),
 			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
-			"license_key_masked=\nmachine_id_hash=auto_refresh_gpu\n",
-			authorized ? "true" : "false",
-			reason.c_str(),
-			nowUnix, expireUnix);
+			"license_key_masked=\nmachine_id_hash=%s\ncache_signature=%s\n",
+			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
+			mid.c_str(), sig.c_str());
 
 		// Write directly (Windows doesn't have easy atomic rename across drives)
 		FILE* fp = std::fopen(cachePath.c_str(), "wb");
@@ -642,7 +708,8 @@ static void TriggerGpuBackgroundCacheRefresh()
 		{
 			std::fputs(content, fp);
 			std::fclose(fp);
-			DebugLog("[GPU License] cache updated: authorized=%s path=%s", authorized ? "true" : "false", cachePath.c_str());
+			DebugLog("[GPU License] cache updated: authorized=%s sig=%s path=%s",
+				authStr.c_str(), sig.c_str(), cachePath.c_str());
 		}
 		else
 		{

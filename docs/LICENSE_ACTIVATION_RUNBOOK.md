@@ -42,8 +42,8 @@ python3 ./activate_license_cache.py \
 
 ## キャッシュ保存先
 
-- macOS: `~/Library/Application Support/OST/WindyLines/license_cache_v1.txt`
-- Windows: `%APPDATA%\OST\WindyLines\license_cache_v1.txt`
+- macOS: `~/Library/Application Support/OshareTelop/license_cache_v1.txt`
+- Windows: `%APPDATA%\OshareTelop\license_cache_v1.txt`
 
 ## 運用手順（最小）
 

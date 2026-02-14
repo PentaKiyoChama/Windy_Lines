@@ -213,8 +213,8 @@ namespace ParamNames
 
     // License
     constexpr const char* LICENSE_HEADER      = "ライセンス";
-    constexpr const char* LICENSE_STATUS      = "認証状態";
-    constexpr const char* LICENSE_STATUS_MENU = "Free版（未認証）|アクティベート...";
+    constexpr const char* LICENSE_STATUS      = "アクティベート";
+    constexpr const char* LICENSE_STATUS_MENU = "選択してください|アクティベート...";
 }
 
 // ========================================
