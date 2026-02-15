@@ -1751,7 +1751,7 @@ public:
 					continue;
 				}
 				// Skip if endTime is set and this cycle started after endTime
-				if (endTimeFrames > 0.0f && cycleStartFrame >= endTimeFrames)
+				if (lineDuration > 0.0f && cycleStartFrame >= endTimeFrames)
 				{
 					skipEndTime++;
 					continue;

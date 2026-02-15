@@ -2516,7 +2516,7 @@ static PF_Err Render(
 					continue;
 				}
 				// Skip if endTime is set and this cycle started after endTime
-				if (lineEndTime > 0.0f && cycleStartFrame >= lineEndTime)
+				if (lineDuration > 0.0f && cycleStartFrame >= lineEndTime)
 				{
 					continue;
 				}
