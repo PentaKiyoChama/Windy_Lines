@@ -19,6 +19,7 @@
 #include "OST_WindyLines_ParamNames.h"
 #include "OST_WindyLines_Version.h"
 #include "OST_WindyLines_WatermarkMask.h"
+#include "OST_WindyLines_Common.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
 #include <atomic>
@@ -808,7 +809,8 @@ static void TriggerBackgroundCacheRefresh()
 #endif
 }
 
-static void RefreshLicenseAuthenticatedState(bool force)
+// Shared with GPU — declared in OST_WindyLines_License.h
+void RefreshLicenseAuthenticatedState(bool force)
 {
 	const uint32_t nowMs = GetCurrentTimeMs();
 	if (!force)
@@ -866,8 +868,9 @@ static int NormalizePopupValue(int value, int maxValue)
 	return 0;
 }
 
-// Define shared static variables for CPU-GPU clip start sharing
+// Define shared static variables for SharedClipData
 std::unordered_map<csSDK_int64, csSDK_int64> SharedClipData::clipStartMap;
+std::unordered_map<csSDK_int64, ElementBounds> SharedClipData::elementBoundsMap;
 std::mutex SharedClipData::mapMutex;
 
 // ========================================================================
@@ -1001,106 +1004,6 @@ static inline float FastCos(float angle)
 	return FastSin(angle + static_cast<float>(M_PI) * 0.5f);
 }
 
-// ========================================================================
-// Phase 2-1: Shared SDF (Signed Distance Field) Functions
-// ========================================================================
-
-/**
- * Box SDF: Distance from point to rounded rectangle
- * Optimized for compiler auto-vectorization (branchless)
- * @param px Local X coordinate (along line axis)
- * @param py Local Y coordinate (perpendicular to line)
- * @param halfLen Half of line length
- * @param halfThick Half of line thickness
- * @return Signed distance (negative = inside, positive = outside)
- */
-static inline float SDFBox(float px, float py, float halfLen, float halfThick)
-{
-	const float dxBox = fabsf(px) - halfLen;
-	const float dyBox = fabsf(py) - halfThick;
-	// Branchless max(0, x) using fmaxf for SIMD-friendly code
-	const float ox = fmaxf(dxBox, 0.0f);
-	const float oy = fmaxf(dyBox, 0.0f);
-	const float outside = sqrtf(ox * ox + oy * oy);
-	const float inside = fminf(fmaxf(dxBox, dyBox), 0.0f);
-	return outside + inside;
-}
-
-/**
- * Capsule SDF: Distance from point to rounded line (capsule)
- * Optimized for compiler auto-vectorization (branchless)
- * @param px Local X coordinate (along line axis)
- * @param py Local Y coordinate (perpendicular to line)
- * @param halfLen Half of line length
- * @param halfThick Half of line thickness (radius)
- * @return Signed distance (negative = inside, positive = outside)
- */
-static inline float SDFCapsule(float px, float py, float halfLen, float halfThick)
-{
-	const float ax = fabsf(px) - halfLen;
-	// Branchless max(0, x) using fmaxf for SIMD-friendly code
-	const float qx = fmaxf(ax, 0.0f);
-	return sqrtf(qx * qx + py * py) - halfThick;
-}
-
-
-// ========================================================================
-// Phase 2-2: Shared Blending Functions
-// ========================================================================
-
-/**
- * Premultiplied alpha compositing (over operation)
- * Optimized: branchless division handling
- * @param srcR Source color R
- * @param srcG Source color G
- * @param srcB Source color B
- * @param srcA Source alpha
- * @param dstR Destination color R (in/out)
- * @param dstG Destination color G (in/out)
- * @param dstB Destination color B (in/out)
- * @param dstA Destination alpha (in/out)
- */
-static inline void BlendPremultiplied(
-	float srcR, float srcG, float srcB, float srcA,
-	float& dstR, float& dstG, float& dstB, float& dstA)
-{
-	const float invSrcA = 1.0f - srcA;
-	const float outA = srcA + dstA * invSrcA;
-	// Branchless: use fmaxf to avoid division by zero
-	const float invOutA = 1.0f / fmaxf(outA, 1e-6f);
-	dstR = (srcR * srcA + dstR * dstA * invSrcA) * invOutA;
-	dstG = (srcG * srcA + dstG * dstA * invSrcA) * invOutA;
-	dstB = (srcB * srcA + dstB * dstA * invSrcA) * invOutA;
-	dstA = outA;
-}
-
-/**
- * Un-premultiplied alpha accumulation (for front line accumulation)
- * Optimized: branchless division handling
- * @param srcR Source color R
- * @param srcG Source color G
- * @param srcB Source color B
- * @param srcA Source alpha
- * @param dstR Destination color R (in/out)
- * @param dstG Destination color G (in/out)
- * @param dstB Destination color B (in/out)
- * @param dstA Destination alpha (in/out)
- */
-static inline void BlendUnpremultiplied(
-	float srcR, float srcG, float srcB, float srcA,
-	float& dstR, float& dstG, float& dstB, float& dstA)
-{
-	const float invSrcA = 1.0f - srcA;
-	const float outA = srcA + dstA * invSrcA;
-	// Branchless: use fmaxf to avoid division by zero
-	const float invOutA = 1.0f / fmaxf(outA, 1e-6f);
-	dstR = (srcR * srcA + dstR * dstA * invSrcA) * invOutA;
-	dstG = (srcG * srcA + dstG * dstA * invSrcA) * invOutA;
-	dstB = (srcB * srcA + dstB * dstA * invSrcA) * invOutA;
-	dstA = outA;
-}
-
-
 /*
 **
 */
@@ -1224,7 +1127,8 @@ struct InstanceState
 static std::unordered_map<const void*, std::shared_ptr<InstanceState>> sInstanceStates;
 static std::mutex sInstanceStatesMutex;
 
-static bool IsLicenseAuthenticated()
+// Shared with GPU — declared in OST_WindyLines_License.h
+bool IsLicenseAuthenticated()
 {
 	return sLicenseAuthenticated.load(std::memory_order_relaxed);
 }
@@ -1240,33 +1144,6 @@ static const void* GetInstanceKey(const PF_InData* in_data)
 		return in_data->sequence_data;
 	}
 	return in_data;
-}
-
-static csSDK_uint32 HashUInt(csSDK_uint32 x)
-{
-	x ^= x >> 16;
-	x *= 0x7feb352d;
-	x ^= x >> 15;
-	x *= 0x846ca68b;
-	x ^= x >> 16;
-	return x;
-}
-
-static float Rand01(csSDK_uint32 x)
-{
-	return (HashUInt(x) & 0x00FFFFFF) / 16777215.0f;
-}
-
-static float EaseInOutSine(float t)
-{
-	return 0.5f * (1.0f - cosf((float)M_PI * t));
-}
-
-static float DepthScale(float depth, float strength)
-{
-	// Shrink lines based on depth: depth=1 (front) keeps scale=1.0, depth=0 (back) shrinks
-	const float v = 1.0f - (1.0f - depth) * strength;
-	return v < 0.05f ? 0.05f : v;
 }
 
 static void SyncLineColorParams(PF_ParamDef* params[])
@@ -1307,226 +1184,6 @@ static void UpdateAlphaThresholdVisibility(PF_InData* in_data, PF_ParamDef* para
 	if (!in_data || !params)
 	{
 		return;
-	}
-}
-
-static float ApplyEasing(float t, int easing)
-{
-	if (t < 0.0f) t = 0.0f;
-	if (t > 1.0f) t = 1.0f;
-	switch (easing)
-	{
-		case 0: // Linear
-			return t;
-		// SmoothStep (1-2)
-		case 1: // SmoothStep (3rd order Hermite)
-			return t * t * (3.0f - 2.0f * t);
-		case 2: // SmootherStep (5th order, Ken Perlin)
-			return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
-		// Sine (3-6)
-		case 3: // InSine (slow→fast)
-			return 1.0f - cosf((float)M_PI * t * 0.5f);
-		case 4: // OutSine (fast→slow)
-			return sinf((float)M_PI * t * 0.5f);
-		case 5: // InOutSine
-			return EaseInOutSine(t);
-		case 6: // OutInSine
-		{
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 4);  // OutSine
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 3);  // InSine
-			}
-		}
-		// Quad (7-10)
-		case 7: // InQuad
-			return t * t;
-		case 8: // OutQuad
-			return 1.0f - (1.0f - t) * (1.0f - t);
-		case 9: // InOutQuad
-		{
-			const float u = t * 2.0f;
-			if (u < 1.0f) { return 0.5f * u * u; }
-			const float v = u - 1.0f;
-			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v));
-		}
-		case 10: // OutInQuad
-		{
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 8);  // OutQuad
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 7);  // InQuad
-			}
-		}
-		// Cubic (11-14)
-		case 11: // InCubic
-			return t * t * t;
-		case 12: // OutCubic
-		{
-			const float u = 1.0f - t;
-			return 1.0f - u * u * u;
-		}
-		case 13: // InOutCubic
-		{
-			const float u = t * 2.0f;
-			if (u < 1.0f) { return 0.5f * u * u * u; }
-			const float v = u - 1.0f;
-			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v) * (1.0f - v));
-		}
-		case 14: // OutInCubic
-		{
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 12);  // OutCubic
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 11);  // InCubic
-			}
-		}
-		// Circular (15-18)
-		case 15: // InCirc
-			return 1.0f - sqrtf(1.0f - t * t);
-		case 16: // OutCirc
-		{
-			const float u = t - 1.0f;
-			return sqrtf(1.0f - u * u);
-		}
-		case 17: // InOutCirc
-		{
-			const float u = t * 2.0f;
-			if (u < 1.0f) {
-				return 0.5f * (1.0f - sqrtf(1.0f - u * u));
-			}
-			const float v = u - 2.0f;
-			return 0.5f * (sqrtf(1.0f - v * v) + 1.0f);
-		}
-		case 18: // OutInCirc
-		{
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 16);  // OutCirc
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 15);  // InCirc
-			}
-		}
-		// Back easing (overshoots) (19-21)
-		case 19: // InBack
-		{
-			const float s = 1.70158f;
-			return t * t * ((s + 1.0f) * t - s);
-		}
-		case 20: // OutBack
-		{
-			const float s = 1.70158f;
-			const float u = t - 1.0f;
-			return u * u * ((s + 1.0f) * u + s) + 1.0f;
-		}
-		case 21: // InOutBack
-		{
-			const float s = 1.70158f * 1.525f;
-			const float u = t * 2.0f;
-			if (u < 1.0f) {
-				return 0.5f * u * u * ((s + 1.0f) * u - s);
-			}
-			const float v = u - 2.0f;
-			return 0.5f * (v * v * ((s + 1.0f) * v + s) + 2.0f);
-		}
-		// Elastic easing (22-24)
-		case 22: // InElastic
-		{
-			if (t == 0.0f) return 0.0f;
-			if (t == 1.0f) return 1.0f;
-			const float p = 0.3f;
-			return -powf(2.0f, 10.0f * (t - 1.0f)) * sinf((t - 1.0f - p / 4.0f) * (2.0f * (float)M_PI) / p);
-		}
-		case 23: // OutElastic
-		{
-			if (t == 0.0f) return 0.0f;
-			if (t == 1.0f) return 1.0f;
-			const float p = 0.3f;
-			return powf(2.0f, -10.0f * t) * sinf((t - p / 4.0f) * (2.0f * (float)M_PI) / p) + 1.0f;
-		}
-		case 24: // InOutElastic
-		{
-			if (t == 0.0f) return 0.0f;
-			if (t == 1.0f) return 1.0f;
-			const float p = 0.45f;
-			const float s = p / 4.0f;
-			const float u = t * 2.0f;
-			if (u < 1.0f) {
-				return -0.5f * powf(2.0f, 10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p);
-			}
-			return powf(2.0f, -10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p) * 0.5f + 1.0f;
-		}
-		// Bounce easing (25-27)
-		case 25: // InBounce
-		{
-			const float u = 1.0f - t;
-			float b;
-			if (u < 1.0f / 2.75f) {
-				b = 7.5625f * u * u;
-			} else if (u < 2.0f / 2.75f) {
-				const float v = u - 1.5f / 2.75f;
-				b = 7.5625f * v * v + 0.75f;
-			} else if (u < 2.5f / 2.75f) {
-				const float v = u - 2.25f / 2.75f;
-				b = 7.5625f * v * v + 0.9375f;
-			} else {
-				const float v = u - 2.625f / 2.75f;
-				b = 7.5625f * v * v + 0.984375f;
-			}
-			return 1.0f - b;
-		}
-		case 26: // OutBounce
-		{
-			if (t < 1.0f / 2.75f) {
-				return 7.5625f * t * t;
-			} else if (t < 2.0f / 2.75f) {
-				const float u = t - 1.5f / 2.75f;
-				return 7.5625f * u * u + 0.75f;
-			} else if (t < 2.5f / 2.75f) {
-				const float u = t - 2.25f / 2.75f;
-				return 7.5625f * u * u + 0.9375f;
-			} else {
-				const float u = t - 2.625f / 2.75f;
-				return 7.5625f * u * u + 0.984375f;
-			}
-		}
-		case 27: // InOutBounce
-		{
-			if (t < 0.5f) {
-				const float u = 1.0f - t * 2.0f;
-				float b;
-				if (u < 1.0f / 2.75f) {
-					b = 7.5625f * u * u;
-				} else if (u < 2.0f / 2.75f) {
-					const float v = u - 1.5f / 2.75f;
-					b = 7.5625f * v * v + 0.75f;
-				} else if (u < 2.5f / 2.75f) {
-					const float v = u - 2.25f / 2.75f;
-					b = 7.5625f * v * v + 0.9375f;
-				} else {
-					const float v = u - 2.625f / 2.75f;
-					b = 7.5625f * v * v + 0.984375f;
-				}
-				return (1.0f - b) * 0.5f;
-			} else {
-				const float u = t * 2.0f - 1.0f;
-				float b;
-				if (u < 1.0f / 2.75f) {
-					b = 7.5625f * u * u;
-				} else if (u < 2.0f / 2.75f) {
-					const float v = u - 1.5f / 2.75f;
-					b = 7.5625f * v * v + 0.75f;
-				} else if (u < 2.5f / 2.75f) {
-					const float v = u - 2.25f / 2.75f;
-					b = 7.5625f * v * v + 0.9375f;
-				} else {
-					const float v = u - 2.625f / 2.75f;
-					b = 7.5625f * v * v + 0.984375f;
-				}
-				return b * 0.5f + 0.5f;
-			}
-		}
-		default:
-			return t;
 	}
 }
 
@@ -1629,29 +1286,6 @@ static void UpdatePseudoGroupVisibility(
 	setVisible(OST_WINDYLINES_COLOR_PRESET, true);
 
 	// Shadow / Advanced / Focus params are always visible (no checkbox groups)
-}
-
-// Derivative of easing function (instantaneous velocity factor)
-// Returns normalized velocity: 1.0 = linear speed, >1.0 = faster, <1.0 = slower
-static float ApplyEasingDerivative(float t, int easingType)
-{
-	// For complex easing types, use numerical approximation
-	const float epsilon = 0.001f;
-	switch (easingType)
-	{
-		case 0: return 1.0f; // Linear: constant velocity
-		// For all other types - use numerical differentiation
-		default:
-		{
-			const float t1 = t > epsilon ? t - epsilon : 0.0f;
-			const float t2 = t < 1.0f - epsilon ? t + epsilon : 1.0f;
-			const float dt = t2 - t1;
-			if (dt > 0.0f) {
-				return (ApplyEasing(t2, easingType) - ApplyEasing(t1, easingType)) / dt;
-			}
-			return 1.0f;
-		}
-	}
 }
 
 static void ApplyEffectPreset(
@@ -2593,16 +2227,7 @@ static PF_Err Render(
 		}
 		else  // Preset (colorMode == 2, 0-based)
 		{
-			// Preset mode: load from preset palette (presetIndex is 0-based)
-			const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
-			DebugLog("[ColorPreset] Preset mode: Loading preset #%d, First color: R=%d G=%d B=%d",
-				presetIndex + 1, preset[0].r, preset[0].g, preset[0].b);
-			for (int i = 0; i < 8; ++i)
-			{
-				colorPalette[i][0] = preset[i].r / 255.0f;
-				colorPalette[i][1] = preset[i].g / 255.0f;
-				colorPalette[i][2] = preset[i].b / 255.0f;
-			}
+			BuildPresetPalette(colorPalette, presetIndex);
 			DebugLog("[ColorPreset] Loaded 8 colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
 				colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
 		}
@@ -2704,26 +2329,6 @@ static PF_Err Render(
 		// This ensures cache consistency - same clip frame = same result.
 		const A_long clipTime = in_data->current_time; // Clip-relative time
 		const A_long frameIndex = (in_data->time_step != 0) ? (clipTime / in_data->time_step) : 0;
-		
-		// Try to get clip start using PF_UtilitySuite
-		A_long clipStartFrame = 0;
-		A_long trackItemStart = 0;
-		{
-			AEFX_SuiteScoper<PF_UtilitySuite> utilitySuite(in_data, kPFUtilitySuite, kPFUtilitySuiteVersion, out_data);
-			if (utilitySuite.get())
-			{
-				utilitySuite->GetClipStart(in_data->effect_ref, &clipStartFrame);
-				utilitySuite->GetTrackItemStart(in_data->effect_ref, &trackItemStart);
-			}
-		}
-		
-		// Share clipStartFrame with GPU renderer
-		// Key: clipStartFrame itself, Value: clipStartFrame
-		// GPU can find the correct clipStart by looking for keys <= mediaFrameIndex
-		if (clipStartFrame > 0)
-		{
-			SharedClipData::SetClipStart(clipStartFrame, clipStartFrame);
-		}
 
 		const float angleRadians = (float)(M_PI / 180) * lineAngle;
 		const float lineCos = cos(angleRadians);
@@ -2826,38 +2431,28 @@ static PF_Err Render(
 		const int travelLinkage = normalizePopup(params[OST_WINDYLINES_TRAVEL_LINKAGE]->u.pd.value, 3);
 		const float travelLinkageRate = (float)params[OST_WINDYLINES_TRAVEL_LINKAGE_RATE]->u.fs_d.value / 100.0f;
 		
-		float finalLineLength = lineLength;
-		float finalLineThickness = lineThickness;
-		float finalLineTravel = lineTravel;
-		
-		// Length linkage (use bounds directly - they represent actual visible size)
-		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineLength = alphaBoundsWidthSafe * lengthLinkageRate;
-		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineLength = alphaBoundsHeightSafe * lengthLinkageRate;
-		}
-		
-		// Thickness linkage (use bounds directly - they represent actual visible size)
-		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineThickness = alphaBoundsWidthSafe * thicknessLinkageRate;
-		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineThickness = alphaBoundsHeightSafe * thicknessLinkageRate;
-		}
-		
-		// Travel linkage (use bounds directly - they represent actual visible size)
-		if (travelLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineTravel = alphaBoundsWidthSafe * travelLinkageRate;
-		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineTravel = alphaBoundsHeightSafe * travelLinkageRate;
-		}
-		
-		// Recalculate scaled values with linkage applied
-		// Apply dsScale only when linkage is OFF (user input is full-resolution)
-		// When linkage is ON, values are already in downsampled space
-		const float lineLengthScaledFinal = (lengthLinkage == LINKAGE_MODE_OFF) ? (finalLineLength * dsScale) : finalLineLength;
-		const float lineThicknessScaledFinal_temp = (thicknessLinkage == LINKAGE_MODE_OFF) ? (finalLineThickness * dsScale) : finalLineThickness;
+		const float lineLengthScaledFinal = ApplyLinkageValue(
+			lineLength,
+			lengthLinkage,
+			lengthLinkageRate,
+			alphaBoundsWidthSafe,
+			alphaBoundsHeightSafe,
+			dsScale);
+		const float lineThicknessScaledFinal_temp = ApplyLinkageValue(
+			lineThickness,
+			thicknessLinkage,
+			thicknessLinkageRate,
+			alphaBoundsWidthSafe,
+			alphaBoundsHeightSafe,
+			dsScale);
 		const float lineThicknessScaledFinal = lineThicknessScaledFinal_temp < 1.0f ? 1.0f : lineThicknessScaledFinal_temp;
-		const float lineTravelScaled = (travelLinkage == LINKAGE_MODE_OFF) ? (finalLineTravel * dsScale) : finalLineTravel;
+		const float lineTravelScaled = ApplyLinkageValue(
+			lineTravel,
+			travelLinkage,
+			travelLinkageRate,
+			alphaBoundsWidthSafe,
+			alphaBoundsHeightSafe,
+			dsScale);
 		
 		// Now recalculate lineParams baseLen/baseThick with final linkage-applied values
 		for (int i = 0; i < lineState->lineCount; ++i)
@@ -2878,6 +2473,17 @@ static PF_Err Render(
 	
 	// Use frameIndex directly for sequence-time based rendering.
 	const float timeFramesBase = (float)frameIndex;
+	
+	// DEBUG: Log CPU time values (first 5 frames only)
+	{
+		static int sCpuDebugCount = 0;
+		if (sCpuDebugCount < 5)
+		{
+			sCpuDebugCount++;
+			DebugLog("CPU TIME DEBUG: current_time=%ld time_step=%ld frameIndex=%ld lineStartTime=%.1f timeFramesBase=%.1f",
+				(long)in_data->current_time, (long)in_data->time_step, (long)frameIndex, lineStartTime, timeFramesBase);
+		}
+	}
 	
 	// Origin Offset X/Y (px) - 線の起点のオフセット
 	// Apply downsample scale to origin offsets (user inputs in full-resolution pixels)
@@ -3638,6 +3244,34 @@ static PF_Err Render(
 			((float*)destData)[x * 4 + 1] = outU;
 			((float*)destData)[x * 4 + 2] = outY;
 			((float*)destData)[x * 4 + 3] = a;
+
+#if ENABLE_DEBUG_RENDER_MARKERS
+			// DEBUG: Draw "CP" text in top-left corner (5x7 bitmap font, 4x scale)
+			// Orange text on current background to indicate CPU rendering
+			{
+				const int fontC[7] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
+				const int fontP[7] = {0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10};
+				const int scale = 4;
+				const int baseX = 5, baseY = 5;
+				int px = (x - baseX) / scale;
+				int py = (y - baseY) / scale;
+				if (py >= 0 && py < 7)
+				{
+					int charBits = 0;
+					int localPx = -1;
+					if (px >= 0 && px < 5) { charBits = fontC[py]; localPx = px; }
+					else if (px >= 6 && px < 11) { charBits = fontP[py]; localPx = px - 6; }
+					if (localPx >= 0 && ((charBits >> (4 - localPx)) & 1))
+					{
+						// Orange in YUV: Y=0.6, U=-0.1, V=0.25
+						((float*)destData)[x * 4 + 0] = 0.25f;  // V
+						((float*)destData)[x * 4 + 1] = -0.1f;  // U
+						((float*)destData)[x * 4 + 2] = 0.6f;   // Y
+						((float*)destData)[x * 4 + 3] = 1.0f;   // A
+					}
+				}
+			}
+#endif
 		}
 	}
 }	return PF_Err_NONE;

@@ -43,9 +43,9 @@
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
 // Set to 0 to disable completely (zero performance impact)
-#define ENABLE_DEBUG_RENDER_MARKERS 0
+#define ENABLE_DEBUG_RENDER_MARKERS 1
 // ========== DEBUG LOGGING (Common) ==========
-#ifdef _DEBUG
+#if defined(_DEBUG) || defined(DEBUG)
 static std::mutex sLogMutex;
 static void WriteLog(const char* format, ...)
 {
@@ -116,10 +116,10 @@ static void WriteLog(const char* format, ...)
 		}
 	}
 }
-#endif // _DEBUG
+#endif // _DEBUG || DEBUG
 
 // Release builds disable logging for performance and security
-#ifdef _DEBUG
+#if defined(_DEBUG) || defined(DEBUG)
     #define DebugLog WriteLog
 #else
     #define DebugLog(...)  // No-op in release builds

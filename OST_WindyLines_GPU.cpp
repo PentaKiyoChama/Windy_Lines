@@ -18,6 +18,7 @@
 #include "OST_WindyLines.h"
 #include "OST_WindyLines_Version.h"
 #include "OST_WindyLines_WatermarkMask.h"
+#include "OST_WindyLines_Common.h"
 #include "PrGPUFilterModule.h"
 #include "PrSDKVideoSegmentProperties.h"
 
@@ -42,6 +43,8 @@
 #include <ctime>
 #include <cstdlib>
 #include <thread>
+#include <vector>
+#include <sstream>
 
 // Debug logging function is now in OST_WindyLines.h
 
@@ -205,527 +208,13 @@ static std::vector<ShaderObjectPtr> sShaderObjectCache;
 static std::vector<ShaderObjectPtr> sShaderObjectAlphaCache;
 #endif //HAS_DIRECTX
 
-static std::atomic<bool> sGpuLicenseAuthenticated{ false };
-static std::atomic<uint32_t> sGpuLicenseRefreshMs{ 0 };
-static const uint32_t kGpuLicenseRefreshIntervalMs = 200;
-
-static uint32_t GetCurrentTimeMsGPU()
-{
-#ifdef _WIN32
-	return GetTickCount();
-#else
-	struct timeval tv;
-	gettimeofday(&tv, nullptr);
-	return static_cast<uint32_t>(tv.tv_sec * 1000 + tv.tv_usec / 1000);
-#endif
-}
-
-static std::string TrimAsciiGPU(const std::string& value)
-{
-	size_t begin = 0;
-	size_t end = value.size();
-	while (begin < end && (value[begin] == ' ' || value[begin] == '\t' || value[begin] == '\r' || value[begin] == '\n'))
-	{
-		++begin;
-	}
-	while (end > begin && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r' || value[end - 1] == '\n'))
-	{
-		--end;
-	}
-	return value.substr(begin, end - begin);
-}
-
-static bool ParseBoolLikeGPU(const std::string& value, bool* outValue)
-{
-	if (!outValue)
-	{
-		return false;
-	}
-	if (value == "1" || value == "true" || value == "TRUE" || value == "True")
-	{
-		*outValue = true;
-		return true;
-	}
-	if (value == "0" || value == "false" || value == "FALSE" || value == "False")
-	{
-		*outValue = false;
-		return true;
-	}
-	return false;
-}
-
-// === GPU-side Machine ID hash (mirrors CPU SimpleHash32 + GetMachineIdHash) ===
-static uint32_t GpuSimpleHash32(const char* str)
-{
-	uint32_t hash = 5381;
-	while (*str)
-	{
-		hash = ((hash << 5) + hash) + static_cast<unsigned char>(*str);
-		++str;
-	}
-	return hash;
-}
-
-static std::string GetGpuMachineIdHash()
-{
-	char hostname[256] = {0};
-#ifdef _WIN32
-	DWORD size = sizeof(hostname);
-	GetComputerNameA(hostname, &size);
-	std::string raw = std::string(hostname) + "|win|" + std::to_string(sizeof(void*));
-#else
-	gethostname(hostname, sizeof(hostname) - 1);
-	std::string raw = std::string(hostname) + "|mac|" + std::to_string(sizeof(void*));
-#endif
-	uint32_t h1 = GpuSimpleHash32(raw.c_str());
-	uint32_t h2 = GpuSimpleHash32((raw + "_salt_ost").c_str());
-	char buf[20];
-	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
-	return std::string(buf);
-}
-
-// === GPU Cache signature (mirrors CPU ComputeCacheSignature) ===
-static const char* kGpuCacheSignatureSalt = "OST_WL_2026_SALT_K9x3";
-static const int kGpuOfflineGracePeriodSec = 3600; // 1h offline grace
-
-static std::string ComputeGpuCacheSignature(const std::string& authorizedStr,
-                                             const std::string& validatedUnixStr,
-                                             const std::string& machineIdHash)
-{
-	std::string payload = authorizedStr + "|" + validatedUnixStr + "|" + machineIdHash + "|" + kGpuCacheSignatureSalt;
-	uint32_t h1 = GpuSimpleHash32(payload.c_str());
-	std::string pass2 = payload + "|" + std::to_string(h1);
-	uint32_t h2 = GpuSimpleHash32(pass2.c_str());
-	char buf[20];
-	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
-	return std::string(buf);
-}
-
-static bool LoadGpuLicenseAuthenticatedFromCache(bool* outAuthenticated)
-{
-	if (!outAuthenticated)
-	{
-		return false;
-	}
-
-	FILE* file = nullptr;
-	std::string loadedPath;
-
-#ifdef _WIN32
-	char appData[MAX_PATH] = { 0 };
-	DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
-	if (appDataLen > 0 && appDataLen < MAX_PATH)
-	{
-		const std::string path = std::string(appData) + "\\OshareTelop\\license_cache_v1.txt";
-		file = std::fopen(path.c_str(), "rb");
-		if (file) loadedPath = path;
-	}
-	if (!file)
-	{
-		const char* userProfile = std::getenv("USERPROFILE");
-		if (userProfile && *userProfile)
-		{
-			const std::string path = std::string(userProfile) + "\\AppData\\Roaming\\OshareTelop\\license_cache_v1.txt";
-			file = std::fopen(path.c_str(), "rb");
-			if (file) loadedPath = path;
-		}
-	}
-#else
-	const char* home = std::getenv("HOME");
-	if (home && *home)
-	{
-		const std::string path = std::string(home) + "/Library/Application Support/OshareTelop/license_cache_v1.txt";
-		file = std::fopen(path.c_str(), "rb");
-		if (file) loadedPath = path;
-	}
-	if (!file)
-	{
-		struct passwd* pw = getpwuid(getuid());
-		if (pw && pw->pw_dir && *pw->pw_dir)
-		{
-			const std::string path = std::string(pw->pw_dir) + "/Library/Application Support/OshareTelop/license_cache_v1.txt";
-			file = std::fopen(path.c_str(), "rb");
-			if (file) loadedPath = path;
-		}
-	}
-#endif
-
-	if (!file)
-	{
-		return false;
-	}
-
-	bool hasAuthorized = false;
-	bool authorized = false;
-	bool hasExpire = false;
-	long long expireUnix = 0;
-	std::string cachedMachineIdHash;
-	std::string authorizedRaw;
-	std::string validatedUnixRaw;
-	std::string cachedSignature;
-
-	char line[512];
-	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
-	{
-		std::string rawLine(line);
-		const size_t sep = rawLine.find('=');
-		if (sep == std::string::npos)
-		{
-			continue;
-		}
-		const std::string key = TrimAsciiGPU(rawLine.substr(0, sep));
-		const std::string value = TrimAsciiGPU(rawLine.substr(sep + 1));
-		if (key == "authorized")
-		{
-			authorizedRaw = value;
-			bool parsed = false;
-			if (ParseBoolLikeGPU(value, &parsed))
-			{
-				authorized = parsed;
-				hasAuthorized = true;
-			}
-		}
-		else if (key == "cache_expire_unix")
-		{
-			char* endPtr = nullptr;
-			const long long parsed = std::strtoll(value.c_str(), &endPtr, 10);
-			if (endPtr != value.c_str())
-			{
-				expireUnix = parsed;
-				hasExpire = true;
-			}
-		}
-		else if (key == "validated_unix")
-		{
-			validatedUnixRaw = value;
-		}
-		else if (key == "machine_id_hash")
-		{
-			cachedMachineIdHash = value;
-		}
-		else if (key == "cache_signature")
-		{
-			cachedSignature = value;
-		}
-	}
-
-	std::fclose(file);
-	if (!hasAuthorized || !hasExpire)
-	{
-		return false;
-	}
-
-	// --- Machine ID verification (anti-copy) ---
-	if (!cachedMachineIdHash.empty())
-	{
-		const std::string localMid = GetGpuMachineIdHash();
-		if (cachedMachineIdHash != localMid)
-		{
-			DebugLog("[GPU License] machine_id mismatch: cached=%s local=%s",
-				cachedMachineIdHash.c_str(), localMid.c_str());
-			return false;
-		}
-	}
-
-	// --- Signature verification (anti-tampering) ---
-	if (cachedSignature.empty())
-	{
-		DebugLog("[GPU License] cache missing signature — treating as unauthorized");
-		*outAuthenticated = false;
-		return true;
-	}
-
-	const std::string expectedSig = ComputeGpuCacheSignature(
-		authorizedRaw, validatedUnixRaw, cachedMachineIdHash);
-	if (cachedSignature != expectedSig)
-	{
-		DebugLog("[GPU License] cache signature mismatch (tampering detected)");
-		*outAuthenticated = false;
-		return true;
-	}
-
-	const long long nowUnix = static_cast<long long>(std::time(nullptr));
-
-	// --- TTL check with offline grace ---
-	if (expireUnix <= nowUnix)
-	{
-		long long validatedUnix = 0;
-		if (!validatedUnixRaw.empty())
-		{
-			char* endPtr = nullptr;
-			validatedUnix = std::strtoll(validatedUnixRaw.c_str(), &endPtr, 10);
-		}
-		const long long graceCutoff = validatedUnix + kGpuOfflineGracePeriodSec;
-		if (authorized && graceCutoff > nowUnix)
-		{
-			DebugLog("[GPU License] cache expired but within offline grace");
-			*outAuthenticated = true;
-			return true;
-		}
-		return false;
-	}
-
-	*outAuthenticated = authorized;
-	DebugLog("[GPU License] cache loaded: authenticated=%s sig=OK path=%s",
-		authorized ? "true" : "false", loadedPath.c_str());
-	return true;
-}
-
-static void TriggerGpuBackgroundCacheRefresh(); // forward declaration
+// === License verification: shared with CPU (single source of truth) ===
+#include "OST_WindyLines_License.h"
 
 static bool IsGpuLicenseAuthenticated()
 {
-	const uint32_t nowMs = GetCurrentTimeMsGPU();
-	const uint32_t lastMs = sGpuLicenseRefreshMs.load(std::memory_order_relaxed);
-	if (nowMs - lastMs >= kGpuLicenseRefreshIntervalMs)
-	{
-		sGpuLicenseRefreshMs.store(nowMs, std::memory_order_relaxed);
-		bool cached = false;
-		if (LoadGpuLicenseAuthenticatedFromCache(&cached))
-		{
-			sGpuLicenseAuthenticated.store(cached, std::memory_order_relaxed);
-		}
-		else
-		{
-			sGpuLicenseAuthenticated.store(false, std::memory_order_relaxed);
-			TriggerGpuBackgroundCacheRefresh();
-		}
-	}
-	return sGpuLicenseAuthenticated.load(std::memory_order_relaxed);
-}
-
-// === GPU-side license auto-refresh: background API check when cache expires ===
-static const char* kGpuLicenseApiEndpoint = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test";
-static const int kGpuAutoRefreshCacheTtlSec = 600; // 10 min TTL
-static std::atomic<bool> sGpuAutoRefreshInProgress{false};
-static std::atomic<uint32_t> sGpuLastAutoRefreshAttemptMs{0};
-static const uint32_t kGpuMinAutoRefreshIntervalMs = 60000; // min 60s between API calls
-
-static void TriggerGpuBackgroundCacheRefresh()
-{
-	bool expected = false;
-	if (!sGpuAutoRefreshInProgress.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
-	{
-		return; // already in progress
-	}
-
-	const uint32_t nowMs = GetCurrentTimeMsGPU();
-	const uint32_t lastMs = sGpuLastAutoRefreshAttemptMs.load(std::memory_order_relaxed);
-	if (nowMs - lastMs < kGpuMinAutoRefreshIntervalMs)
-	{
-		sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-		return;
-	}
-	sGpuLastAutoRefreshAttemptMs.store(nowMs, std::memory_order_relaxed);
-
-#ifdef _WIN32
-	// WinHTTP-based background API call (runs in detached thread, does not block render)
-	std::thread([]() {
-		DebugLog("[GPU License] background cache refresh started (WinHTTP)");
-
-		// Build cache path
-		std::string cachePath;
-		{
-			char appData[MAX_PATH] = { 0 };
-			DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
-			if (appDataLen > 0 && appDataLen < MAX_PATH)
-			{
-				cachePath = std::string(appData) + "\\OshareTelop\\license_cache_v1.txt";
-			}
-			else
-			{
-				const char* userProfile = std::getenv("USERPROFILE");
-				if (userProfile && *userProfile)
-				{
-					cachePath = std::string(userProfile) + "\\AppData\\Roaming\\OshareTelop\\license_cache_v1.txt";
-				}
-			}
-		}
-		if (cachePath.empty())
-		{
-			DebugLog("[GPU License] failed to determine cache path");
-			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		// Ensure directory exists
-		std::string cacheDir = cachePath;
-		const size_t lastBackslash = cacheDir.find_last_of('\\');
-		if (lastBackslash != std::string::npos)
-		{
-			cacheDir = cacheDir.substr(0, lastBackslash);
-		}
-		CreateDirectoryA(cacheDir.c_str(), nullptr); // ignore error if exists
-		// Also create parent
-		std::string parentDir = cacheDir;
-		const size_t parentSlash = parentDir.find_last_of('\\');
-		if (parentSlash != std::string::npos)
-		{
-			CreateDirectoryA(parentDir.substr(0, parentSlash).c_str(), nullptr);
-			CreateDirectoryA(cacheDir.c_str(), nullptr);
-		}
-
-		// Build JSON body
-		const std::string mid = GetGpuMachineIdHash();
-		std::string body = "{\"action\":\"verify\",\"product\":\"OST_WindyLines\","
-			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\","
-			"\"machine_id\":\"" + mid + "\"}";
-
-		HINTERNET hSession = WinHttpOpen(
-			L"OST_WindyLines/1.0",
-			WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-			WINHTTP_NO_PROXY_NAME,
-			WINHTTP_NO_PROXY_BYPASS, 0);
-		if (!hSession)
-		{
-			DebugLog("[GPU License] WinHttpOpen failed: %lu", GetLastError());
-			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		HINTERNET hConnect = WinHttpConnect(hSession,
-			L"penta.bubbleapps.io",
-			INTERNET_DEFAULT_HTTPS_PORT, 0);
-		if (!hConnect)
-		{
-			DebugLog("[GPU License] WinHttpConnect failed: %lu", GetLastError());
-			WinHttpCloseHandle(hSession);
-			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		HINTERNET hRequest = WinHttpOpenRequest(hConnect,
-			L"POST",
-			L"/version-test/api/1.1/wf/ppplugin_test",
-			NULL, WINHTTP_NO_REFERER,
-			WINHTTP_DEFAULT_ACCEPT_TYPES,
-			WINHTTP_FLAG_SECURE);
-		if (!hRequest)
-		{
-			DebugLog("[GPU License] WinHttpOpenRequest failed: %lu", GetLastError());
-			WinHttpCloseHandle(hConnect);
-			WinHttpCloseHandle(hSession);
-			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		// Set timeout (10 seconds)
-		DWORD timeout = 10000;
-		WinHttpSetOption(hRequest, WINHTTP_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
-		WinHttpSetOption(hRequest, WINHTTP_OPTION_SEND_TIMEOUT, &timeout, sizeof(timeout));
-		WinHttpSetOption(hRequest, WINHTTP_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
-
-		BOOL bResult = WinHttpSendRequest(hRequest,
-			L"Content-Type: application/json", -1,
-			(LPVOID)body.c_str(), (DWORD)body.size(), (DWORD)body.size(), 0);
-		if (!bResult)
-		{
-			DebugLog("[GPU License] WinHttpSendRequest failed: %lu", GetLastError());
-			WinHttpCloseHandle(hRequest);
-			WinHttpCloseHandle(hConnect);
-			WinHttpCloseHandle(hSession);
-			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		bResult = WinHttpReceiveResponse(hRequest, NULL);
-		if (!bResult)
-		{
-			DebugLog("[GPU License] WinHttpReceiveResponse failed: %lu", GetLastError());
-			WinHttpCloseHandle(hRequest);
-			WinHttpCloseHandle(hConnect);
-			WinHttpCloseHandle(hSession);
-			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		// Read response body
-		std::string responseBody;
-		DWORD bytesAvailable = 0;
-		while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0)
-		{
-			std::vector<char> buf(bytesAvailable);
-			DWORD bytesRead = 0;
-			if (WinHttpReadData(hRequest, buf.data(), bytesAvailable, &bytesRead))
-			{
-				responseBody.append(buf.data(), bytesRead);
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		WinHttpCloseHandle(hRequest);
-		WinHttpCloseHandle(hConnect);
-		WinHttpCloseHandle(hSession);
-
-		DebugLog("[GPU License] API response: %s", responseBody.c_str());
-
-		// Parse "authorized": true/false from response (simple grep approach matching Mac version)
-		bool authorized = false;
-		std::string reason = "unknown";
-		if (responseBody.find("\"authorized\"") != std::string::npos)
-		{
-			// Check for "authorized":true or "authorized": true (with optional spaces)
-			if (responseBody.find("\"authorized\":true") != std::string::npos ||
-				responseBody.find("\"authorized\": true") != std::string::npos ||
-				responseBody.find("\"authorized\" : true") != std::string::npos)
-			{
-				authorized = true;
-				reason = "ok";
-			}
-			else
-			{
-				authorized = false;
-				reason = "denied";
-			}
-		}
-		else
-		{
-			DebugLog("[GPU License] API response missing 'authorized' field");
-			sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		// Write cache file with signature
-		const long long nowUnix = static_cast<long long>(std::time(nullptr));
-		const long long expireUnix = nowUnix + kGpuAutoRefreshCacheTtlSec;
-		const std::string authStr = authorized ? "true" : "false";
-		const std::string nowStr = std::to_string(nowUnix);
-		const std::string sig = ComputeGpuCacheSignature(authStr, nowStr, mid);
-
-		char content[768];
-		snprintf(content, sizeof(content),
-			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
-			"license_key_masked=\nmachine_id_hash=%s\ncache_signature=%s\n",
-			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
-			mid.c_str(), sig.c_str());
-
-		// Write directly (Windows doesn't have easy atomic rename across drives)
-		FILE* fp = std::fopen(cachePath.c_str(), "wb");
-		if (fp)
-		{
-			std::fputs(content, fp);
-			std::fclose(fp);
-			DebugLog("[GPU License] cache updated: authorized=%s sig=%s path=%s",
-				authStr.c_str(), sig.c_str(), cachePath.c_str());
-		}
-		else
-		{
-			DebugLog("[GPU License] failed to write cache file: %s", cachePath.c_str());
-		}
-
-		// Immediately update in-memory state
-		sGpuLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
-
-		sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-	}).detach();
-#else
-	// Mac: system() + curl (same as CPU side)
-	DebugLog("[GPU License] auto-refresh not implemented for GPU on Mac (uses CPU fallback)");
-	sGpuAutoRefreshInProgress.store(false, std::memory_order_release);
-#endif
+	RefreshLicenseAuthenticatedState(false);
+	return IsLicenseAuthenticated();
 }
 
 #if HAS_METAL
@@ -885,28 +374,6 @@ struct LineBinBounds
 	int maxY;
 };
 
-static csSDK_uint32 HashUInt(csSDK_uint32 x)
-{
-	x ^= x >> 16;
-	x *= 0x7feb352d;
-	x ^= x >> 15;
-	x *= 0x846ca68b;
-	x ^= x >> 16;
-	return x;
-}
-
-static float Rand01(csSDK_uint32 x)
-{
-	return (HashUInt(x) & 0x00FFFFFF) / 16777215.0f;
-}
-
-static float DepthScale(float depth, float strength)
-{
-	// Shrink lines based on depth: depth=1 (front) keeps scale=1.0, depth=0 (back) shrinks
-	const float v = 1.0f - (1.0f - depth) * strength;
-	return v < 0.05f ? 0.05f : v;
-}
-
 static float HalfToFloat(csSDK_uint16 h)
 {
 	const csSDK_uint32 sign = (h & 0x8000u) << 16;
@@ -1002,228 +469,6 @@ static void ComputeAlphaBoundsCPU(
 	}
 }
 
-static float ApplyEasing(float t, int easingType)
-{
-	switch (easingType)
-	{
-		case 0: return t; // Linear
-		// SmoothStep (moved to 1-2)
-		case 1: return t * t * (3.0f - 2.0f * t); // SmoothStep (3rd order Hermite)
-		case 2: return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f); // SmootherStep (5th order, Ken Perlin)
-		// Sine (3-6)
-		case 3: return 1.0f - cosf((float)M_PI * 0.5f * t); // InSine (slow→fast)
-		case 4: return sinf((float)M_PI * 0.5f * t); // OutSine (fast→slow)
-		case 5: return 0.5f * (1.0f - cosf((float)M_PI * t)); // InOutSine
-		case 6: { // OutInSine
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 4);  // OutSine
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 3);  // InSine
-			}
-		}
-		// Quad (7-10)
-		case 7: return t * t; // InQuad
-		case 8: return 1.0f - (1.0f - t) * (1.0f - t); // OutQuad
-		case 9: {
-			const float u = t * 2.0f;
-			if (u < 1.0f) { return 0.5f * u * u; }
-			const float v = u - 1.0f;
-			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v));
-		}
-		case 10: { // OutInQuad
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 8);  // OutQuad
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 7);  // InQuad
-			}
-		}
-		// Cubic (11-14)
-		case 11: return t * t * t; // InCubic
-		case 12: {
-			const float u = 1.0f - t;
-			return 1.0f - u * u * u; // OutCubic
-		}
-		case 13: {
-			const float u = t * 2.0f;
-			if (u < 1.0f) { return 0.5f * u * u * u; }
-			const float v = u - 1.0f;
-			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v) * (1.0f - v));
-		}
-		case 14: { // OutInCubic
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 12);  // OutCubic
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 11);  // InCubic
-			}
-		}
-		// Circular (15-18)
-		case 15: return 1.0f - sqrtf(1.0f - t * t); // InCirc
-		case 16: { // OutCirc
-			const float u = t - 1.0f;
-			return sqrtf(1.0f - u * u);
-		}
-		case 17: { // InOutCirc
-			const float u = t * 2.0f;
-			if (u < 1.0f) {
-				return 0.5f * (1.0f - sqrtf(1.0f - u * u));
-			}
-			const float v = u - 2.0f;
-			return 0.5f * (sqrtf(1.0f - v * v) + 1.0f);
-		}
-		case 18: { // OutInCirc
-			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 16);  // OutCirc
-			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 15);  // InCirc
-			}
-		}
-		// Back easing (overshoots) (19-21)
-		case 19: { // InBack
-			const float s = 1.70158f;
-			return t * t * ((s + 1.0f) * t - s);
-		}
-		case 20: { // OutBack
-			const float s = 1.70158f;
-			const float u = t - 1.0f;
-			return u * u * ((s + 1.0f) * u + s) + 1.0f;
-		}
-		case 21: { // InOutBack
-			const float s = 1.70158f * 1.525f;
-			const float u = t * 2.0f;
-			if (u < 1.0f) {
-				return 0.5f * u * u * ((s + 1.0f) * u - s);
-			}
-			const float v = u - 2.0f;
-			return 0.5f * (v * v * ((s + 1.0f) * v + s) + 2.0f);
-		}
-		// Elastic easing (22-24)
-		case 22: { // InElastic
-			if (t == 0.0f) return 0.0f;
-			if (t == 1.0f) return 1.0f;
-			const float p = 0.3f;
-			return -powf(2.0f, 10.0f * (t - 1.0f)) * sinf((t - 1.0f - p / 4.0f) * (2.0f * (float)M_PI) / p);
-		}
-		case 23: { // OutElastic
-			if (t == 0.0f) return 0.0f;
-			if (t == 1.0f) return 1.0f;
-			const float p = 0.3f;
-			return powf(2.0f, -10.0f * t) * sinf((t - p / 4.0f) * (2.0f * (float)M_PI) / p) + 1.0f;
-		}
-		case 24: { // InOutElastic
-			if (t == 0.0f) return 0.0f;
-			if (t == 1.0f) return 1.0f;
-			const float p = 0.45f;
-			const float s = p / 4.0f;
-			const float u = t * 2.0f;
-			if (u < 1.0f) {
-				return -0.5f * powf(2.0f, 10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p);
-			}
-			return powf(2.0f, -10.0f * (u - 1.0f)) * sinf((u - 1.0f - s) * (2.0f * (float)M_PI) / p) * 0.5f + 1.0f;
-		}
-		// Bounce easing (25-27)
-		case 25: { // InBounce
-			const float u = 1.0f - t;
-			float b;
-			if (u < 1.0f / 2.75f) {
-				b = 7.5625f * u * u;
-			} else if (u < 2.0f / 2.75f) {
-				const float v = u - 1.5f / 2.75f;
-				b = 7.5625f * v * v + 0.75f;
-			} else if (u < 2.5f / 2.75f) {
-				const float v = u - 2.25f / 2.75f;
-				b = 7.5625f * v * v + 0.9375f;
-			} else {
-				const float v = u - 2.625f / 2.75f;
-				b = 7.5625f * v * v + 0.984375f;
-			}
-			return 1.0f - b;
-		}
-		case 26: { // OutBounce
-			if (t < 1.0f / 2.75f) {
-				return 7.5625f * t * t;
-			} else if (t < 2.0f / 2.75f) {
-				const float u = t - 1.5f / 2.75f;
-				return 7.5625f * u * u + 0.75f;
-			} else if (t < 2.5f / 2.75f) {
-				const float u = t - 2.25f / 2.75f;
-				return 7.5625f * u * u + 0.9375f;
-			} else {
-				const float u = t - 2.625f / 2.75f;
-				return 7.5625f * u * u + 0.984375f;
-			}
-		}
-		case 27: { // InOutBounce
-			if (t < 0.5f) {
-				const float u = 1.0f - t * 2.0f;
-				float b;
-				if (u < 1.0f / 2.75f) {
-					b = 7.5625f * u * u;
-				} else if (u < 2.0f / 2.75f) {
-					const float v = u - 1.5f / 2.75f;
-					b = 7.5625f * v * v + 0.75f;
-				} else if (u < 2.5f / 2.75f) {
-					const float v = u - 2.25f / 2.75f;
-					b = 7.5625f * v * v + 0.9375f;
-				} else {
-					const float v = u - 2.625f / 2.75f;
-					b = 7.5625f * v * v + 0.984375f;
-				}
-				return (1.0f - b) * 0.5f;
-			} else {
-				const float u = t * 2.0f - 1.0f;
-				float b;
-				if (u < 1.0f / 2.75f) {
-					b = 7.5625f * u * u;
-				} else if (u < 2.0f / 2.75f) {
-					const float v = u - 1.5f / 2.75f;
-					b = 7.5625f * v * v + 0.75f;
-				} else if (u < 2.5f / 2.75f) {
-					const float v = u - 2.25f / 2.75f;
-					b = 7.5625f * v * v + 0.9375f;
-				} else {
-					const float v = u - 2.625f / 2.75f;
-					b = 7.5625f * v * v + 0.984375f;
-				}
-				return b * 0.5f + 0.5f;
-			}
-		}
-		default:
-			return t;
-	}
-}
-
-// Derivative of easing function (instantaneous velocity factor)
-// Returns normalized velocity: 1.0 = linear speed, >1.0 = faster, <1.0 = slower
-static float ApplyEasingDerivative(float t, int easingType)
-{
-	// For complex easing types, use numerical approximation
-	const float epsilon = 0.001f;
-	switch (easingType)
-	{
-		case 0: return 1.0f; // Linear: constant velocity
-		// For all other types - use numerical differentiation
-		case 1: case 2: // SmoothStep, SmootherStep
-		case 3: case 4: case 5: case 6: // Sine (In, Out, InOut, OutIn)
-		case 7: case 8: case 9: case 10: // Quad (In, Out, InOut, OutIn)
-		case 11: case 12: case 13: case 14: // Cubic (In, Out, InOut, OutIn)
-		case 15: case 16: case 17: case 18: // Circ (In, Out, InOut, OutIn)
-		case 19: case 20: case 21: // Back (In, Out, InOut)
-		case 22: case 23: case 24: // Elastic (In, Out, InOut)
-		case 25: case 26: case 27: // Bounce (In, Out, InOut)
-		{
-			const float t1 = t > epsilon ? t - epsilon : 0.0f;
-			const float t2 = t < 1.0f - epsilon ? t + epsilon : 1.0f;
-			const float dt = t2 - t1;
-			if (dt > 0.0f) {
-				return (ApplyEasing(t2, easingType) - ApplyEasing(t1, easingType)) / dt;
-			}
-			return 1.0f;
-		}
-		default:
-			return 1.0f;
-	}
-}
-
 static int NormalizePopupValue(int value, int maxValue)
 {
 	// Premiere Pro GPU GetParam() returns 0-based popup values
@@ -1296,10 +541,6 @@ class ProcAmp2 :
 	public PrGPUFilterBase
 {
 public:
-	// Cached clip start ticks (from VideoSegmentSuite, per nodeID)
-	csSDK_int64 mCachedClipStartTicks = -1;
-	bool mClipStartQueried = false;
-	
 	virtual prSuiteError GetFrameDependencies(
 		const PrGPUFilterRenderParams* inRenderParams,
 		csSDK_int32* ioQueryIndex,
@@ -1675,40 +916,192 @@ public:
 		const float centerGap = static_cast<float>(GetParam(OST_WINDYLINES_CENTER_GAP, inRenderParams->inClipTime).mFloat64);
 		// Focus parameters removed
 	
-	// v51: DevGuide approach - use clipTime with SharedClipData
-	// clipTime = absolute media time in ticks
-	// clipStartFrame = first frame of clip in media time (from CPU or estimated)
-	// frameIndex = mediaFrameIndex - clipStartFrame (0-based from clip start)
+	// GPU's inClipTime is absolute media time, NOT clip-relative.
+	// We need to find the clip start in sequence time to compute clip-relative frame.
+	// Strategy: Walk the VideoSegment tree from timeline root, find the ClipNode that
+	// has our mNodeID as an operator, then read TrackItemStartAsTicks from the ClipNode.
 	const PrTime ticksPerFrame = inRenderParams->inRenderTicksPerFrame;
-	const csSDK_int64 mediaFrameIndex = (ticksPerFrame > 0) ? (clipTime / ticksPerFrame) : 0;
+	const PrTime seqTime = inRenderParams->inSequenceTime;
 	
-	// Try to get clipStartFrame from SharedClipData (set by CPU renderer)
-	// Use clipTime as key since it's consistent for the same media
-	csSDK_int64 clipStartFrame = SharedClipData::GetClipStart(mediaFrameIndex);
+	PrTime trackItemStart = 0;
+	bool trackItemStartFound = false;
 	
-	// If not found from CPU, try to find the smallest clipStartFrame <= mediaFrameIndex
-	if (clipStartFrame < 0)
+	// Get hash of our own mNodeID for matching against operators in the tree
+	prPluginID myNodeHash = {};
 	{
-		// Fallback: GPU-only estimation using clipTime - seqTime relationship
-		// For the same clip, (clipTime - seqTime) is constant
-		const PrTime seqTime = inRenderParams->inSequenceTime;
-		const PrTime clipOffset = clipTime - seqTime;
+		char myNodeType[256] = {};
+		csSDK_int32 myNodeFlags = 0;
+		if (mVideoSegmentSuite)
+			mVideoSegmentSuite->GetNodeInfo(mNodeID, myNodeType, &myNodeHash, &myNodeFlags);
+	}
+	
+	// If not cached, walk the segment tree to find our ClipNode
+	if (!trackItemStartFound && mVideoSegmentSuite)
+	{
+		// One-time tree dump for diagnostics
+		static bool sTreeDumped = false;
+		const bool doDump = !sTreeDumped;
+		if (doDump) sTreeDumped = true;
 		
-		// Use clipOffset as key to track this clip instance
-		clipStartFrame = SharedClipData::GetClipStart(clipOffset);
-		if (clipStartFrame < 0)
+		if (doDump)
+			DebugLog("GPU TREE: mNodeID=%d myHash=%08x%08x%08x%08x",
+				mNodeID,
+				((unsigned int*)&myNodeHash)[0], ((unsigned int*)&myNodeHash)[1],
+				((unsigned int*)&myNodeHash)[2], ((unsigned int*)&myNodeHash)[3]);
+		
+		csSDK_int32 segmentsID = -1;
+		if (PrSuiteErrorSucceeded(mVideoSegmentSuite->AcquireVideoSegmentsID(mTimelineID, &segmentsID)) && segmentsID >= 0)
 		{
-			// First encounter: estimate clipStartFrame from seqTime
-			// If seqTime=0, clipStartFrame = mediaFrameIndex (clip starts at media time corresponding to timeline start)
-			const csSDK_int64 seqFrameIndex = (ticksPerFrame > 0) ? (seqTime / ticksPerFrame) : 0;
-			clipStartFrame = mediaFrameIndex - seqFrameIndex;
-			SharedClipData::SetClipStart(clipOffset, clipStartFrame);
+			csSDK_int32 numSegments = 0;
+			mVideoSegmentSuite->GetSegmentCount(segmentsID, &numSegments);
+			if (doDump)
+				DebugLog("GPU TREE: numSegments=%d seqTime=%lld", numSegments, (long long)seqTime);
+			
+			// Search segments for one that contains our current time
+			for (csSDK_int32 segIdx = 0; segIdx < numSegments && !trackItemStartFound; ++segIdx)
+			{
+				PrTime segStart = 0, segEnd = 0, segOffset = 0;
+				prPluginID segHash = {};
+				if (!PrSuiteErrorSucceeded(mVideoSegmentSuite->GetSegmentInfo(segmentsID, segIdx, &segStart, &segEnd, &segOffset, &segHash)))
+					continue;
+				
+				// Only process segments that contain our current sequence time
+				if (seqTime < segStart || seqTime >= segEnd)
+					continue;
+				
+				if (doDump)
+					DebugLog("GPU TREE: seg[%d] start=%lld end=%lld offset=%lld", segIdx, (long long)segStart, (long long)segEnd, (long long)segOffset);
+				
+				csSDK_int32 rootNodeID = -1;
+				if (!PrSuiteErrorSucceeded(mVideoSegmentSuite->AcquireNodeID(segmentsID, &segHash, &rootNodeID)) || rootNodeID < 0)
+					continue;
+				
+				// BFS: walk tree looking for ClipNodes with our effect as operator
+				std::vector<csSDK_int32> nodeQueue;
+				nodeQueue.push_back(rootNodeID);
+				std::vector<csSDK_int32> nodesToRelease;
+				
+				while (!nodeQueue.empty() && !trackItemStartFound)
+				{
+					csSDK_int32 currentNode = nodeQueue.back();
+					nodeQueue.pop_back();
+					
+					char nodeType[256] = {};
+					prPluginID nodeHash = {};
+					csSDK_int32 nodeFlags = 0;
+					mVideoSegmentSuite->GetNodeInfo(currentNode, nodeType, &nodeHash, &nodeFlags);
+					
+					// Check operators on this node
+					csSDK_int32 opCount = 0;
+					mVideoSegmentSuite->GetNodeOperatorCount(currentNode, &opCount);
+					
+					if (doDump && (opCount > 0 || strstr(nodeType, "Clip")))
+						DebugLog("GPU TREE:   node=%d type='%s' ops=%d flags=%d", currentNode, nodeType, opCount, nodeFlags);
+					
+					for (csSDK_int32 opIdx = 0; opIdx < opCount && !trackItemStartFound; ++opIdx)
+					{
+						csSDK_int32 operatorID = -1;
+						if (PrSuiteErrorSucceeded(mVideoSegmentSuite->AcquireOperatorNodeID(currentNode, opIdx, &operatorID)) && operatorID >= 0)
+						{
+							char opType[256] = {};
+							prPluginID opHash = {};
+							csSDK_int32 opFlags = 0;
+							mVideoSegmentSuite->GetNodeInfo(operatorID, opType, &opHash, &opFlags);
+							
+							if (doDump)
+								DebugLog("GPU TREE:     op[%d]=%d type='%s' hash=%08x%08x%08x%08x",
+									opIdx, operatorID, opType,
+									((unsigned int*)&opHash)[0], ((unsigned int*)&opHash)[1],
+									((unsigned int*)&opHash)[2], ((unsigned int*)&opHash)[3]);
+							
+							// Match by hash comparison (acquired IDs differ from mNodeID)
+							bool isMatch = (operatorID == mNodeID) ||
+								(memcmp(&opHash, &myNodeHash, sizeof(prPluginID)) == 0);
+							
+							// Also try matching by FilterMatchName + RuntimeInstanceID
+							if (!isMatch)
+							{
+								// Check if this operator is our WindyLines effect
+								PrMemoryPtr nameBuf = nullptr;
+								if (PrSuiteErrorSucceeded(mVideoSegmentSuite->GetNodeProperty(operatorID, kVideoSegmentProperty_Effect_FilterMatchName, &nameBuf)) && nameBuf)
+								{
+									if (strstr((const char*)nameBuf, "WindyLines") || strstr((const char*)nameBuf, "windy"))
+									{
+										isMatch = true;
+										if (doDump)
+											DebugLog("GPU TREE:     MATCH by FilterMatchName='%s'", (const char*)nameBuf);
+									}
+									mMemoryManagerSuite->PrDisposePtr(nameBuf);
+								}
+							}
+							
+							if (isMatch)
+							{
+								// Found our effect! Read TrackItemStartAsTicks from the parent
+								PrMemoryPtr buffer = nullptr;
+								if (PrSuiteErrorSucceeded(mVideoSegmentSuite->GetNodeProperty(currentNode, kVideoSegmentProperty_Clip_TrackItemStartAsTicks, &buffer)) && buffer)
+								{
+									std::istringstream stream((const char*)buffer);
+									stream >> trackItemStart;
+									trackItemStartFound = true;
+									DebugLog("GPU CLIP FOUND: mNodeID=%d parentNode=%d parentType='%s' TrackItemStart=%lld (frame %lld)",
+										mNodeID, currentNode, nodeType, (long long)trackItemStart,
+										ticksPerFrame > 0 ? (long long)(trackItemStart / ticksPerFrame) : 0LL);
+									mMemoryManagerSuite->PrDisposePtr(buffer);
+								}
+								else
+								{
+									DebugLog("GPU CLIP FOUND but no TrackItemStart: parentNode=%d type='%s'", currentNode, nodeType);
+								}
+							}
+							mVideoSegmentSuite->ReleaseVideoNodeID(operatorID);
+						}
+					}
+					
+					// Traverse inputs
+					csSDK_int32 inputCount = 0;
+					mVideoSegmentSuite->GetNodeInputCount(currentNode, &inputCount);
+					for (csSDK_int32 inIdx = 0; inIdx < inputCount && !trackItemStartFound; ++inIdx)
+					{
+						PrTime offset = 0;
+						csSDK_int32 inputID = -1;
+						if (PrSuiteErrorSucceeded(mVideoSegmentSuite->AcquireInputNodeID(currentNode, inIdx, &offset, &inputID)) && inputID >= 0)
+						{
+							nodeQueue.push_back(inputID);
+							nodesToRelease.push_back(inputID);
+						}
+					}
+				}
+				
+				for (csSDK_int32 nodeToRelease : nodesToRelease)
+					mVideoSegmentSuite->ReleaseVideoNodeID(nodeToRelease);
+				mVideoSegmentSuite->ReleaseVideoNodeID(rootNodeID);
+			}
+			
+			mVideoSegmentSuite->ReleaseVideoSegmentsID(segmentsID);
+		}
+		
+		if (!trackItemStartFound)
+		{
+			trackItemStart = 0;
+			DebugLog("GPU CLIP WARN: Could not find ClipNode for mNodeID=%d, falling back to trackItemStart=0", mNodeID);
 		}
 	}
 	
-	// Calculate clip-relative frame index
-	csSDK_int64 frameIndex = mediaFrameIndex - clipStartFrame;
-	if (frameIndex < 0) frameIndex = 0;
+	// Clip-relative frame index: (seqTime - trackItemStart) / ticksPerFrame
+	const csSDK_int64 frameIndex = (ticksPerFrame > 0) ? ((seqTime - trackItemStart) / ticksPerFrame) : 0;
+	
+	// DEBUG: Log time values (first 5 frames only)
+	{
+		static int sDebugFrameCount = 0;
+		if (sDebugFrameCount < 5)
+		{
+			sDebugFrameCount++;
+			DebugLog("GPU TIME DEBUG: clipTime=%lld seqTime=%lld trackItemStart=%lld ticksPerFrame=%lld frameIndex=%lld found=%d",
+				(long long)clipTime, (long long)seqTime, (long long)trackItemStart,
+				(long long)ticksPerFrame, (long long)frameIndex, trackItemStartFound ? 1 : 0);
+		}
+	}
 	
 	// Color Mode and Palette Setup (unified index)
 	// Get unified preset parameter
@@ -1804,19 +1197,7 @@ public:
 	}
 	else  // Preset (colorMode == 2, 0-based)
 	{
-		// Preset mode: load from preset palette using presetIndex (already 0-based)
-		const PresetColor* preset = GetPresetPalette(presetIndex + 1);  // GetPresetPalette expects 1-based
-		if (preset)
-		{
-			for (int i = 0; i < 8; ++i)
-			{
-				colorPalette[i][0] = preset[i].r / 255.0f;
-				colorPalette[i][1] = preset[i].g / 255.0f;
-				colorPalette[i][2] = preset[i].b / 255.0f;
-			}
-			DebugLog("[GPU ColorPreset] Preset mode: Loading preset #%d, First color: R=%d G=%d B=%d", 
-				presetIndex + 1, preset[0].r, preset[0].g, preset[0].b);
-		}
+		BuildPresetPalette(colorPalette, presetIndex);
 		DebugLog("[GPU ColorPreset] Loaded 8 colors, Color[0]: R=%.2f G=%.2f B=%.2f", 
 			colorPalette[0][0], colorPalette[0][1], colorPalette[0][2]);
 	}
@@ -2283,41 +1664,28 @@ public:
 		const float alphaBoundsWidthSafe = alphaBoundsWidth > 0.0f ? alphaBoundsWidth : (float)params.mWidth;
 		const float alphaBoundsHeightSafe = alphaBoundsHeight > 0.0f ? alphaBoundsHeight : (float)params.mHeight;
 		
-		// Apply linkage using spawn area bounds (範囲ソース)
-		// Note: alphaBoundsWidthSafe/HeightSafe are in downsampled pixels.
-		// When linkage is OFF, user input is in full-resolution pixels, so we need dsScale.
-		// When linkage is ON (WIDTH/HEIGHT), bounds are already downsampled, so no dsScale needed.
-		float finalLineLength = lineLength;
-		float finalLineThickness = lineThickness;
-		float finalLineTravel = lineTravel;
-		
-		// Length linkage (use bounds directly - they represent actual visible size)
-		if (lengthLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineLength = alphaBoundsWidthSafe * lengthLinkageRate;
-		} else if (lengthLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineLength = alphaBoundsHeightSafe * lengthLinkageRate;
-		}
-		
-		// Thickness linkage (use bounds directly - they represent actual visible size)
-		if (thicknessLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineThickness = alphaBoundsWidthSafe * thicknessLinkageRate;
-		} else if (thicknessLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineThickness = alphaBoundsHeightSafe * thicknessLinkageRate;
-		}
-		
-		// Travel linkage (use bounds directly - they represent actual visible size)
-		if (travelLinkage == LINKAGE_MODE_WIDTH) {
-			finalLineTravel = alphaBoundsWidthSafe * travelLinkageRate;
-		} else if (travelLinkage == LINKAGE_MODE_HEIGHT) {
-			finalLineTravel = alphaBoundsHeightSafe * travelLinkageRate;
-		}
-		
-		// Apply dsScale only when linkage is OFF (user input is full-resolution)
-		// When linkage is ON, values are already in downsampled space
-		const float lineLengthScaled = (lengthLinkage == LINKAGE_MODE_OFF) ? (finalLineLength * dsScale) : finalLineLength;
-		const float lineThicknessScaled_temp = (thicknessLinkage == LINKAGE_MODE_OFF) ? (finalLineThickness * dsScale) : finalLineThickness;
+		const float lineLengthScaled = ApplyLinkageValue(
+			lineLength,
+			lengthLinkage,
+			lengthLinkageRate,
+			alphaBoundsWidthSafe,
+			alphaBoundsHeightSafe,
+			dsScale);
+		const float lineThicknessScaled_temp = ApplyLinkageValue(
+			lineThickness,
+			thicknessLinkage,
+			thicknessLinkageRate,
+			alphaBoundsWidthSafe,
+			alphaBoundsHeightSafe,
+			dsScale);
 		const float lineThicknessScaled = lineThicknessScaled_temp < 1.0f ? 1.0f : lineThicknessScaled_temp;
-		const float lineTravelScaled = (travelLinkage == LINKAGE_MODE_OFF) ? (finalLineTravel * dsScale) : finalLineTravel;
+		const float lineTravelScaled = ApplyLinkageValue(
+			lineTravel,
+			travelLinkage,
+			travelLinkageRate,
+			alphaBoundsWidthSafe,
+			alphaBoundsHeightSafe,
+			dsScale);
 		
 		params.mLineLength = lineLengthScaled;
 		params.mLineThickness = lineThicknessScaled;
@@ -2364,51 +1732,26 @@ public:
 			const float rstart = Rand01(base + 5);
 			const float startFrame = rstart * period;
 
-			// Note: allowMidPlay functionality is now handled by negative Start Time
-			// Start Time < 0 allows lines to appear mid-animation at clip start
-
-			// v43: Calculate effective time relative to Start Time parameter
-			// If startTimeFrames > 0, offset time so animation "starts" at that frame
-			const float effectiveTime = timeFrames - startTimeFrames;
-			
-			// Skip if current frame is before start time
-			if (effectiveTime < 0.0f)
+			// Matching CPU algorithm: age = fmodf(timeFrames - startFrame, period)
+			// Then skip if cycleStartFrame < lineStartTime
+			float age = fmodf(timeFrames - startFrame, period);
+			if (age < 0.0f)
 			{
-				skipStartTime++;
-				continue;
+				age += period;
 			}
-
-			// v43: Calculate age - lines don't start until their startFrame has elapsed
-			// This ensures animation starts "fresh" at Start Time
-			float age = 0.0f;
-			if (period > 0.0f)
+			
+			// Start Time + End Time support: skip cycles outside the active time range
 			{
-				// Each line has a random startFrame delay within the period
-				// Line should not appear until effectiveTime >= startFrame for its first cycle
-				const float timeSinceLineStart = effectiveTime - startFrame;
-				
-				if (timeSinceLineStart < 0.0f)
+				// Calculate when this cycle started
+				const float cycleStartFrame = timeFrames - age;
+				// Skip if this cycle started before startTime
+				if (cycleStartFrame < startTimeFrames)
 				{
-					// This line hasn't started its first cycle yet
 					skipStartTime++;
 					continue;
 				}
-				
-				// Calculate age within current cycle
-				age = fmodf(timeSinceLineStart, period);
-			}
-
-			// v49: End Time support - lines that started before endTime continue to draw
-			// Only skip lines whose current cycle started AFTER endTime
-			if (endTimeFrames > 0.0f && period > 0.0f)
-			{
-				// Calculate when this line's current cycle started (in absolute frame time)
-				const float timeSinceLineStart = effectiveTime - startFrame;
-				const float cycleNumber = floorf(timeSinceLineStart / period);
-				const float cycleStartTime = startTimeFrames + startFrame + cycleNumber * period;
-				
-				// If this cycle started after endTime, skip this line
-				if (cycleStartTime >= endTimeFrames)
+				// Skip if endTime is set and this cycle started after endTime
+				if (endTimeFrames > 0.0f && cycleStartFrame >= endTimeFrames)
 				{
 					skipEndTime++;
 					continue;
@@ -3074,8 +2417,9 @@ public:
             @autoreleasepool {
                 prSuiteError result = suiteError_NoError;
                 
-                // v43: If no lines to draw, skip kernel and return original image unchanged
-                if (lineData.empty())
+                // v43: If no lines to draw and hideElement is off, skip kernel and return original image unchanged
+                // When hideElement is on, we must run the kernel to clear the original element to transparent
+                if (lineData.empty() && !hideElement)
                 {
                     return suiteError_NoError;
                 }
