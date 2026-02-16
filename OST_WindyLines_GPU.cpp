@@ -100,6 +100,7 @@ static unsigned char* sCudaWatermarkFill = nullptr;
 static unsigned char* sCudaWatermarkOutline = nullptr;
 static size_t sCudaWatermarkFillBytes = 0;
 static size_t sCudaWatermarkOutlineBytes = 0;
+static bool sCudaWatermarkUploaded = false;
 
 static void EnsureCudaBuffer(void** buffer, size_t& capacityBytes, size_t requiredBytes)
 {
@@ -320,7 +321,9 @@ extern void WatermarkOverlay_CUDA(
 	int maskHeight,
 	int marginX,
 	int marginY,
-	float dsScale);
+	float dsScale,
+	float fillOpacity,
+	float outlineOpacity);
 #endif // HAS_CUDA
 
 size_t DivideRoundUp(
@@ -2153,8 +2156,12 @@ public:
 				const size_t wmMaskBytes = (size_t)FreeModeWatermark::kMaskWidth * FreeModeWatermark::kMaskHeight;
 				EnsureCudaBuffer((void**)&sCudaWatermarkFill, sCudaWatermarkFillBytes, wmMaskBytes);
 				EnsureCudaBuffer((void**)&sCudaWatermarkOutline, sCudaWatermarkOutlineBytes, wmMaskBytes);
-				cudaMemcpy(sCudaWatermarkFill, FreeModeWatermark::kFillMask, wmMaskBytes, cudaMemcpyHostToDevice);
-				cudaMemcpy(sCudaWatermarkOutline, FreeModeWatermark::kOutlineMask, wmMaskBytes, cudaMemcpyHostToDevice);
+				// Only upload static mask data once (it never changes)
+				if (!sCudaWatermarkUploaded) {
+					cudaMemcpy(sCudaWatermarkFill, FreeModeWatermark::kFillMask, wmMaskBytes, cudaMemcpyHostToDevice);
+					cudaMemcpy(sCudaWatermarkOutline, FreeModeWatermark::kOutlineMask, wmMaskBytes, cudaMemcpyHostToDevice);
+					sCudaWatermarkUploaded = true;
+				}
 				WatermarkOverlay_CUDA(
 					ioBuffer,
 					params.mPitch,
@@ -2168,7 +2175,9 @@ public:
 					FreeModeWatermark::kMaskHeight,
 					FreeModeWatermark::kMarginX,
 					FreeModeWatermark::kMarginY,
-					dsScale);
+					dsScale,
+					FreeModeWatermark::kFillOpacity,
+					FreeModeWatermark::kOutlineOpacity);
 			}
 
 			return cudaPeekAtLastError() == cudaSuccess ? suiteError_NoError : suiteError_Fail;
@@ -2315,6 +2324,11 @@ public:
 				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmMarginX);
 				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(int), &wmMarginY);
 				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(float), &dsScale);
+
+				float wmFillOpacity = FreeModeWatermark::kFillOpacity;
+				float wmOutlineOpacity = FreeModeWatermark::kOutlineOpacity;
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(float), &wmFillOpacity);
+				clSetKernelArg(mKernelOpenCLWatermark, argIdx++, sizeof(float), &wmOutlineOpacity);
 
 				int scaledW = (int)(FreeModeWatermark::kMaskWidth * dsScale);
 				int scaledH = (int)(FreeModeWatermark::kMaskHeight * dsScale);
@@ -2501,6 +2515,8 @@ public:
 						int marginX;
 						int marginY;
 						float dsScale;
+						float fillOpacity;
+						float outlineOpacity;
 					};
 					WatermarkParams wmParams;
 					wmParams.pitch = params.mPitch;
@@ -2513,6 +2529,8 @@ public:
 					wmParams.marginX = FreeModeWatermark::kMarginX;
 					wmParams.marginY = FreeModeWatermark::kMarginY;
 					wmParams.dsScale = dsScale;
+					wmParams.fillOpacity = FreeModeWatermark::kFillOpacity;
+					wmParams.outlineOpacity = FreeModeWatermark::kOutlineOpacity;
 
 					id<MTLBuffer> wmParamBuffer = [[device newBufferWithBytes:&wmParams
 						length:sizeof(wmParams)

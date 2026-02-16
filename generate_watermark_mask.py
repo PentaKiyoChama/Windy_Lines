@@ -18,6 +18,61 @@ from pathlib import Path
 from typing import List, Tuple
 
 
+def _measure_segment(
+    text: str,
+    font: "ImageFont.FreeTypeFont",
+    stroke_width: int,
+) -> Tuple[int, int, int, int]:
+    """Return (left, top, right, bottom) bounding box for a text segment."""
+    from PIL import Image, ImageDraw
+    dummy = Image.new("L", (8, 8), 0)
+    draw = ImageDraw.Draw(dummy)
+    return draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
+
+
+def _render_segment_pair(
+    text1: str, font1: "ImageFont.FreeTypeFont",
+    text2: str, font2: "ImageFont.FreeTypeFont",
+    stroke_width: int, padding: int, gap: int,
+) -> Tuple["Image.Image", "Image.Image", int, int]:
+    """
+    Render two text segments at different sizes, baseline-aligned,
+    and return (fill_img, stroke_img, width, height).
+    """
+    from PIL import Image, ImageDraw
+
+    l1, t1, r1, b1 = _measure_segment(text1, font1, stroke_width)
+    l2, t2, r2, b2 = _measure_segment(text2, font2, stroke_width)
+
+    # Use font metrics for proper baseline alignment
+    asc1, desc1 = font1.getmetrics()
+    asc2, desc2 = font2.getmetrics()
+
+    max_asc = max(asc1, asc2)
+    max_desc = max(desc1, desc2)
+    total_height = max_asc + max_desc + padding * 2
+
+    w1 = r1 - l1
+    w2 = r2 - l2
+    total_width = w1 + gap + w2 + padding * 2
+
+    # Baseline y offset for each segment
+    baseline_y1 = padding + (max_asc - asc1)
+    baseline_y2 = padding + (max_asc - asc2)
+
+    fill_img = Image.new("L", (total_width, total_height), 0)
+    draw_fill = ImageDraw.Draw(fill_img)
+    draw_fill.text((padding - l1, baseline_y1 - t1), text1, font=font1, fill=255, stroke_width=0)
+    draw_fill.text((padding + w1 + gap - l2, baseline_y2 - t2), text2, font=font2, fill=255, stroke_width=0)
+
+    stroke_img = Image.new("L", (total_width, total_height), 0)
+    draw_stroke = ImageDraw.Draw(stroke_img)
+    draw_stroke.text((padding - l1, baseline_y1 - t1), text1, font=font1, fill=255, stroke_width=stroke_width)
+    draw_stroke.text((padding + w1 + gap - l2, baseline_y2 - t2), text2, font=font2, fill=255, stroke_width=stroke_width)
+
+    return fill_img, stroke_img, total_width, total_height
+
+
 def render_with_pillow(
     text: str,
     font_path: Path,
@@ -27,6 +82,9 @@ def render_with_pillow(
     outline_blur: float,
     binary_threshold: int,
     scale: float,
+    text2: str = "",
+    font_size2: int = 0,
+    gap: int = 6,
 ) -> Tuple[List[int], List[int], int, int]:
     try:
         from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -38,32 +96,39 @@ def render_with_pillow(
 
     font = ImageFont.truetype(str(font_path), font_size)
 
-    dummy = Image.new("L", (8, 8), 0)
-    draw = ImageDraw.Draw(dummy)
-    left, top, right, bottom = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
+    if text2:
+        # Two-segment mode: render with different sizes, baseline-aligned
+        font2 = ImageFont.truetype(str(font_path), font_size2 if font_size2 > 0 else font_size)
+        fill_img, stroke_img, width, height = _render_segment_pair(
+            text, font, text2, font2, stroke_width, padding, gap)
+    else:
+        # Single text mode (original behavior)
+        dummy = Image.new("L", (8, 8), 0)
+        draw = ImageDraw.Draw(dummy)
+        left, top, right, bottom = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
 
-    width = (right - left) + padding * 2
-    height = (bottom - top) + padding * 2
+        width = (right - left) + padding * 2
+        height = (bottom - top) + padding * 2
 
-    fill_img = Image.new("L", (width, height), 0)
-    draw_fill = ImageDraw.Draw(fill_img)
-    draw_fill.text(
-        (padding - left, padding - top),
-        text,
-        font=font,
-        fill=255,
-        stroke_width=0,
-    )
+        fill_img = Image.new("L", (width, height), 0)
+        draw_fill = ImageDraw.Draw(fill_img)
+        draw_fill.text(
+            (padding - left, padding - top),
+            text,
+            font=font,
+            fill=255,
+            stroke_width=0,
+        )
 
-    stroke_img = Image.new("L", (width, height), 0)
-    draw_stroke = ImageDraw.Draw(stroke_img)
-    draw_stroke.text(
-        (padding - left, padding - top),
-        text,
-        font=font,
-        fill=255,
-        stroke_width=stroke_width,
-    )
+        stroke_img = Image.new("L", (width, height), 0)
+        draw_stroke = ImageDraw.Draw(stroke_img)
+        draw_stroke.text(
+            (padding - left, padding - top),
+            text,
+            font=font,
+            fill=255,
+            stroke_width=stroke_width,
+        )
 
     # Outline = stroke - fill
     outline_img = Image.new("L", (width, height), 0)
@@ -114,7 +179,7 @@ def to_cpp_array(name: str, data: List[int], row_width: int) -> str:
     return "\n".join(lines)
 
 
-def build_header(fill: List[int], outline: List[int], width: int, height: int) -> str:
+def build_header(fill: List[int], outline: List[int], width: int, height: int, fill_opacity: float, outline_opacity: float) -> str:
     fill_arr = to_cpp_array("kFillMask", fill, width)
     outline_arr = to_cpp_array("kOutlineMask", outline, width)
 
@@ -129,6 +194,8 @@ namespace FreeModeWatermark
     constexpr int kMarginY = 16;
     constexpr int kMaskWidth = {width};
     constexpr int kMaskHeight = {height};
+    constexpr float kFillOpacity = {fill_opacity:.2f}f;
+    constexpr float kOutlineOpacity = {outline_opacity:.2f}f;
 
 {fill_arr}
 
@@ -173,15 +240,19 @@ namespace FreeModeWatermark
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate watermark mask header from font")
-    parser.add_argument("--text", default="おしゃれテロップ・FREE MODE")
+    parser.add_argument("--text", default="Edit with", help="1つ目のテキスト（--text2 指定時は前半部分）")
+    parser.add_argument("--text2", default="", help="2つ目のテキスト（別サイズ）。空なら単一テキストモード")
     parser.add_argument("--font", required=True, type=Path, help="Path to TTF/OTF font")
-    parser.add_argument("--font-size", type=int, default=36)
+    parser.add_argument("--font-size", type=int, default=28, help="1つ目のテキストのフォントサイズ")
+    parser.add_argument("--font-size2", type=int, default=0, help="2つ目のテキストのフォントサイズ（0=--font-sizeと同じ）")
+    parser.add_argument("--gap", type=int, default=6, help="text と text2 の間のピクセル間隔")
     parser.add_argument("--stroke-width", type=int, default=2)
     parser.add_argument("--padding", type=int, default=2)
     parser.add_argument("--outline-blur", type=float, default=0.4)
     parser.add_argument("--binary-threshold", type=int, default=-1, help="0-255で2値化。-1で無効")
     parser.add_argument("--hard-edge", action="store_true", help="レトロPC風の荒いエッジ（2値化+ぼかし無し）")
     parser.add_argument("--scale", type=float, default=1.0, help="フォントサイズとは独立した最終マスク拡大率")
+    parser.add_argument("--opacity", type=float, default=0.66, help="ウォーターマーク不透明度 (0.0-1.0, デフォルト 0.66)")
     parser.add_argument("--out", type=Path, default=Path("OST_WindyLines_WatermarkMask.h"))
     args = parser.parse_args()
 
@@ -201,12 +272,19 @@ def main() -> None:
         outline_blur=outline_blur,
         binary_threshold=binary_threshold,
         scale=args.scale,
+        text2=args.text2,
+        font_size2=args.font_size2,
+        gap=args.gap,
     )
 
-    header = build_header(fill, outline, width, height)
+    fill_opacity = max(0.0, min(1.0, args.opacity))
+    outline_opacity = round(fill_opacity * 0.85, 2)
+
+    header = build_header(fill, outline, width, height, fill_opacity, outline_opacity)
     args.out.write_text(header, encoding="utf-8")
     print(f"Generated: {args.out}")
     print(f"Size: {width}x{height}")
+    print(f"Opacity: fill={fill_opacity:.0%}, outline={outline_opacity:.0%}")
 
 
 if __name__ == "__main__":

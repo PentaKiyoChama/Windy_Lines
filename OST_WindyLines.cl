@@ -776,7 +776,9 @@
 			((int)(inMaskHeight))
 			((int)(inMarginX))
 			((int)(inMarginY))
-			((float)(inDsScale)),
+			((float)(inDsScale))
+			((float)(inFillOpacity))
+			((float)(inOutlineOpacity)),
 			((uint2)(inXY)(KERNEL_XY)))
 		{
 			float scale = inDsScale > 0.0f ? inDsScale : 1.0f;
@@ -784,10 +786,12 @@
 			int scaledMarginY = (int)(inMarginY * scale + 0.5f);
 			int scaledWidth  = (inMaskWidth  * scale + 0.5f) > 1.0f ? (int)(inMaskWidth  * scale + 0.5f) : 1;
 			int scaledHeight = (inMaskHeight * scale + 0.5f) > 1.0f ? (int)(inMaskHeight * scale + 0.5f) : 1;
+			int startX = (int)inWidth - scaledMarginX - scaledWidth;
+			if (startX < 0) startX = 0;
 
 			if ((int)inXY.x >= scaledWidth || (int)inXY.y >= scaledHeight) return;
 
-			int x = scaledMarginX + (int)inXY.x;
+			int x = startX + (int)inXY.x;
 			int y = scaledMarginY + (int)inXY.y;
 			if (x >= (int)inWidth || y >= (int)inHeight) return;
 
@@ -804,7 +808,7 @@
 			int outline = (!fill && oAlpha > 0.0f) ? 1 : 0;
 			if (!fill && !outline) return;
 
-			float baseAlpha    = fill ? 0.92f : 0.78f;
+			float baseAlpha    = fill ? inFillOpacity : inOutlineOpacity;
 			float overlayAlpha = baseAlpha * (fill ? fAlpha : oAlpha);
 
 			int pixelIdx = y * inPitch + x;

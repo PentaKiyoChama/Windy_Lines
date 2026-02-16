@@ -6,7 +6,7 @@
 |------|-----|
 | TTL（認証済み / 拒否共通） | 600秒（10分） |
 | オフライン猶予 | 3600秒（1時間） |
-| 署名方式 | DJB2ダブルハッシュ + 内部salt |
+| 署名方式 | DJB2ダブルハッシュ + XOR難読化salt |
 | 署名フィールド名 | `cache_signature` |
 | ポストアクティベーション | 5秒間隔 × 2分間 |
 | キャッシュ再読み間隔 | 200ms（レンダー呼出毎） |
@@ -23,11 +23,12 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 要素 | CPU レンダラー | GPU レンダラー | 備考 |
 |------|-----------|-----------|------|
 | キャッシュファイル | 共通（`license_cache_v1.txt`） | 共通（同じファイル） | 読み書きの競合はファイル単位のアトミック性に依存 |
-| 署名検証 | `ComputeCacheSignature` | `ComputeGpuCacheSignature` | 同じ salt・同じアルゴリズムだが独立実装 |
-| API 呼出し | `TriggerBackgroundCacheRefresh` | `TriggerGpuBackgroundCacheRefresh` | それぞれ独立のスレッド |
-| HTTP 実装 (Mac) | `std::thread` + `popen("curl ...")` | 同左 | 同じ |
-| HTTP 実装 (Win) | `std::thread` + `WinHTTP` | 同左 | 同じ |
-| MID 生成 | `GetMachineIdHash` | `GetGpuMachineIdHash` | 同じロジックだが独立関数 |
+| ライセンス実装 | `OST_WindyLines_CPU.cpp` に全ロジック | `OST_WindyLines_License.h` 経由で CPU 関数を呼出し | **GPU は独立実装ではなく共有** |
+| 署名検証 | `ComputeCacheSignature` | 同左（共有） | `License.h` → `RefreshLicenseAuthenticatedState` 経由 |
+| API 呼出し | `TriggerBackgroundCacheRefresh` | 同左（共有） | GPU からも CPU 側の同一関数が呼ばれる |
+| HTTP 実装 (Mac) | `std::thread` + `popen("curl ...")` | 同左（共有） | 同じ |
+| HTTP 実装 (Win) | `std::thread` + `WinHTTP` | 同左（共有） | 同じ |
+| MID 生成 | `GetMachineIdHash` | 同左（共有） | 同一関数 |
 
 | 要素 | Mac | Windows | 備考 |
 |------|-----|---------|------|
@@ -115,8 +116,8 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 #### 方法 B：スクリプトで即時テスト（validated_unix を古い値で署名ごと生成）
 | 手順 | 操作 | 待ち時間 |
 |------|------|---------|
-| 1 | 以下の Python ワンライナーを実行（validated を 2h 前、TTL=1 で即期限切れキャッシュを生成）: | — |
-| | ```python3 -c "import set_license_cache_state as s; import time; s.write_cache_file(s.cache_path(), True, 'ok', 1, 'TEST'); import os; p=s.cache_path(); lines=p.read_text().split('\n'); new=[]; now=int(time.time()); old=now-7200; [new.append(l.replace(f'validated_unix={now}',f'validated_unix={old}').replace(f'cache_signature='+l.split('cache_signature=')[1] if 'cache_signature=' in l else '', f'cache_signature={s.compute_cache_signature(\"true\",str(old),s.machine_id_hash())}' if 'cache_signature=' in l else l)) if 'validated_unix=' in l or 'cache_signature=' in l else new.append(l) for l in lines]; p.write_text('\n'.join(new))"``` | — |
+| 1 | 以下のコマンドを実行（validated を 2h 前、TTL=1 で即期限切れキャッシュを生成）: | — |
+| | `python3 set_license_cache_state.py --state authorized --ttl 1 --validated-ago 7200` | — |
 | 2 | PP でタイムラインを動かして再描画 | — |
 | 3 | **確認**: WM が **表示される**（validated から 1h 超過） | — |
 
@@ -247,7 +248,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ---
 
-### E-2. cache_expire_unix を遠い未来に変更（⚠️ 既知の限界）
+### E-2. cache_expire_unix を遠い未来に変更 → 署名不一致で検知
 
 > **所要時間：約 1 分**
 
@@ -258,9 +259,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 3 | `cache_expire_unix=（元の値）` を `cache_expire_unix=9999999999` に書き換えて保存 | — |
 | 4 | **7 秒待つ**（元の TTL 5秒を超過） | 7秒 |
 | 5 | PP でタイムラインを動かして再描画 | — |
-| 6 | **確認**: WM が **表示されない**（⚠️ expire は署名対象外のため一致してしまう） | — |
-| | **備考**: authorized=true 自体は変更できないため、解約検知は次回 API チェックで行われる。 | |
-| | `authorized` の値を変えると E-1 と同じく署名不一致になる。 | |
+| 6 | **確認**: WM が **表示される**（expire は署名対象に含まれるため署名不一致） | — |
 
 ---
 
@@ -305,9 +304,10 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 手順 | 操作 | 待ち時間 |
 |------|------|---------|
 | 1 | ターミナルで `strings /Library/Application\ Support/Adobe/Common/Plug-ins/7.0/MediaCore/OST_WindyLines.plugin/Contents/MacOS/OST_WindyLines \| grep SALT` | — |
-| 2 | **確認**: salt 文字列 `OST_WL_2026_SALT_K9x3` が見つかる（⚠️ 既知の限界） | — |
-| | **リスク評価**: バイナリ解析スキルが必要。一般ユーザーには困難。 | |
-| | **将来の対策**: salt 難読化、サーバー発行 JWT、コード署名検証 | |
+| 2 | **確認**: salt 文字列が **見つからない**（XOR 難読化済み） | — |
+| 3 | 逆アセンブラ（Hopper / Ghidra 等）でバイナリを解析し、XOR デコードルーチンを特定する必要がある | — |
+| | **リスク評価**: 逆アセンブラ＋暗号解析スキルが必要。一般ユーザーには到達不可能。 | |
+| | **将来の対策**: サーバー発行 JWT、コード署名検証 | |
 
 ---
 
@@ -341,6 +341,8 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 8 | ターミナルでキャッシュ確認 → 手順 3 でメモした内容と一致する | — |
 | 9 | **60〜90 秒待つ**（バックグラウンド再検証が走る） | 60〜90秒 |
 | 10 | **確認②**: キャッシュが新しい `validated_unix` で更新されている（plugin_version が変わっても API は authorized を返す） | — |
+
+> **⚠️ 署名フォーマット変更時の注意**: 署名ペイロードの構成が変更されたビルド（例: `expire_unix` 追加）にアップデートした場合、旧ビルドで生成されたキャッシュは署名不一致となる。この場合、手順 7 で **一時的に WM が表示される** が、60〜90 秒後のバックグラウンド再検証で自動回復する（手順 10 で WM 消失を確認）。これは正常動作であり、ユーザー体験上は「アップデート後 1〜2 分で元に戻る」だけの影響。
 
 ---
 
@@ -399,7 +401,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 ## ペルソナ J：GPU レンダラーで利用するユーザー `[Mac / GPU]`
 
-> **背景**: GPU レンダラーは `LoadGpuLicenseAuthenticatedFromCache` / `TriggerGpuBackgroundCacheRefresh` という CPU とは完全に独立したコードパスでライセンスを検証する。キャッシュファイルは CPU と共通。
+> **背景**: GPU レンダラーは `OST_WindyLines_License.h` 経由で CPU 側の `RefreshLicenseAuthenticatedState` / `IsLicenseAuthenticated` を直接呼び出す（共有実装）。キャッシュファイル・署名検証・API 呼出しすべて CPU と同一コードパス。テストの目的は「GPU レンダーパスからの呼出しが正しく動作すること」の確認。
 
 ### J-1. GPU レンダラーでの基本動作（キャッシュなし→生成→WM消失）
 
@@ -411,7 +413,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 2 | PP のエフェクト設定で **GPU レンダラーを選択**（Metal / CUDA / OpenCL） | — |
 | 3 | クリップにエフェクトを適用してプレビュー | — |
 | 4 | **確認①**: WM が **表示される** | — |
-| 5 | **60〜90 秒待つ**（GPU 側の `TriggerGpuBackgroundCacheRefresh` が走る） | 60〜90秒 |
+| 5 | **60〜90 秒待つ**（GPU 経由で `TriggerBackgroundCacheRefresh` が走る） | 60〜90秒 |
 | 6 | タイムラインを動かして再描画 | — |
 | 7 | **確認②**: WM が **消えている** | — |
 | 8 | キャッシュ確認 → `authorized=true` + `cache_signature=` が存在 | — |
@@ -429,7 +431,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 5 | PP でプレビュー | — |
 | 6 | **確認**: WM が **表示されない**（同じキャッシュを読めている） | — |
 
-> **ポイント**: CPU と GPU は同じ `license_cache_v1.txt` を共有。署名アルゴリズムも同じだが関数が独立実装なので、「読めること」自体が検証対象。
+> **ポイント**: CPU と GPU は同じ `license_cache_v1.txt` と同一の検証関数を共有。テストの目的は GPU レンダーパスからの呼出し経路が正しく接続されていることの確認。
 
 ### J-3. GPU レンダラーでの改ざん検知（authorized 書換え）
 
@@ -441,9 +443,9 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 2 | エフェクト設定で **GPU レンダラー**を選択 | — |
 | 3 | テキストエディタで `authorized=false` → `authorized=true` に書き換えて保存 | — |
 | 4 | PP でタイムラインを動かして再描画 | — |
-| 5 | **確認**: WM が **表示される**（GPU 側の `ComputeGpuCacheSignature` でも署名不一致） | — |
+| 5 | **確認**: WM が **表示される**（CPU と同一の `ComputeCacheSignature` で署名不一致） | — |
 
-> **ポイント**: E-1 の GPU 版。CPU とは別関数なので「GPU 側でも検知できるか」を確認。
+> **ポイント**: E-1 の GPU 版。共有実装だが GPU レンダーパスからの呼出し経路で正しく検知できるかを確認。
 
 ---
 
@@ -526,10 +528,10 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | D-2 | 新規 | アクティベート完了 | Mac | CPU | 30秒 | 5〜10s後WM消失 | ☐ |
 | D-3 | 新規 | アクティベート中断 | Mac | CPU | 3分 | rapid終了後も変化なし | ☐ |
 | E-1 | 改ざん | authorized書換え | Mac | CPU | 1分 | 署名NG→WM表示 | ☐ |
-| E-2 | 改ざん | expire延長のみ | Mac | CPU | 1分 | ⚠️署名一致（既知限界） | ☐ |
+| E-2 | 改ざん | expire延長 | Mac | CPU | 1分 | 署名NG→WM表示 | ☐ |
 | E-3 | 改ざん | 署名行削除 | Mac | CPU | 1分 | WM表示 | ☐ |
 | E-4 | 改ざん | 別マシンコピー | Mac | CPU | 2分 | MID不一致→WM表示 | ☐ |
-| F-1 | 高度 | salt特定+再計算 | — | — | 机上 | ⚠️突破可能（将来対策） | ☐ |
+| F-1 | 高度 | salt特定+再計算 | — | — | 机上 | strings不可（XOR難読化） | ☐ |
 | F-2 | 高度 | MITM偽装 | — | — | 机上 | HTTPS検証で失敗 | ☐ |
 | G-1 | 更新 | プラグインアップデート後 | Mac | CPU | 5分 | キャッシュ継続→再検証 | ☐ |
 | H-1 | 複数Mac | 2台目初回インストール | Mac | CPU | 2分 | 別MID→アクティベート必要 | ☐ |
@@ -559,7 +561,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 6. E-1 (1分)    — authorized書換え→署名NG
 7. E-3 (1分)    — 署名行削除→WM表示
 8. E-4 (2分)    — 別マシンキャッシュコピー→MID不一致
-9. E-2 (1分)    — expire延長の既知限界を確認記録
+9. E-2 (1分)    — expire延長→署名NG確認
 
 --- TTL・解約サイクル（約 20 分）---
 10. A-2 (2分)   — TTL切れ→オフライン猶予で維持→再検証

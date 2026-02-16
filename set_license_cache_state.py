@@ -19,9 +19,9 @@ def djb2_hash(s: str) -> int:
     return h
 
 
-def compute_cache_signature(authorized_str: str, validated_unix_str: str, machine_id_hash: str) -> str:
+def compute_cache_signature(authorized_str: str, validated_unix_str: str, machine_id_hash: str, expire_unix_str: str) -> str:
     """Compute cache signature matching C++ ComputeCacheSignature."""
-    payload = f"{authorized_str}|{validated_unix_str}|{machine_id_hash}|{CACHE_SIGNATURE_SALT}"
+    payload = f"{authorized_str}|{validated_unix_str}|{machine_id_hash}|{expire_unix_str}|{CACHE_SIGNATURE_SALT}"
     h1 = djb2_hash(payload)
     pass2 = f"{payload}|{h1}"
     h2 = djb2_hash(pass2)
@@ -57,20 +57,22 @@ def mask_key(license_key: str) -> str:
     return "*" * (len(license_key) - 4) + license_key[-4:]
 
 
-def write_cache_file(path: Path, authorized: bool, reason: str, ttl_sec: int, license_key: str) -> None:
+def write_cache_file(path: Path, authorized: bool, reason: str, ttl_sec: int, license_key: str, validated_ago: int = 0) -> None:
     now = int(time.time())
-    expire = now + max(1, ttl_sec)
+    validated_time = now - validated_ago
+    expire = validated_time + max(1, ttl_sec)
     mid = machine_id_hash()
     auth_str = "true" if authorized else "false"
-    now_str = str(now)
-    sig = compute_cache_signature(auth_str, now_str, mid)
+    now_str = str(validated_time)
+    expire_str = str(expire)
+    sig = compute_cache_signature(auth_str, now_str, mid, expire_str)
 
     path.parent.mkdir(parents=True, exist_ok=True)
     content = "\n".join(
         [
             f"authorized={auth_str}",
             f"reason={reason}",
-            f"validated_unix={now}",
+            f"validated_unix={validated_time}",
             f"cache_expire_unix={expire}",
             f"license_key_masked={mask_key(license_key)}",
             f"machine_id_hash={mid}",
@@ -90,6 +92,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Force local license cache state for Premiere watermark verification")
     parser.add_argument("--state", required=True, choices=["authorized", "unauthorized"], help="Target local auth state")
     parser.add_argument("--ttl", type=int, default=3600, help="TTL seconds for forced state")
+    parser.add_argument("--validated-ago", type=int, default=0, help="Set validated_unix to N seconds in the past (e.g. 7200 = 2h ago)")
     parser.add_argument("--license-key", default="WL-LOCAL-TEST", help="Masked key source for cache file")
     args = parser.parse_args()
 
@@ -103,6 +106,7 @@ def main() -> int:
         reason=reason,
         ttl_sec=max(1, args.ttl),
         license_key=args.license_key,
+        validated_ago=max(0, args.validated_ago),
     )
 
     print(f"[INFO] state: {args.state}")

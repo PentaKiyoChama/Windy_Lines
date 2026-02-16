@@ -154,17 +154,22 @@ static std::vector<std::string> GetLicenseCachePaths()
 static std::string GetMachineIdHash();
 static std::string ComputeCacheSignature(const std::string& authorizedStr,
                                           const std::string& validatedUnixStr,
-                                          const std::string& machineIdHash);
+                                          const std::string& machineIdHash,
+                                          const std::string& expireUnixStr);
 
 // Offline grace: allow authorized state for 1h after last successful verification
 // even when cache TTL expires (e.g. network temporarily unavailable)
 static const int kOfflineGracePeriodSec = 3600;
 
-static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
+static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated, bool* outExpired = nullptr)
 {
 	if (!outAuthenticated)
 	{
 		return false;
+	}
+	if (outExpired)
+	{
+		*outExpired = false;
 	}
 
 	const std::vector<std::string> cachePaths = GetLicenseCachePaths();
@@ -200,6 +205,7 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	std::string cachedMachineIdHash;
 	std::string authorizedRaw;
 	std::string validatedUnixRaw;
+	std::string expireUnixRaw;
 	std::string cachedSignature;
 
 	char line[512];
@@ -226,6 +232,7 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 		}
 		else if (key == "cache_expire_unix")
 		{
+			expireUnixRaw = value;
 			char* endPtr = nullptr;
 			const long long parsed = std::strtoll(value.c_str(), &endPtr, 10);
 			if (endPtr != value.c_str())
@@ -284,7 +291,7 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 	}
 
 	const std::string expectedSig = ComputeCacheSignature(
-		authorizedRaw, validatedUnixRaw, cachedMachineIdHash);
+		authorizedRaw, validatedUnixRaw, cachedMachineIdHash, expireUnixRaw);
 	if (cachedSignature != expectedSig)
 	{
 		DebugLog("[License] cache signature mismatch (tampering detected)");
@@ -311,6 +318,10 @@ static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated)
 			DebugLog("[License] cache expired but within offline grace (grace_remain=%llds)",
 				graceCutoff - nowUnix);
 			*outAuthenticated = true;
+			if (outExpired)
+			{
+				*outExpired = true;  // Signal caller to trigger background refresh
+			}
 			return true;
 		}
 		DebugLog("[License] cache expired beyond grace: now=%lld expire=%lld", nowUnix, expireUnix);
@@ -466,7 +477,19 @@ static void OpenActivationPage()
 static const char* kLicenseApiEndpoint = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test";
 static const int kAuthorizedCacheTtlSec = 600;     // 10 min TTL (periodic re-verification)
 static const int kDeniedCacheTtlSec = 600;          // 10 min TTL when denied
-static const char* kCacheSignatureSalt = "OST_WL_2026_SALT_K9x3";
+// Salt is XOR-obfuscated so `strings` cannot extract it from the binary.
+// To regenerate: python3 -c "salt='OST_WL_2026_SALT_K9x3'; key=0xA7; print(','.join(f'0x{c^key:02X}' for c in salt.encode()))"
+static std::string GetCacheSignatureSalt()
+{
+	static const unsigned char enc[] = {
+		0xE8, 0xF4, 0xF3, 0xF8, 0xF0, 0xEB, 0xF8, 0x95, 0x97, 0x95, 0x91,
+		0xF8, 0xF4, 0xE6, 0xEB, 0xF3, 0xF8, 0xEC, 0x9E, 0xDF, 0x94
+	};
+	static const unsigned char k = 0xA7;
+	std::string s(sizeof(enc), '\0');
+	for (size_t i = 0; i < sizeof(enc); ++i) { s[i] = static_cast<char>(enc[i] ^ k); }
+	return s;
+}
 static std::atomic<bool> sAutoRefreshInProgress{false};
 static std::atomic<uint32_t> sLastAutoRefreshAttemptMs{0};
 static const uint32_t kMinAutoRefreshIntervalMs = 60000; // min 60s between API calls
@@ -479,10 +502,11 @@ static const uint32_t kPostActivationCheckIntervalMs = 5000; // 5s interval duri
 // === Cache signature: DJB2-based HMAC to detect tampering ===
 static std::string ComputeCacheSignature(const std::string& authorizedStr,
                                           const std::string& validatedUnixStr,
-                                          const std::string& machineIdHash)
+                                          const std::string& machineIdHash,
+                                          const std::string& expireUnixStr)
 {
-	// Build: "authorized_val|validated_unix|machine_id|salt"
-	std::string payload = authorizedStr + "|" + validatedUnixStr + "|" + machineIdHash + "|" + kCacheSignatureSalt;
+	// Build: "authorized_val|validated_unix|machine_id|expire_unix|salt"
+	std::string payload = authorizedStr + "|" + validatedUnixStr + "|" + machineIdHash + "|" + expireUnixStr + "|" + GetCacheSignatureSalt();
 	uint32_t h1 = SimpleHash32(payload.c_str());
 	// Double-hash for extra diffusion
 	std::string pass2 = payload + "|" + std::to_string(h1);
@@ -601,7 +625,8 @@ static void TriggerBackgroundCacheRefresh()
 		const long long expireUnix = nowUnix + ttlSec;
 		const std::string authStr = authorized ? "true" : "false";
 		const std::string nowStr = std::to_string(nowUnix);
-		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid);
+		const std::string expireStr = std::to_string(expireUnix);
+		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid, expireStr);
 
 		char content[768];
 		snprintf(content, sizeof(content),
@@ -778,7 +803,8 @@ static void TriggerBackgroundCacheRefresh()
 		const long long expireUnix = nowUnix + ttlSec;
 		const std::string authStr = authorized ? "true" : "false";
 		const std::string nowStr = std::to_string(nowUnix);
-		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid);
+		const std::string expireStr = std::to_string(expireUnix);
+		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid, expireStr);
 
 		char content[768];
 		snprintf(content, sizeof(content),
@@ -825,7 +851,8 @@ void RefreshLicenseAuthenticatedState(bool force)
 	sLastLicenseRefreshTimeMs.store(nowMs, std::memory_order_relaxed);
 
 	bool cachedAuthenticated = false;
-	if (LoadLicenseAuthenticatedFromCache(&cachedAuthenticated))
+	bool cacheExpired = false;
+	if (LoadLicenseAuthenticatedFromCache(&cachedAuthenticated, &cacheExpired))
 	{
 		sLicenseAuthenticated.store(cachedAuthenticated, std::memory_order_relaxed);
 
@@ -833,6 +860,13 @@ void RefreshLicenseAuthenticatedState(bool force)
 		if (cachedAuthenticated)
 		{
 			sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+
+			// TTL expired but within offline grace — trigger background refresh
+			// so subscription cancellation is detected promptly
+			if (cacheExpired)
+			{
+				TriggerBackgroundCacheRefresh();
+			}
 		}
 		else
 		{
@@ -2331,8 +2365,8 @@ static PF_Err Render(
 		const A_long frameIndex = (in_data->time_step != 0) ? (clipTime / in_data->time_step) : 0;
 
 		const float angleRadians = (float)(M_PI / 180) * lineAngle;
-		const float lineCos = cos(angleRadians);
-		const float lineSin = sin(angleRadians);
+		const float lineCos = FastCos(angleRadians);
+		const float lineSin = FastSin(angleRadians);
 		// Optimized branchless saturate using fminf/fmaxf
 		auto saturate = [](float v) { return fminf(fmaxf(v, 0.0f), 1.0f); };
 
@@ -2342,6 +2376,7 @@ static PF_Err Render(
 
 		// Branchless clamp for line count
 		const int clampedLineCount = (int)fminf(fmaxf((float)lineCount, 1.0f), 5000.0f);
+		const bool isLicensedThisFrame = IsLicenseAuthenticated();
 		const int intervalFrames = lineInterval < 0.5f ? 0 : (int)(lineInterval + 0.5f);
 		
 		// Generate line params locally each frame for stateless rendering
@@ -2789,6 +2824,28 @@ static PF_Err Render(
 			}
 		}
 
+		// Pre-compute motion blur frame constants (avoid recalculating per-pixel per-line)
+		const float mbShutterFraction = motionBlurStrength / 360.0f;
+		const float mbPixelsPerFrame = (lineLifetime > 0.0f) ? (lineTravel / lineLifetime) : 0.0f;
+
+		// Pre-compute watermark frame constants (avoid recalculating per-pixel)
+		const int wmTextWidthPx = FreeModeWatermark::TextWidthPx();
+		const int wmTextHeightPx = FreeModeWatermark::TextHeightPx();
+		const int wmMarginX = FreeModeWatermark::kMarginX;
+		const int wmMarginY = FreeModeWatermark::kMarginY;
+		const float wmScale = dsScale > 0.0f ? dsScale : 1.0f;
+		const int wmScaledMarginX = std::max(0, static_cast<int>(std::lround(static_cast<float>(wmMarginX) * wmScale)));
+		const int wmScaledMarginY = std::max(0, static_cast<int>(std::lround(static_cast<float>(wmMarginY) * wmScale)));
+		const int wmScaledWidthPx = std::max(1, static_cast<int>(std::lround(static_cast<float>(wmTextWidthPx) * wmScale)));
+		const int wmScaledHeightPx = std::max(1, static_cast<int>(std::lround(static_cast<float>(wmTextHeightPx) * wmScale)));
+		const int wmStartX = std::max(0, output->width - wmScaledMarginX - wmScaledWidthPx);
+
+		// Pre-compute spawn area preview constants (avoid recalculating per-pixel)
+		const float saAlphaCenterX = alphaBoundsMinX + alphaBoundsWidth * 0.5f;
+		const float saAlphaCenterY = alphaBoundsMinY + alphaBoundsHeight * 0.5f;
+		const float saHalfW = alphaBoundsWidth * spawnScaleX * 0.5f;
+		const float saHalfH = alphaBoundsHeight * spawnScaleY * 0.5f;
+
 		// Main render loop - compiler optimization hints
 #if defined(__clang__)
 #pragma clang loop unroll_count(4)
@@ -2875,10 +2932,8 @@ static PF_Err Render(
 					if (motionBlurEnable && motionBlurSamples > 1)
 					{
 						const int samples = motionBlurSamples;
-						const float shutterFraction = motionBlurStrength / 360.0f;
-						const float pixelsPerFrame = lineTravel / lineLifetime;
-						const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
-						const float blurRange = effectiveVelocity * shutterFraction;
+						const float effectiveVelocity = mbPixelsPerFrame * ld.lineVelocity;
+						const float blurRange = effectiveVelocity * mbShutterFraction;
 						if (blurRange > 0.5f)
 						{
 							float saccumA = 0.0f;
@@ -2987,10 +3042,8 @@ static PF_Err Render(
 					if (motionBlurEnable && motionBlurSamples > 1)
 					{
 						const int samples = motionBlurSamples;
-						const float shutterFraction = motionBlurStrength / 360.0f;
-						const float pixelsPerFrame = lineTravel / lineLifetime;
-						const float effectiveVelocity = pixelsPerFrame * ld.lineVelocity;
-						const float blurRange = effectiveVelocity * shutterFraction;
+						const float effectiveVelocity = mbPixelsPerFrame * ld.lineVelocity;
+						const float blurRange = effectiveVelocity * mbShutterFraction;
 	
 						if (blurRange > 0.5f)
 						{
@@ -3164,20 +3217,15 @@ static PF_Err Render(
 			// Draw spawn area preview (filled with inverted colors)
 			if (showSpawnArea)
 				{
-					const float alphaCenterX = alphaBoundsMinX + alphaBoundsWidth * 0.5f;
-					const float alphaCenterY = alphaBoundsMinY + alphaBoundsHeight * 0.5f;
-					const float halfW = alphaBoundsWidth * spawnScaleX * 0.5f;
-					const float halfH = alphaBoundsHeight * spawnScaleY * 0.5f;
-					
 					// Transform pixel position to rotated spawn space
-					const float relX = (x + 0.5f) - alphaCenterX - userOriginOffsetX;
-					const float relY = (y + 0.5f) - alphaCenterY - userOriginOffsetY;
+					const float relX = (x + 0.5f) - saAlphaCenterX - userOriginOffsetX;
+					const float relY = (y + 0.5f) - saAlphaCenterY - userOriginOffsetY;
 					// Inverse rotate to check bounds
 					const float localX = relX * spawnCos + relY * spawnSin;
 					const float localY = -relX * spawnSin + relY * spawnCos;
 					
 					// Check if inside the spawn area (filled)
-					if (fabsf(localX) <= halfW && fabsf(localY) <= halfH)
+					if (fabsf(localX) <= saHalfW && fabsf(localY) <= saHalfH)
 					{
 						// Blend with spawn area color at 50%
 						const float blendAlpha = 0.5f;
@@ -3195,26 +3243,16 @@ static PF_Err Render(
 				}
 
 				// License watermark (non-authenticated mode):
-				// top-left with margin, bitmap text height ~= 32px
-				if (!IsLicenseAuthenticated())
+				// top-right with margin
+				if (!isLicensedThisFrame)
 				{
-					const int textWidthPx = FreeModeWatermark::TextWidthPx();
-					const int textHeightPx = FreeModeWatermark::TextHeightPx();
-					const int marginX = FreeModeWatermark::kMarginX;
-					const int marginY = FreeModeWatermark::kMarginY;
-					const float watermarkScale = dsScale > 0.0f ? dsScale : 1.0f;
-					const int scaledMarginX = std::max(0, static_cast<int>(std::lround(static_cast<float>(marginX) * watermarkScale)));
-					const int scaledMarginY = std::max(0, static_cast<int>(std::lround(static_cast<float>(marginY) * watermarkScale)));
-					const int scaledTextWidthPx = std::max(1, static_cast<int>(std::lround(static_cast<float>(textWidthPx) * watermarkScale)));
-					const int scaledTextHeightPx = std::max(1, static_cast<int>(std::lround(static_cast<float>(textHeightPx) * watermarkScale)));
-
-					if (x >= scaledMarginX - 1 && x < scaledMarginX + scaledTextWidthPx + 1 &&
-						y >= scaledMarginY - 1 && y < scaledMarginY + scaledTextHeightPx + 1)
+					if (x >= wmStartX - 1 && x < wmStartX + wmScaledWidthPx + 1 &&
+						y >= wmScaledMarginY - 1 && y < wmScaledMarginY + wmScaledHeightPx + 1)
 					{
-						const int localX = x - scaledMarginX;
-						const int localY = y - scaledMarginY;
-						const int sampleX = marginX + static_cast<int>(static_cast<float>(localX) / watermarkScale);
-						const int sampleY = marginY + static_cast<int>(static_cast<float>(localY) / watermarkScale);
+						const int localX = x - wmStartX;
+						const int localY = y - wmScaledMarginY;
+						const int sampleX = wmMarginX + static_cast<int>(static_cast<float>(localX) / wmScale);
+						const int sampleY = wmMarginY + static_cast<int>(static_cast<float>(localY) / wmScale);
 						const float fillAlpha = static_cast<float>(FreeModeWatermark::FillAlphaAt(sampleX, sampleY)) / 255.0f;
 						const float outlineAlpha = static_cast<float>(FreeModeWatermark::OutlineAlphaAt(sampleX, sampleY)) / 255.0f;
 						const bool fill = fillAlpha > 0.0f;
@@ -3225,7 +3263,7 @@ static PF_Err Render(
 							const float targetY = fill ? 1.0f : 0.0f;
 							const float targetU = 0.0f;
 							const float targetV = 0.0f;
-							const float baseAlpha = fill ? 0.92f : 0.78f;
+							const float baseAlpha = fill ? FreeModeWatermark::kFillOpacity : FreeModeWatermark::kOutlineOpacity;
 							const float overlayAlpha = baseAlpha * (fill ? fillAlpha : outlineAlpha);
 
 							outY = outY + (targetY - outY) * overlayAlpha;

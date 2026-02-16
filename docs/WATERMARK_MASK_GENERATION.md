@@ -48,16 +48,17 @@ cd /Users/kiyotonakamura/Desktop/Windy_Lines
   --out "OST_WindyLines_WatermarkMask.h"
 ```
 
-### フォントサイズとは別に拡大率を指定する（`--scale`）
+### 最新版
 ```bash
-cd /Users/kiyotonakamura/Desktop/Windy_Lines
-/Users/kiyotonakamura/Desktop/Windy_Lines/.venv/bin/python generate_watermark_mask.py \
-  --text "おしゃれテロップ・風を感じるライン" \
-  --font "/System/Library/Fonts/Hiragino Sans GB.ttc" \
-  --font-size 24 \
-  --scale 1.0 \
+cd /Users/kiyotonakamura/Desktop/Windy_Lines && .venv/bin/python generate_watermark_mask.py \
+  --text "Edit with" \
+  --text2 "おしゃれテロップ" \
+  --font "/System/Library/Fonts/ヒラギノ角ゴシック W7.ttc" \
+  --font-size 18 \
+  --font-size2 36 \
+  --gap 8 \
   --stroke-width 0 \
-  --hard-edge \
+  --opacity 0.66 \
   --out "OST_WindyLines_WatermarkMask.h"
 ```
 
@@ -85,8 +86,10 @@ find /System/Library/Fonts /Library/Fonts ~/Library/Fonts -type f \( -name "*.tt
 - 輪郭のぼかし量: `--outline-blur 0.0`（0でぼかし無し）
 - 2値化（ジャギー感）: `--binary-threshold 128`
 - まとめて粗くする: `--hard-edge`
+- 不透明度: `--opacity 0.66`（0.0〜1.0、輪郭は自動で fill × 0.85）
 
 ## 補足
 - 生成先は `OST_WindyLines_WatermarkMask.h`（既存を上書き）
 - C++側はこのヘッダを参照しているため、再生成だけで見た目を更新できます。
 - 文字を変えるとマスクサイズ（幅・高さ）も自動で再計算されます。
+- `--opacity` で不透明度もヘッダに埋め込まれるため、再生成 + 再ビルドだけで反映されます。

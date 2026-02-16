@@ -924,7 +924,9 @@
 		int inMaskHeight,
 		int inMarginX,
 		int inMarginY,
-		float inDsScale)
+		float inDsScale,
+		float inFillOpacity,
+		float inOutlineOpacity)
 	{
 		const int tx = blockIdx.x * blockDim.x + threadIdx.x;
 		const int ty = blockIdx.y * blockDim.y + threadIdx.y;
@@ -934,10 +936,11 @@
 		const int scaledMarginY = (int)(inMarginY * scale + 0.5f);
 		const int scaledWidth  = max(1, (int)(inMaskWidth  * scale + 0.5f));
 		const int scaledHeight = max(1, (int)(inMaskHeight * scale + 0.5f));
+		const int startX = max(0, (int)inWidth - scaledMarginX - scaledWidth);
 
 		if (tx >= scaledWidth || ty >= scaledHeight) return;
 
-		const int x = scaledMarginX + tx;
+		const int x = startX + tx;
 		const int y = scaledMarginY + ty;
 		if (x >= (int)inWidth || y >= (int)inHeight) return;
 
@@ -953,7 +956,7 @@
 		const bool outline = (!fill) && (oAlpha > 0.0f);
 		if (!fill && !outline) return;
 
-		const float baseAlpha    = fill ? 0.92f : 0.78f;
+		const float baseAlpha    = fill ? inFillOpacity : inOutlineOpacity;
 		const float overlayAlpha = baseAlpha * (fill ? fAlpha : oAlpha);
 
 		const int pixelIdx = y * inPitch + x;
@@ -995,7 +998,9 @@
 		int maskHeight,
 		int marginX,
 		int marginY,
-		float dsScale)
+		float dsScale,
+		float fillOpacity,
+		float outlineOpacity)
 	{
 		float scale = dsScale > 0.0f ? dsScale : 1.0f;
 		int scaledWidth  = max(1, (int)(maskWidth  * scale + 0.5f));
@@ -1020,7 +1025,9 @@
 			maskHeight,
 			marginX,
 			marginY,
-			dsScale);
+			dsScale,
+			fillOpacity,
+			outlineOpacity);
 
 		cudaDeviceSynchronize();
 	}
