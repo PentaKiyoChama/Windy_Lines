@@ -459,13 +459,13 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 
 | 手順 | 操作 | 待ち時間 |
 |------|------|---------|
-| 1 | PowerShell で `Remove-Item "$env:APPDATA\OshareTelop\license_cache_v1.txt" -ErrorAction SilentlyContinue` | — |
+| 1 | PowerShell で `Remove-Item "$env:APPDATA\OshareTelop\license_cache_v1.txt" -Recurse -Force -ErrorAction SilentlyContinue` | — |
 | 2 | PP を起動、クリップに WindyLines エフェクトを適用 | — |
 | 3 | **確認①**: WM が **表示される** | — |
 | 4 | **60〜90 秒待つ**（WinHTTP で API 呼出し） | 60〜90秒 |
 | 5 | タイムラインを動かして再描画 | — |
 | 6 | **確認②**: WM が **消えている** | — |
-| 7 | PowerShell で `Get-Content "$env:APPDATA\OshareTelop\license_cache_v1.txt"` | — |
+| 7 | PowerShell で `Get-Content "$env:APPDATA\OshareTelop\license_cache_v1.txt"`（失敗時は `Get-Item "$env:APPDATA\OshareTelop\license_cache_v1.txt" | Select-Object FullName,PSIsContainer` でファイル種別確認） | — |
 | 8 | **確認③**: `authorized=true` + `cache_signature=` + `machine_id_hash=` が存在 | — |
 
 ### K-2. Windows での MID が Mac と異なることの確認
@@ -660,7 +660,7 @@ python set_license_cache_state.py --state unauthorized --ttl 600
 Get-Content "$env:APPDATA\OshareTelop\license_cache_v1.txt"
 
 # キャッシュ削除
-Remove-Item "$env:APPDATA\OshareTelop\license_cache_v1.txt" -ErrorAction SilentlyContinue
+Remove-Item "$env:APPDATA\OshareTelop\license_cache_v1.txt" -Recurse -Force -ErrorAction SilentlyContinue
 
 # === API 直接テスト ===
 

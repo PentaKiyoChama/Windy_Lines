@@ -548,7 +548,7 @@ static void TriggerBackgroundCacheRefresh()
 
 	const std::string cachePath = paths.front();
 	std::string cacheDir = cachePath;
-	const size_t lastSlash = cacheDir.find_last_of('/');
+	const size_t lastSlash = cacheDir.find_last_of("/\\");
 	if (lastSlash != std::string::npos)
 	{
 		cacheDir = cacheDir.substr(0, lastSlash);
@@ -812,6 +812,20 @@ static void TriggerBackgroundCacheRefresh()
 			"license_key_masked=\nmachine_id_hash=%s\ncache_signature=%s\n",
 			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
 			mid.c_str(), sig.c_str());
+
+		DWORD existingAttr = GetFileAttributesA(cachePath.c_str());
+		if (existingAttr != INVALID_FILE_ATTRIBUTES && (existingAttr & FILE_ATTRIBUTE_DIRECTORY))
+		{
+			if (RemoveDirectoryA(cachePath.c_str()))
+			{
+				DebugLog("[License] removed unexpected directory at cache path: %s", cachePath.c_str());
+			}
+			else
+			{
+				DebugLog("[License] failed to remove unexpected directory at cache path: %s err=%lu",
+					cachePath.c_str(), GetLastError());
+			}
+		}
 
 		FILE* fp = std::fopen(cachePath.c_str(), "wb");
 		if (fp)

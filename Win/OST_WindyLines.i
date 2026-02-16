@@ -10659,33 +10659,33 @@ static __inline__ float saturate(float inX)
 				}
 				
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+				
+				{
+					const uint fontC[7] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
+					const uint fontL[7] = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F};
+					const int scale = 4;
+					const int baseX = 5, baseY = 5;
+					int px = ((int)inXY.x - baseX) / scale;
+					int py = ((int)inXY.y - baseY) / scale;
+					if (py >= 0 && py < 7)
+					{
+						uint fonts[2] = {0, 0};
+						int charPos = -1;
+						if (px >= 0 && px < 5) { fonts[0] = fontC[py]; charPos = 0; }
+						else if (px >= 6 && px < 11) { fonts[1] = fontL[py]; charPos = 1; px -= 6; }
+						if (charPos >= 0 && ((fonts[charPos] >> (4 - px)) & 1))
+						{
+							if (inIsBGRA)
+							{
+								pixel.x = 0.2f; pixel.y = 0.5f; pixel.z = 1.0f; pixel.w = 1.0f; 
+							}
+							else
+							{
+								pixel.x = 1.0f; pixel.y = 0.5f; pixel.z = 0.2f; pixel.w = 1.0f; 
+							}
+						}
+					}
+				}
 #line 756 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
 		
 		
@@ -10697,18 +10697,20 @@ static __inline__ float saturate(float inX)
 
 		
 		
-		static __inline__ void WatermarkOverlayKernel_Delegate( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale  , uint2 inXY    ); __kernel void WatermarkOverlayKernel( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale  ) {   WatermarkOverlayKernel_Delegate( ioImage, fillMask, outlineMask  , inPitch, in16f, inIsBGRA, inWidth, inHeight, inMaskWidth, inMaskHeight, inMarginX, inMarginY, inDsScale  , KernelXYUnsigned()    ); } static __inline__ void WatermarkOverlayKernel_Delegate( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale  , uint2 inXY    )
-#line 781 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
+		static __inline__ void WatermarkOverlayKernel_Delegate( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale, float inFillOpacity, float inOutlineOpacity  , uint2 inXY    ); __kernel void WatermarkOverlayKernel( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale, float inFillOpacity, float inOutlineOpacity  ) {   WatermarkOverlayKernel_Delegate( ioImage, fillMask, outlineMask  , inPitch, in16f, inIsBGRA, inWidth, inHeight, inMaskWidth, inMaskHeight, inMarginX, inMarginY, inDsScale, inFillOpacity, inOutlineOpacity  , KernelXYUnsigned()    ); } static __inline__ void WatermarkOverlayKernel_Delegate( __global float4* ioImage, __global uchar* fillMask, __global uchar* outlineMask  , int inPitch, int in16f, int inIsBGRA, unsigned int inWidth, unsigned int inHeight, int inMaskWidth, int inMaskHeight, int inMarginX, int inMarginY, float inDsScale, float inFillOpacity, float inOutlineOpacity  , uint2 inXY    )
+#line 783 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
 		{
 			float scale = inDsScale > 0.0f ? inDsScale : 1.0f;
 			int scaledMarginX = (int)(inMarginX * scale + 0.5f);
 			int scaledMarginY = (int)(inMarginY * scale + 0.5f);
 			int scaledWidth  = (inMaskWidth  * scale + 0.5f) > 1.0f ? (int)(inMaskWidth  * scale + 0.5f) : 1;
 			int scaledHeight = (inMaskHeight * scale + 0.5f) > 1.0f ? (int)(inMaskHeight * scale + 0.5f) : 1;
+			int startX = (int)inWidth - scaledMarginX - scaledWidth;
+			if (startX < 0) startX = 0;
 
 			if ((int)inXY.x >= scaledWidth || (int)inXY.y >= scaledHeight) return;
 
-			int x = scaledMarginX + (int)inXY.x;
+			int x = startX + (int)inXY.x;
 			int y = scaledMarginY + (int)inXY.y;
 			if (x >= (int)inWidth || y >= (int)inHeight) return;
 
@@ -10725,7 +10727,7 @@ static __inline__ float saturate(float inX)
 			int outline = (!fill && oAlpha > 0.0f) ? 1 : 0;
 			if (!fill && !outline) return;
 
-			float baseAlpha    = fill ? 0.92f : 0.78f;
+			float baseAlpha    = fill ? inFillOpacity : inOutlineOpacity;
 			float overlayAlpha = baseAlpha * (fill ? fAlpha : oAlpha);
 
 			int pixelIdx = y * inPitch + x;
@@ -10751,5 +10753,5 @@ static __inline__ float saturate(float inX)
 			WriteFloat4(pixel, ioImage, pixelIdx, !!in16f);
 		}
 
-#line 834 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
-#line 835 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
+#line 838 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
+#line 839 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
