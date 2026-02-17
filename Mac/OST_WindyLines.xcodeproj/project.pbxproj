@@ -344,7 +344,7 @@
 		7E83C10D170F4840008B8043 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = K6BMA3VLGX;
 				DSTROOT = "$(PROJECT_DIR)/build/install-root";
@@ -391,7 +391,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = K6BMA3VLGX;
 				DSTROOT = "$(PROJECT_DIR)/build/install-root";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -420,6 +422,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "MyCompany.${PRODUCT_NAME:rfc1034identifier}";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REZ_SEARCH_PATHS = (
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Resources\"",
