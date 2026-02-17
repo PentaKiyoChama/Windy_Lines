@@ -27,7 +27,7 @@ resource 'PiPL' (16000) {
 		},
 		/* [2] */
 		Name {
-			"mac_WindyLines"
+			"風を感じるライン"
 		},
 		/* [3] */
 		Category {
