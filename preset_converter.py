@@ -20,11 +20,11 @@ def parse_tsv(filepath):
 
 def convert_to_unified_preset_index(colorMode, presetIndex):
     """
-    Convert old colorMode + presetIndex to unified preset index
+    Convert legacy colorMode + presetIndex to unified preset index
     TSV colorMode values are 1-based (UI values):
       1 = 単色 (Single) → unified index 0
       2 = カスタム (Custom) → unified index 2
-      3 = プリセット (Preset) → unified index 4 + presetIndex
+    3 = プリセット (Preset, 1-based) → unified index 4 + (presetIndex - 1)
     New structure: 単色|(-|カスタム|(-|preset1|preset2|...
     Note: Separators (-|) ARE included in menu numbering
     UI values: 1=Single, 2=Sep, 3=Custom, 4=Sep, 5=Rainbow, 6=Pastel, ...
@@ -35,7 +35,10 @@ def convert_to_unified_preset_index(colorMode, presetIndex):
     elif colorMode == 2:
         return 2  # カスタム
     elif colorMode == 3:
-        return 4 + presetIndex  # セパレーター(1,3)をスキップしてプリセット開始
+        presetZeroBased = presetIndex - 1  # Legacy TSV presetIndex is 1-based
+        if presetZeroBased < 0:
+            presetZeroBased = 0
+        return 4 + presetZeroBased  # セパレーター(1,3)をスキップしてプリセット開始
     else:
         return 0  # Default to 単色 for invalid values
 

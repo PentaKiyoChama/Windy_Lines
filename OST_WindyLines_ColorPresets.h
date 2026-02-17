@@ -42,11 +42,8 @@ enum ColorPreset
 	COLOR_PRESET_LAVAFLOW,
 	COLOR_PRESET_GOLD,
 	COLOR_PRESET_MONOCHROME,
-	COLOR_PRESET_TEST_COLOR,
-	COLOR_PRESET_TEST_TWO,
-	COLOR_PRESET_TEST_THREE,
-	COLOR_PRESET_ALL_YELLOW,
 	COLOR_PRESET_RED_AND_BLACK,
+	COLOR_PRESET_SANDYOCEAN,
 	COLOR_PRESET_COUNT
 };
 
@@ -81,7 +78,7 @@ namespace ColorPresets {
 		{255, 255, 0, 204}, {255, 0, 102, 153}, {255, 204, 255, 0}, {255, 178, 178, 178}
 	};
 
-	// 警告 (Hazard)
+	// ハザード (Hazard)
 	const PresetColor kHazard[8] = {
 		{255, 255, 51, 0}, {255, 255, 128, 0}, {255, 0, 0, 0}, {255, 204, 0, 0},
 		{255, 153, 76, 0}, {255, 51, 51, 51}, {255, 255, 178, 0}, {255, 128, 0, 0}
@@ -129,7 +126,7 @@ namespace ColorPresets {
 		{255, 128, 255, 204}, {255, 25, 229, 255}, {255, 229, 255, 242}, {255, 0, 153, 229}
 	};
 
-	// 夢幻の風 (DreamyWind)
+	// ドリーム (DreamyWind)
 	const PresetColor kDreamyWind[8] = {
 		{255, 153, 229, 255}, {255, 255, 191, 229}, {255, 204, 255, 255}, {255, 255, 204, 242},
 		{255, 102, 204, 255}, {255, 255, 166, 204}, {255, 229, 242, 255}, {255, 255, 204, 217}
@@ -141,7 +138,7 @@ namespace ColorPresets {
 		{255, 255, 140, 0}, {255, 204, 85, 0}, {255, 178, 34, 34}, {255, 255, 165, 0}
 	};
 
-	// 海 (Ocean)
+	// オーシャン (Ocean)
 	const PresetColor kOcean[8] = {
 		{255, 0, 119, 190}, {255, 0, 191, 255}, {255, 135, 206, 235}, {255, 0, 150, 255},
 		{255, 30, 144, 255}, {255, 100, 149, 237}, {255, 173, 216, 230}, {255, 0, 206, 209}
@@ -165,7 +162,7 @@ namespace ColorPresets {
 		{255, 106, 90, 205}, {255, 123, 104, 238}, {255, 147, 112, 219}, {255, 138, 43, 226}
 	};
 
-	// 朝露 (MorningDew)
+	// 朝つゆ (MorningDew)
 	const PresetColor kMorningDew[8] = {
 		{255, 255, 255, 0}, {255, 255, 165, 0}, {255, 255, 20, 147}, {255, 0, 191, 255},
 		{255, 30, 144, 255}, {255, 50, 205, 50}, {255, 138, 43, 226}, {255, 255, 69, 0}
@@ -219,7 +216,7 @@ namespace ColorPresets {
 		{255, 255, 215, 0}, {255, 255, 228, 181}, {255, 255, 248, 220}, {255, 255, 255, 240}
 	};
 
-	// ネオンブラスト (NeonBlast)
+	// ネオンサイン (NeonBlast)
 	const PresetColor kNeonBlast[8] = {
 		{255, 255, 0, 255}, {255, 255, 20, 147}, {255, 255, 105, 180}, {255, 219, 112, 147},
 		{255, 186, 85, 211}, {255, 138, 43, 226}, {255, 148, 0, 211}, {255, 199, 21, 133}
@@ -231,7 +228,7 @@ namespace ColorPresets {
 		{255, 255, 255, 0}, {255, 255, 215, 0}, {255, 139, 0, 0}, {255, 128, 0, 0}
 	};
 
-	// 宇宙嵐 (CosmicStorm)
+	// エイリアン (CosmicStorm)
 	const PresetColor kCosmicStorm[8] = {
 		{255, 0, 255, 127}, {255, 46, 139, 87}, {255, 0, 250, 154}, {255, 127, 255, 212},
 		{255, 173, 216, 230}, {255, 138, 43, 226}, {255, 147, 112, 219}, {255, 255, 20, 147}
@@ -255,34 +252,16 @@ namespace ColorPresets {
 		{255, 128, 128, 128}, {255, 105, 105, 105}, {255, 64, 64, 64}, {255, 0, 0, 0}
 	};
 
-	// テストカラー (test_color)
-	const PresetColor ktest_color[8] = {
-		{255, 255, 0, 0}, {255, 255, 128, 0}, {255, 255, 255, 0}, {255, 0, 255, 0},
-		{255, 0, 0, 255}, {255, 74, 0, 130}, {255, 140, 0, 255}, {255, 255, 0, 255}
-	};
-
-	// test_two (test_two)
-	const PresetColor ktest_two[8] = {
-		{255, 76, 25, 102}, {255, 76, 25, 103}, {255, 76, 25, 104}, {255, 76, 25, 105},
-		{255, 76, 25, 106}, {255, 76, 25, 107}, {255, 76, 25, 108}, {255, 76, 25, 109}
-	};
-
-	// test_3 (test_three)
-	const PresetColor ktest_three[8] = {
-		{255, 102, 229, 128}, {255, 153, 242, 204}, {255, 51, 178, 229}, {255, 178, 255, 178},
-		{255, 102, 204, 255}, {255, 76, 204, 102}, {255, 153, 204, 255}, {255, 204, 255, 229}
-	};
-
-	// 全部黄色 (all_yellow)
-	const PresetColor kall_yellow[8] = {
-		{255, 255, 215, 0}, {255, 255, 215, 1}, {255, 255, 215, 2}, {255, 255, 215, 3},
-		{255, 255, 215, 4}, {255, 255, 215, 5}, {255, 255, 215, 6}, {255, 255, 215, 7}
-	};
-
 	// 赤と黒 (red_and_black)
 	const PresetColor kred_and_black[8] = {
 		{255, 0, 0, 0}, {255, 0, 0, 0}, {255, 0, 0, 0}, {255, 0, 0, 0},
 		{255, 255, 0, 0}, {255, 255, 0, 0}, {255, 255, 0, 0}, {255, 255, 0, 0}
+	};
+
+	// 砂浜の海 (SandyOcean)
+	const PresetColor kSandyOcean[8] = {
+		{255, 0, 191, 255}, {255, 255, 215, 0}, {255, 0, 150, 255}, {255, 255, 223, 0},
+		{255, 30, 144, 255}, {255, 255, 255, 0}, {255, 100, 149, 237}, {255, 255, 204, 51}
 	};
 }
 
@@ -322,21 +301,18 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		case 31: return ColorPresets::kLavaFlow;
 		case 32: return ColorPresets::kGold;
 		case 33: return ColorPresets::kMonochrome;
-		case 34: return ColorPresets::ktest_color;
-		case 35: return ColorPresets::ktest_two;
-		case 36: return ColorPresets::ktest_three;
-		case 37: return ColorPresets::kall_yellow;
-		case 38: return ColorPresets::kred_and_black;
+		case 34: return ColorPresets::kred_and_black;
+		case 35: return ColorPresets::kSandyOcean;
 		default: return ColorPresets::kRainbow;  // Fallback to first preset
 	}
 }
 
 // Total number of color presets (for UI generation)
-static const int kColorPresetCount = 38;
+static const int kColorPresetCount = 35;
 
 // Total number of menu items including separators
-// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets=38 = 42
-static const int kUnifiedPresetCount = 42;
+// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets=35 = 39
+static const int kUnifiedPresetCount = 39;
 
 // Preset names (Japanese) for UI labels
 static const char* kColorPresetNames[] = {
@@ -344,7 +320,7 @@ static const char* kColorPresetNames[] = {
 	"パステルレインボー",  // RainbowPastel
 	"森",  // Forest
 	"サイバー",  // Cyber
-	"警告",  // Hazard
+	"ハザード",  // Hazard
 	"桜",  // Sakura
 	"砂漠",  // Desert
 	"星屑",  // StarDust
@@ -352,13 +328,13 @@ static const char* kColorPresetNames[] = {
 	"危険地帯",  // DangerZone
 	"妖艶",  // Yoen
 	"爽快",  // Sokai
-	"夢幻の風",  // DreamyWind
+	"ドリーム",  // DreamyWind
 	"夕焼け",  // Sunset
-	"海",  // Ocean
+	"オーシャン",  // Ocean
 	"秋",  // Autumn
 	"雪",  // Snow
 	"深海",  // DeepSea
-	"朝露",  // MorningDew
+	"朝つゆ",  // MorningDew
 	"夜空",  // NightSky
 	"炎",  // Flame
 	"大地",  // Earth
@@ -367,17 +343,14 @@ static const char* kColorPresetNames[] = {
 	"夜の街",  // CityNight
 	"月光",  // Moonlight
 	"眩光",  // DazzlingLight
-	"ネオンブラスト",  // NeonBlast
+	"ネオンサイン",  // NeonBlast
 	"毒沼",  // ToxicSwamp
-	"宇宙嵐",  // CosmicStorm
+	"エイリアン",  // CosmicStorm
 	"溶岩流",  // LavaFlow
 	"金",  // Gold
 	"モノクロ",  // Monochrome
-	"テストカラー",  // test_color
-	"test_two",  // test_two
-	"test_3",  // test_three
-	"全部黄色",  // all_yellow
-	"赤と黒"  // red_and_black
+	"赤と黒",  // red_and_black
+	"砂浜の海"  // SandyOcean
 };
 
 // Generate unified preset menu string (Single|(-|Custom|(-|Preset1|Preset2|...)
@@ -407,7 +380,7 @@ inline void UnifiedIndexToColorModeAndPreset(int unifiedIndex, int& outColorMode
 	} else if (unifiedIndex == 2) {
 		outColorMode = 1;  // Custom
 		outPresetIndex = 0;
-	} else if (unifiedIndex >= 4 && unifiedIndex < 4 + 38) {
+	} else if (unifiedIndex >= 4 && unifiedIndex < 4 + 35) {
 		outColorMode = 2;  // Preset
 		outPresetIndex = unifiedIndex - 4;  // 0-based preset index
 	} else {
@@ -423,7 +396,7 @@ inline int ColorModeAndPresetToUnifiedIndex(int colorMode, int presetIndex) {
 	if (colorMode == 1) return 2;  // Custom
 	if (colorMode == 2) {  // Preset
 		int idx = presetIndex + 4;  // Skip Single, Sep, Custom, Sep
-		if (idx >= 4 && idx < 4 + 38) return idx;
+		if (idx >= 4 && idx < 4 + 35) return idx;
 		return 4;  // Default to first preset
 	}
 	return 0;  // Default to Single

@@ -1417,6 +1417,16 @@ static void ApplyEffectPreset(
 	
 	// New parameters
 	updatePopup(OST_WINDYLINES_LINE_CAP, preset.lineCap);
+	int legacyColorMode = COLOR_MODE_PRESET;
+	if (preset.unifiedPresetIndex == 0)
+	{
+		legacyColorMode = COLOR_MODE_SINGLE;
+	}
+	else if (preset.unifiedPresetIndex == 2)
+	{
+		legacyColorMode = COLOR_MODE_CUSTOM;
+	}
+	updatePopup(OST_WINDYLINES_COLOR_MODE, legacyColorMode);
 	// Use unified preset index (colorMode hidden, only COLOR_PRESET used)
 	updatePopup(OST_WINDYLINES_COLOR_PRESET, preset.unifiedPresetIndex + 1);  // Convert to 1-based
 	updatePopup(OST_WINDYLINES_SPAWN_SOURCE, preset.spawnSource);
@@ -1428,6 +1438,14 @@ static void ApplyEffectPreset(
 		paramUtils->PF_UpdateParamUI(in_data->effect_ref, paramId, params[paramId]);
 	};
 	updateCheckbox(OST_WINDYLINES_HIDE_ELEMENT, preset.hideElement);
+
+	// Linkage (EffectPreset stores 0-based mode, popup is 1-based)
+	updatePopup(OST_WINDYLINES_LENGTH_LINKAGE, preset.lengthLinkage + 1);
+	updateFloat(OST_WINDYLINES_LENGTH_LINKAGE_RATE, preset.lengthLinkageRate);
+	updatePopup(OST_WINDYLINES_THICKNESS_LINKAGE, preset.thicknessLinkage + 1);
+	updateFloat(OST_WINDYLINES_THICKNESS_LINKAGE_RATE, preset.thicknessLinkageRate);
+	updatePopup(OST_WINDYLINES_TRAVEL_LINKAGE, preset.travelLinkage + 1);
+	updateFloat(OST_WINDYLINES_TRAVEL_LINKAGE_RATE, preset.travelLinkageRate);
 
 	// Force UI refresh and re-render
 	out_data->out_flags |= PF_OutFlag_FORCE_RERENDER;
@@ -1504,6 +1522,12 @@ static void ApplyDefaultEffectParams(
 	updatePopup(OST_WINDYLINES_COLOR_MODE, COLOR_MODE_DFLT);
 	updatePopup(OST_WINDYLINES_COLOR_PRESET, COLOR_PRESET_DFLT);
 	updatePopup(OST_WINDYLINES_SPAWN_SOURCE, SPAWN_SOURCE_DFLT);
+	updatePopup(OST_WINDYLINES_LENGTH_LINKAGE, LINKAGE_MODE_DFLT + 1);
+	updateFloat(OST_WINDYLINES_LENGTH_LINKAGE_RATE, static_cast<float>(LINKAGE_RATE_DFLT));
+	updatePopup(OST_WINDYLINES_THICKNESS_LINKAGE, LINKAGE_MODE_DFLT + 1);
+	updateFloat(OST_WINDYLINES_THICKNESS_LINKAGE_RATE, static_cast<float>(LINKAGE_RATE_DFLT));
+	updatePopup(OST_WINDYLINES_TRAVEL_LINKAGE, LINKAGE_MODE_DFLT + 1);
+	updateFloat(OST_WINDYLINES_TRAVEL_LINKAGE_RATE, static_cast<float>(LINKAGE_RATE_DFLT));
 	
 	auto updateCheckbox = [&](int paramId, bool value)
 	{
