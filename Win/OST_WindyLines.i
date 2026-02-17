@@ -10664,33 +10664,33 @@ static __inline__ float saturate(float inX)
 				}
 				
 
-				
-				{
-					const uint fontC[7] = {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E};
-					const uint fontL[7] = {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F};
-					const int scale = 4;
-					const int baseX = 5, baseY = 5;
-					int px = ((int)inXY.x - baseX) / scale;
-					int py = ((int)inXY.y - baseY) / scale;
-					if (py >= 0 && py < 7)
-					{
-						uint fonts[2] = {0, 0};
-						int charPos = -1;
-						if (px >= 0 && px < 5) { fonts[0] = fontC[py]; charPos = 0; }
-						else if (px >= 6 && px < 11) { fonts[1] = fontL[py]; charPos = 1; px -= 6; }
-						if (charPos >= 0 && ((fonts[charPos] >> (4 - px)) & 1))
-						{
-							if (inIsBGRA)
-							{
-								pixel.x = 0.2f; pixel.y = 0.5f; pixel.z = 1.0f; pixel.w = 1.0f; 
-							}
-							else
-							{
-								pixel.x = 1.0f; pixel.y = 0.5f; pixel.z = 0.2f; pixel.w = 1.0f; 
-							}
-						}
-					}
-				}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #line 762 "C:\\Users\\Owner\\Desktop\\Premiere_Pro_24.0_C_Win_SDK\\Premiere_Pro_24.0_C++_Win_SDK\\Premiere_Pro_24.0_SDK\\Examples\\Projects\\GPUVideoFilter\\Windy_Lines\\OST_WindyLines.cl"
 		
 		
