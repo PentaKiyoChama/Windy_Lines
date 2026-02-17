@@ -83,6 +83,17 @@
 
 ## Metal特有の注意点
 
+### 0. ProcAmp2Params構造体とカーネル引数の同期（最重要）
+
+Metalは `ProcAmp2Params` 構造体をバッファ（インデックス5）としてカーネルに丸ごと渡す。
+
+**必須ルール**:
+- 構造体のフィールド順序 = `.cl` カーネルの引数順序（完全一致）
+- カーネルに渡さないパラメータは構造体末尾の「CPU-only section」に配置
+- CUDAは個別引数、OpenCLはclSetKernelArgなので影響を受けない
+
+**v64での修正例**: `mLineSkew` が構造体と `.cl` で違う位置にあったため、全パラメータがずれてMacで線が描画されなかった。
+
 ### 1. Atomic操作
 ```cpp
 // CUDA
@@ -102,17 +113,21 @@ atomicAdd(&counter[0], 1);
 
 ---
 
-## 現在の実装状況 (v51)
+## 現在の実装状況 (v64)
 
 ### 実装済み機能
 ✅ 基本線描画
-✅ Easing (10種類)
+✅ Easing (28種類: Linear, SmoothStep, Sine, Quad, Cubic, Circ, Back, Elastic, Bounce 各In/Out/InOut/OutIn)
 ✅ Shadow (影付き)
 ✅ Blend Mode (4種類: Back/Front/Back&Front/Alpha)
 ✅ Motion Blur
 ✅ Spawn Area (出現範囲スケール)
 ✅ Focus/Depth (深度フォーカス)
 ✅ Start Time/Duration (clipTime-based計算)
+✅ 配色システム (Single/Preset(33)/Custom(8))
+✅ アンチエイリアシング
+✅ Skew (シアー変形: px -= skew * py)
+✅ Premultiplied Alpha Compositing (全ブレンドモード統一済み)
 
 ### CPU/GPU同期状態
 ✅ 全機能で3実装が同期済み
@@ -122,10 +137,12 @@ atomicAdd(&counter[0], 1);
 ## トラブルシューティング
 
 ### 「CUDAで動くのにMetalで動かない」場合
-1. `OST_WindyLines.cl` に該当機能が移植されているか確認
-2. 関数名・型名の違いを確認（上記の表参照）
-3. Atomic操作をMetal形式に変換しているか確認
-4. バッファ初期化でnullptrを使っていないか確認
+1. `ProcAmp2Params` 構造体のフィールド順序が `.cl` カーネル引数順序と一致しているか確認（**最も多い原因**）
+2. `OST_WindyLines.cl` に該当機能が移植されているか確認
+3. 関数名・型名の違いを確認（上記の表参照）
+4. Atomic操作をMetal形式に変換しているか確認
+5. バッファ初期化でnullptrを使っていないか確認
+6. カーネル引数にないパラメータが構造体のカーネルセクションに混ざっていないか確認
 
 ### 「CPUとGPUで結果が違う」場合
 1. 浮動小数点演算の順序が違う可能性
@@ -159,6 +176,6 @@ atomicAdd(&counter[0], 1);
 ---
 
 ## 最終更新
-- 日付: 2026-01-27
-- バージョン: v51
-- 状態: Start Time/Duration修正完了、全機能動作中
+- 日付: 2026-02-17
+- バージョン: v64
+- 状態: Skewパラメータ追加、OutInイージング修正、Mac Metal/OpenCL描画修正完了

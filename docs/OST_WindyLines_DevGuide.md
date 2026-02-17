@@ -1,8 +1,79 @@
 # OST_WindyLines 開発ガイド
 
-## ステータス: 安定版 (2026-01-20)
+## ステータス: 安定版 (2026-02-17)
 
 `allowMidPlay` パラメータ、線のアニメーション（頭が伸び尾が縮む）、Wind Originが正しく動作しています。CPU-GPU間のデータ共有により、クリップの先頭から線が徐々に出現する機能が実現されました。
+
+v64以降: Skew（シアー変形）パラメータを追加、OutInイージングの中間停止問題を修正、Mac Metal/OpenCLの描画不具合を修正。
+
+---
+
+## 互換性ポリシー（2026-02-17 追記）
+
+### リリース可（既存プロジェクト互換を維持）
+
+- パラメータを**末尾に追加**する
+- Effect Preset / Color Preset の項目を**末尾に追加**する
+- 既存パラメータのデフォルト値を微調整する（意味・型を変えない範囲）
+
+### リリース注意（既存プロジェクト破壊リスク）
+
+- 既存パラメータIDの**順序入れ替え**
+- 既存パラメータの**削除**
+- 既存パラメータの**型変更**や**意味変更**
+- `AE_Effect_Match_Name` の変更（既存クリップ紐付けが切れる）
+
+### 最小回帰テスト（リリース前）
+
+1. 既存プロジェクトを開く
+2. クリップ上の既存設定が崩れていないことを確認
+3. 再生・保存・再オープンで設定保持を確認
+
+---
+
+## プリセット拡張ルール（2026-02-17 追記）
+
+### Effect Preset を増やす場合
+
+- `presets.tsv` に**末尾追加**
+- `preset_converter.py` を実行して `OST_WindyLines_Presets.h` を再生成
+- `kEffectPresetCount` と UI メニューは生成結果から自動反映される
+
+### Color Preset を増やす場合
+
+- `color_presets.tsv` に**IDを増分で末尾追加**（既存IDは変更しない）
+- `color_preset_converter.py` を実行して `OST_WindyLines_ColorPresets.h` を再生成
+- `kColorPresetCount` / `kUnifiedPresetCount` / `GetUnifiedPresetMenuString()` / `UnifiedIndexToColorModeAndPreset()` の整合を確認
+
+### 禁止事項
+
+- 既存プリセットIDの再採番
+- 既存プリセットの並び替え
+- 既存プリセット名と中身の不一致変更（同じIDに別の色を割り当てる）
+
+---
+
+## ライセンスキャッシュ（Windows）補足（2026-02-17 追記）
+
+### 実パス
+
+- 基本: `%APPDATA%\\OshareTelop\\license_cache_v1.txt`
+- フォールバック: `%USERPROFILE%\\AppData\\Roaming\\OshareTelop\\license_cache_v1.txt`
+
+### K-1 テスト時の推奨コマンド
+
+```powershell
+# キャッシュ削除（ファイル/誤ディレクトリ両対応）
+Remove-Item "$env:APPDATA\OshareTelop\license_cache_v1.txt" -Recurse -Force -ErrorAction SilentlyContinue
+
+# キャッシュ確認
+Get-Content "$env:APPDATA\OshareTelop\license_cache_v1.txt"
+
+# 失敗時（ファイル種別確認）
+Get-Item "$env:APPDATA\OshareTelop\license_cache_v1.txt" | Select-Object FullName, PSIsContainer
+```
+
+> 補足: Windows 側でキャッシュ保存処理のパス切り出しは修正済み（`/` と `\\` の両方を考慮）。
 
 ---
 
@@ -131,8 +202,11 @@ const float centerY = alphaCenterY + (ry - 0.5f) * alphaBoundsHeightSafe
 |---------|------|
 | `OST_WindyLines.h` | パラメータ定義、SharedClipData 構造体 |
 | `OST_WindyLines_CPU.cpp` | CPUレンダリング、clipStartFrame の取得と共有 |
-| `OST_WindyLines_GPU.cpp` | GPUレンダリング（DirectX/CUDA/OpenCL/Metal） |
-| `OST_WindyLines.hlsl` | DirectXシェーダー |
+| `OST_WindyLines_GPU.cpp` | GPUレンダリング（DirectX/CUDA/OpenCL/Metal）、ProcAmp2Params構造体 |
+| `OST_WindyLines.cu` | CUDAカーネル（Windowsリファレンス実装） |
+| `OST_WindyLines.cl` | OpenCL/Metalカーネル（Macはこれを共有） |
+| `OST_WindyLines.metal` | Metal エントリポイント（.clをinclude） |
+| `OST_WindyLines_Common.h` | 共有イージング関数（CPUで使用） |
 | `OST_WindyLines_Notes.json` | AI向け技術ノート |
 
 ---
@@ -205,6 +279,57 @@ const float centerY = alphaCenterY + (ry - 0.5f) * alphaBoundsHeightSafe
 
 ## 最近の修正履歴
 
+### 2026-02-17: Skew（シアー変形）パラメータの追加
+
+**機能**: 線を平行四辺形に変形する「シアー量」パラメータ
+
+**実装詳細**:
+- 変形式: `px -= skew * py`（回転後のローカル座標空間で適用）
+- 範囲: -2.0 ～ +2.0（デフォルト: 0.0）
+- enum位置: `OST_WINDYLINES_LINE_SKEW`（LINE_ANGLE=27 と LINE_CAP=29 の間、位置28）
+- 全5箇所のSDF評価ポイントにシアー適用（線本体、影、モーションブラー）
+- CPU/CUDA/OpenCL/Metal全バックエンドに実装済み
+
+**注意事項**:
+- CUDAは個別カーネル引数として `inLineSkew` を渡す
+- OpenCLは `clSetKernelArg` インデックス65で渡す
+- Metalは `ProcAmp2Params` 構造体経由（mLineSkewフィールド）
+
+---
+
+### 2026-02-17: OutInイージングの中間停止問題修正
+
+**問題**: OutIn系イージング（SineOutIn, QuadOutIn, CubicOutIn, CircOutIn）の中間地点でアニメーションが完全に停止する瞬間があった
+
+**原因**: piecewise OutIn実装で t=0.5 付近の導関数が0になり、速度が一瞬ゼロになる
+
+**解決策**: 25%リニアブレンド（k=0.25）
+```cpp
+const float k = 0.25f;
+return outIn * (1.0f - k) + t * k;
+```
+OutInカーブを75%、リニアを25%でブレンドすることで、中間の死点を解消しつつOutInの特性（速→遅→速）を維持。
+
+**対象**: `OST_WindyLines_Common.h` の case 6, 10, 14, 18
+
+---
+
+### 2026-02-17: Mac Metal/OpenCL描画不具合の修正
+
+**問題**: Mac環境（Metal/OpenCL）で線が一切描画されない
+
+**原因**: `ProcAmp2Params` 構造体と `.cl` カーネル引数の順序不一致（2つの問題）
+1. `mLineSkew` が構造体では位置21（mLineCapの後）だったが、.clカーネルでは末尾（位置60）→ 位置21以降の全パラメータがずれる
+2. `mMotionBlurType` が構造体に存在するが `.cl` カーネルには存在しない → さらに1つ分ずれる
+
+**解決策**:
+- `mLineSkew` を `mMotionBlurVelocity` の後（カーネル引数の末尾）に移動
+- `mMotionBlurType` をCPU専用セクションに移動
+
+**重要な教訓**: Metalは `ProcAmp2Params` 構造体をバッファとして丸ごとカーネルに渡すため、構造体のフィールド順序は `.cl` カーネルの引数順序と**完全に一致**していなければならない。CUDAは個別引数を使うため影響を受けない。
+
+---
+
 ### 2026-01-20: 配色システムの実装
 
 **機能**: 線ごとに異なる色を設定可能に
@@ -238,6 +363,23 @@ Rainbow, Pastel, Forest, Cyber, Sakura, Ocean, Sunset, Neon, Gold, Monochrome...
 **問題3**: Wind OriginがY軸に効いていない
 - 原因: X軸にのみ `originOffset` を加算
 - 解決: 線の角度方向に適用（`originOffset * lineCos`, `originOffset * lineSin`）
+
+---
+
+## Metal/OpenCL構造体アライメント注意事項
+
+### ProcAmp2Params 構造体とカーネル引数の同期
+
+Metalレンダリングパスでは、`ProcAmp2Params` 構造体がバッファ（インデックス5）としてカーネルに渡される。このため:
+
+1. **構造体のフィールド順序** = `.cl` カーネルの引数順序（完全一致必須）
+2. CUDAは個別引数なので影響を受けない
+3. OpenCLは `clSetKernelArg` で個別インデックス指定なので影響を受けない
+4. **パラメータ追加時**: 構造体と `.cl` カーネルの**両方**に同じ順序で追加すること
+
+### CPU専用パラメータの扱い
+
+カーネルに渡す必要のないパラメータ（例: `mMotionBlurType`）は、構造体の末尾に「CPU-only section」として配置する。カーネル引数セクションの中に混ぜてはならない。
 
 ---
 

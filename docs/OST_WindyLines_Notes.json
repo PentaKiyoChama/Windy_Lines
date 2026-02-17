@@ -1,9 +1,9 @@
 {
   "AI_READ_ME_FIRST": {
     "project": "OST_WindyLines Wind Lines Effect",
-    "version": "v63 - 2026-02-04",
-    "status": "STABLE - CPU motion blur gray artifacts fixed",
-    "last_critical_fix": "v63: Fixed CPU motion blur rendering gray trail artifacts by matching CUDA implementation exactly"
+    "version": "v64 - 2026-02-17",
+    "status": "STABLE - Skew parameter added, OutIn easing dead-stop fixed, Mac Metal/OpenCL rendering fixed",
+    "last_critical_fix": "v64: Fixed Mac Metal/OpenCL rendering failure caused by ProcAmp2Params struct field order mismatch with .cl kernel arguments"
   },
   
   "QUICK_REF": {
@@ -18,8 +18,50 @@
     "multi_platform": "Update ALL THREE: CPU, CUDA, OpenCL when adding features",
     "cuda_is_reference": "CUDA is canonical - port to OpenCL/Metal",
     "metal_uses_opencl": "Metal includes OpenCL - maintain .cl only",
+    "metal_struct_alignment": "ProcAmp2Params struct field order MUST match .cl kernel argument order exactly - Metal passes struct as raw buffer",
     "alpha_compositing": "ALWAYS use premultiplied alpha compositing: (srcColor * srcAlpha + dstColor * dstAlpha * (1-srcAlpha)) / outAlpha",
     "motion_blur_cpu_gpu_sync": "CPU motion blur implementation must exactly match CUDA reference implementation"
+  },
+
+  "V64_SKEW_OUTIN_METAL_FIX": {
+    "date": "2026-02-17",
+    "changes": {
+      "skew_parameter": {
+        "description": "Added Skew (parallelogram shear) parameter to all backends",
+        "transform": "px -= skew * py (applied in rotated local coordinates before SDF evaluation)",
+        "range": "-2.0 to +2.0 (default: 0.0)",
+        "enum_position": "OST_WINDYLINES_LINE_SKEW at index 28 (between LINE_ANGLE=27 and LINE_CAP=29)",
+        "files_modified": ["OST_WindyLines.h", "OST_WindyLines_CPU.cpp", "OST_WindyLines_GPU.cpp", "OST_WindyLines.cu", "OST_WindyLines.cl"],
+        "sdf_points": "Applied at all 5 SDF evaluation points (line body, shadow, motion blur samples)",
+        "gpu_passing": {
+          "cuda": "Individual kernel argument (inLineSkew after inLineCap)",
+          "opencl": "clSetKernelArg index 65",
+          "metal": "Via ProcAmp2Params struct (mLineSkew field after mMotionBlurVelocity)"
+        }
+      },
+      "outin_easing_dead_stop_fix": {
+        "description": "Fixed OutIn easing curves having complete velocity stop at midpoint (t=0.5)",
+        "affected_types": "SineOutIn(case 6), QuadOutIn(case 10), CubicOutIn(case 14), CircOutIn(case 18)",
+        "root_cause": "Piecewise OutIn derivative approaches zero at t=0.5, causing animation to freeze momentarily",
+        "solution": "25% linear blend: return outIn * (1-k) + t * k where k=0.25",
+        "file": "OST_WindyLines_Common.h",
+        "previous_attempts": ["Smoothstep blend (caused backwards motion)", "15% linear blend (too subtle)"]
+      },
+      "mac_metal_opencl_rendering_fix": {
+        "description": "Fixed lines not rendering on Mac (Metal/OpenCL) after Skew parameter addition",
+        "root_cause_1": "mLineSkew was at struct position 21 (after mLineCap) but .cl kernel expects it at end (position 60) - caused ALL params from index 21 onward to be misaligned for Metal",
+        "root_cause_2": "mMotionBlurType existed in ProcAmp2Params struct but NOT in .cl kernel - caused additional 1-field offset",
+        "fix_1": "Moved mLineSkew to end of kernel params section (after mMotionBlurVelocity) in struct",
+        "fix_2": "Moved mMotionBlurType from kernel params section to CPU-only section in struct",
+        "critical_lesson": "Metal passes ProcAmp2Params as raw buffer at index 5 - struct field order MUST exactly match .cl kernel argument order",
+        "file": "OST_WindyLines_GPU.cpp"
+      }
+    },
+    "verification": {
+      "windows_cuda": "Verify lines render with Skew applied - CUDA uses individual args, struct changes don't affect it",
+      "mac_metal": "Verify lines render on Mac - critical to confirm struct/kernel alignment is correct",
+      "outin_easing": "Test SineOutIn/QuadOutIn/CubicOutIn/CircOutIn - animation should maintain continuous motion through midpoint"
+    }
   },
 
   "V63_CPU_MOTION_BLUR_FIX": {
@@ -407,7 +449,9 @@
     "focus_dof": "Pseudo-blur via thickness + alpha (no Gaussian)",
     "effect_presets": "One-click parameter batch update (8 presets)",
     "spawn_scale": "X/Y separate spawn area expansion",
-    "shadows": "Offset shadow with configurable color/offset/opacity"
+    "shadows": "Offset shadow with configurable color/offset/opacity",
+    "skew": "Parallelogram shear transform (px -= skew * py), range -2 to +2, applied in rotated local coordinates before SDF evaluation",
+    "easing": "28 types including OutIn variants with 25% linear blend to avoid dead-stop at midpoint"
   },
   
   "DO_NOT": [
@@ -427,9 +471,11 @@
     "easing_feels_wrong": "Check if length animation matches travel - should use same easedT = ApplyEasing(t, easingType) for both",
     "round_cap_issues": "Verify effectiveLength = currentLength - thickness, and thickness clamping when length < thickness",
     "speed_discontinuities": "Removed in v61 - length animation now unified with travel easing throughout entire lifetime",
-    "mac_lines_not_rendering": "CHECK BRACE STRUCTURE FIRST - see V53_FIX_CRITICAL",
+    "outin_dead_stop": "OutIn easing now uses 25% linear blend (k=0.25) to avoid zero-velocity at midpoint. If stop is visible, increase k in OST_WindyLines_Common.h",
+    "mac_lines_not_rendering": "CHECK ProcAmp2Params STRUCT ORDER FIRST - struct fields must match .cl kernel argument order exactly for Metal. Also check BRACE STRUCTURE (V53)",
+    "skew_not_working": "Verify: (1) enum position matches PF_ADD order, (2) px -= skew * py applied at ALL SDF evaluation points, (3) NaN/range clamping with isnan() guard",
     "flat_round_not_working": "See FLAT_ROUND_CAP_FIX - check if cap logic is inside wrong conditional block, verify inLineCap passed correctly",
-    "mac_bug": "Check SharedClipData, Metal buffer init, atomic syntax, BRACE STRUCTURE",
+    "mac_bug": "Check ProcAmp2Params struct/kernel alignment, SharedClipData, Metal buffer init, atomic syntax, BRACE STRUCTURE",
     "frame_timing": "Verify frameIndex calc, SharedClipData populated, GPU fallback",
     "param_not_updating": "Check SUPERVISE flag, params[] direct use, UpdateParamUI",
     "lines_appear_thicker_with_aa": "EXPECTED BEHAVIOR - See ANTIALIASING_VISUAL_THICKNESS_EFFECT below. aa adds smooth fade zone that makes lines visually thicker. This is standard anti-aliasing behavior.",

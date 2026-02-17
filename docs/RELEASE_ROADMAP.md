@@ -1,6 +1,6 @@
 # 商用リリース準備 - 作業ロードマップ
 
-**最終更新**: 2026年2月13日
+**最終更新**: 2026年2月17日
 
 ---
 
@@ -12,6 +12,11 @@
 - [x] Release構成の最適化設定（NDEBUG, Full Optimization）
 - [x] EULA作成（docs/EULA.md）
 - [x] 配布ガイド作成（docs/DISTRIBUTION_GUIDE.md）
+
+### v64機能追加・バグ修正 (2026-02-17)
+- [x] Skew（シアー変形）パラメータ追加（CPU/CUDA/OpenCL/Metal全バックエンド）
+- [x] OutInイージング中間停止問題修正（25%リニアブレンド）
+- [x] Mac Metal/OpenCL描画不具合修正（ProcAmp2Params構造体アライメント）
 
 ### macOS署名準備
 - [x] 署名スクリプト作成（codesign_setup.sh, codesign_plugin.sh）
