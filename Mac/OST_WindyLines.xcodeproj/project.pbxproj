@@ -31,7 +31,7 @@
 		7E83C109170F4840008B8043 /* OST_WindyLines-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "OST_WindyLines-Prefix.pch"; sourceTree = "<group>"; };
 		7E83C113170F489B008B8043 /* OST_WindyLines_CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = OST_WindyLines_CPU.cpp; path = ../OST_WindyLines_CPU.cpp; sourceTree = SOURCE_ROOT; };
 		7E83C114170F489B008B8043 /* OST_WindyLines_GPU.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = OST_WindyLines_GPU.cpp; path = ../OST_WindyLines_GPU.cpp; sourceTree = SOURCE_ROOT; };
-		7E83C116170F489B008B8043 /* OST_WindyLines.r */ = {isa = PBXFileReference; fileEncoding = 2147486209; lastKnownFileType = sourcecode.rez; name = OST_WindyLines.r; path = ../OST_WindyLines.r; sourceTree = SOURCE_ROOT; };
+		7E83C116170F489B008B8043 /* OST_WindyLines.r */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.rez; name = OST_WindyLines.r; path = ../OST_WindyLines.r; sourceTree = SOURCE_ROOT; };
 		7E83C124170F4EE9008B8043 /* AEConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = AEConfig.h; path = Examples/Headers/AEConfig.h; sourceTree = AE_SDK_BASE_PATH; };
 		7E83C128170F519D008B8043 /* AE_Effect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AE_Effect.h; path = Examples/Headers/AE_Effect.h; sourceTree = AE_SDK_BASE_PATH; };
 		7E83C136170F8622008B8043 /* PrGPUFilterModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PrGPUFilterModule.h; path = ../../Utils/PrGPUFilterModule.h; sourceTree = SOURCE_ROOT; };
@@ -222,7 +222,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nset -euo pipefail\n\nPLUGIN_SRC=\"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\"\n\n# 権限問題を避けたい場合はユーザー領域を推奨\n# DEST_DIR=\"${HOME}/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\nDEST_DIR=\"/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\n\nDEST_PLUGIN=\"${DEST_DIR}/${FULL_PRODUCT_NAME}\"\n\necho \"[INFO] Source: ${PLUGIN_SRC}\"\necho \"[INFO] Dest  : ${DEST_PLUGIN}\"\n\n[ -d \"${PLUGIN_SRC}\" ] || { echo \"[ERROR] Built plugin not found\"; exit 1; }\n\nmkdir -p \"${DEST_DIR}\"\n\n# 1) build成果物をクリーン化して再署名\nxattr -cr \"${PLUGIN_SRC}\" || true\nfind \"${PLUGIN_SRC}\" -name '._*' -type f -delete || true\nfind \"${PLUGIN_SRC}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${PLUGIN_SRC}\" || true\ncodesign --force --deep --sign - \"${PLUGIN_SRC}\"\n\n# 2) 配置先を丸ごと置き換え（古い残骸を消す）\nrm -rf \"${DEST_PLUGIN}\"\nditto \"${PLUGIN_SRC}\" \"${DEST_PLUGIN}\"\n\n# 3) 配置後もクリーン化して再署名\nxattr -cr \"${DEST_PLUGIN}\" || true\nfind \"${DEST_PLUGIN}\" -name '._*' -type f -delete || true\nfind \"${DEST_PLUGIN}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${DEST_PLUGIN}\" || true\ncodesign --force --deep --sign - \"${DEST_PLUGIN}\"\n\n# 4) 検証\ncodesign --verify --deep --strict --verbose=2 \"${DEST_PLUGIN}\"\n\necho \"[OK] Deploy + sanitize + sign + verify completed\"\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nset -euo pipefail\n\nPLUGIN_SRC=\"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\"\n\n# 権限問題を避けたい場合はユーザー領域を推奨\n# DEST_DIR=\"${HOME}/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\nDEST_DIR=\"/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\n\nDEST_PLUGIN=\"${DEST_DIR}/${FULL_PRODUCT_NAME}\"\n\necho \"[INFO] Source: ${PLUGIN_SRC}\"\necho \"[INFO] Dest  : ${DEST_PLUGIN}\"\n\n[ -d \"${PLUGIN_SRC}\" ] || { echo \"[ERROR] Built plugin not found\"; exit 1; }\n\nmkdir -p \"${DEST_DIR}\"\n\n# 1) build成果物をクリーン化して再署名\nfind \"${PLUGIN_SRC}\" -exec xattr -c {} \\; 2>/dev/null || true\nxattr -d com.apple.FinderInfo \"${PLUGIN_SRC}\" 2>/dev/null || true\nfind \"${PLUGIN_SRC}\" -name '._*' -type f -delete || true\nfind \"${PLUGIN_SRC}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${PLUGIN_SRC}\" || true\ncodesign --force --deep --sign - \"${PLUGIN_SRC}\"\n\n# 2) 配置先を丸ごと置き換え（古い残骸を消す）\nrm -rf \"${DEST_PLUGIN}\"\nditto \"${PLUGIN_SRC}\" \"${DEST_PLUGIN}\"\n\n# 3) 配置後もクリーン化して再署名\nfind \"${DEST_PLUGIN}\" -exec xattr -c {} \\; 2>/dev/null || true\nxattr -d com.apple.FinderInfo \"${DEST_PLUGIN}\" 2>/dev/null || true\nfind \"${DEST_PLUGIN}\" -name '._*' -type f -delete || true\nfind \"${DEST_PLUGIN}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${DEST_PLUGIN}\" || true\ncodesign --force --deep --sign - \"${DEST_PLUGIN}\"\n\n# 4) 検証\ncodesign --verify --deep --strict --verbose=2 \"${DEST_PLUGIN}\"\n\necho \"[OK] Deploy + sanitize + sign + verify completed\"\n";
 		};
 		3F57A75326FE9DE9004786EA /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -344,6 +344,7 @@
 		7E83C10D170F4840008B8043 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				COMBINE_HIDPI_IMAGES = YES;
 				"DEVELOPMENT_TEAM[sdk=macosx*]" = K6BMA3VLGX;
@@ -390,6 +391,7 @@
 		7E83C10E170F4840008B8043 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;

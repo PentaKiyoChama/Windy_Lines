@@ -15,14 +15,14 @@ BEGIN
 	"MIB8",
 	"eman",/* 'name' PINameProperty */
 	RSCS32(0),
-	RSCS32(24),
-	"\x14win_風を感じるライン\0\0\0", 
+	RSCS32(20),
+	"\x10\x95\x97\x82\xF0\x8A\xB4\x82\xB6\x82\xE9\x83\x89\x83\x43\x83\x93\0\0\0", 
 
 	"MIB8",
 	"gtac", /* 'catg' PICategoryProperty */
 	RSCS32(0),
 	RSCS32(20),
-	"\x10おしゃれテロップ\0\0\0", 
+	"\x10\x82\xA8\x82\xB5\x82\xE1\x82\xEA\x83\x65\x83\x8D\x83\x62\x83\x76\0\0\0", 
 
 	"MIB8",
 	"4668", /* '8664' PIWin64X86CodeProperty */
@@ -70,7 +70,7 @@ BEGIN
 	"ANMe",/* 'name' PINameProperty */
 	RSCS32(0),
 	RSCS32(16),
-	"\x0EOST_WindyLines\0", 
+	"\x0E\x4F\x53\x54\x5F\x57\x69\x6E\x64\x79\x4C\x69\x6E\x65\x73\0", 
 
 	"MIB8",
 	0x6165464CL, /* 'aeFL' */
