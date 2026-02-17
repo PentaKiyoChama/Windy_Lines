@@ -144,7 +144,7 @@ namespace ParamNames
     constexpr const char* LENGTH            = "長さ(px)";
     constexpr const char* LINE_CAP          = "端のスタイル";
     constexpr const char* ANGLE             = "線の角度";
-    constexpr const char* SKEW              = "平行四辺形の傾き";
+    constexpr const char* SKEW              = "シアー（傾斜）";
     constexpr const char* AA                = "アンチエイリアス";
     constexpr const char* TAIL_FADE         = "テールフェード";
     constexpr const char* POSITION_HEADER   = "起点と描画範囲";
