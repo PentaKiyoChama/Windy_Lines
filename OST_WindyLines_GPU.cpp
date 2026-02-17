@@ -157,7 +157,6 @@ typedef struct
 	float mLineB;            // inLineB
 	float mLineAA;           // inLineAA
 	int mLineCap;            // inLineCap
-	float mLineSkew;         // inLineSkew
 	int mLineCount;          // inLineCount
 	int mLineSeed;           // inLineSeed
 	int mLineEasing;         // inLineEasing
@@ -197,9 +196,10 @@ typedef struct
 	int mMotionBlurEnable;   // inMotionBlurEnable
 	int mMotionBlurSamples;  // inMotionBlurSamples
 	float mMotionBlurStrength;// inMotionBlurStrength
-	int mMotionBlurType;     // inMotionBlurType (0=Bidirectional, 1=Trail)
 	float mMotionBlurVelocity;// inMotionBlurVelocity (0=fixed, 1=full velocity link)
+	float mLineSkew;         // inLineSkew
 	// Additional fields for CPU-side use (not passed to kernel)
+	int mMotionBlurType;     // Motion blur type (0=Bidirectional, 1=Trail) - CPU only
 	int mTileCountY;
 	float mSeqTimeHash;
 } ProcAmp2Params;
