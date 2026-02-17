@@ -160,6 +160,11 @@
 			attributes = {
 				LastUpgradeCheck = 0730;
 				ORGANIZATIONNAME = "";
+				TargetAttributes = {
+					7E83C0F9170F4840008B8043 = {
+						DevelopmentTeam = K6BMA3VLGX;
+					};
+				};
 			};
 			buildConfigurationList = 7E83C0F4170F4840008B8043 /* Build configuration list for PBXProject "OST_WindyLines" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -339,7 +344,9 @@
 		7E83C10D170F4840008B8043 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				COMBINE_HIDPI_IMAGES = YES;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = K6BMA3VLGX;
 				DSTROOT = "$(PROJECT_DIR)/build/install-root";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
@@ -383,7 +390,9 @@
 		7E83C10E170F4840008B8043 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				COMBINE_HIDPI_IMAGES = YES;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = K6BMA3VLGX;
 				DSTROOT = "$(PROJECT_DIR)/build/install-root";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
