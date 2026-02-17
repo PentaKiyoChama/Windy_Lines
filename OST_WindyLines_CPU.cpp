@@ -457,9 +457,16 @@ static void OpenActivationPage()
 {
 	const std::string mid = GetMachineIdHash();
 	const std::string token = LoadOrCreateActivationToken();
+	const char* platform =
+#ifdef _WIN32
+		"win";
+#else
+		"mac";
+#endif
 	const std::string url = std::string(kActivatePageUrl)
 		+ "?token=" + token
 		+ "&mid=" + mid
+		+ "&platform=" + std::string(platform)
 		+ "&product=OST_WindyLines"
 		+ "&ver=" OST_WINDYLINES_VERSION_FULL;
 

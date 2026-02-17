@@ -194,7 +194,7 @@ Win: %APPDATA%\OshareTelop\license_cache_v1.txt
 | 3 | エフェクトコントロールパネルの「アクティベート」ポップアップをクリック | — |
 | 4 | 「アクティベート...」（2番目の項目）を選択 | — |
 | 5 | **確認①**: デフォルトブラウザが開き、URL に以下が含まれる: | — |
-| | `?token=（32桁hex）&mid=（16桁hex）&product=OST_WindyLines&ver=（バージョン）` | — |
+| | `?token=（32桁hex）&mid=（16桁hex）&platform=（mac or win）&product=OST_WindyLines&ver=（バージョン）` | — |
 | 6 | **確認②**: ブラウザのページにトークン・MID が表示される | — |
 
 ---
