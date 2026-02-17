@@ -38,7 +38,7 @@
 // ========== GPU RENDERING CONTROL ==========
 // Set to 1 to enable GPU rendering (CUDA/OpenCL/DirectX)
 // Set to 0 to force CPU-only rendering (for testing CPU path)
-#define ENABLE_GPU_RENDERING 0
+#define ENABLE_GPU_RENDERING 1
 
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
