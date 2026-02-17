@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OST WindyLines ユーザーガイド - 流れる線エフェクト</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --accent: #f59e0b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --border: #e2e8f0;
+    --code-bg: #f1f5f9;
+    --win-color: #0078d4;
+    --mac-color: #333333;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Segoe UI", "Meiryo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ===== Hero ===== */
+  .hero {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%);
+    color: #fff;
+    padding: 60px 24px 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.03) 0px,
+      rgba(255,255,255,0.03) 2px,
+      transparent 2px,
+      transparent 40px
+    );
+    animation: flow 8s linear infinite;
+  }
+  @keyframes flow { to { transform: translateX(40px); } }
+  .hero h1 { font-size: 2.4em; font-weight: 800; letter-spacing: -0.02em; position: relative; }
+  .hero .subtitle { font-size: 1.1em; margin-top: 8px; opacity: 0.85; position: relative; }
+  .hero .version { display: inline-block; background: rgba(255,255,255,0.18); padding: 4px 16px; border-radius: 20px; margin-top: 16px; font-size: 0.85em; position: relative; }
+
+  /* ===== Navigation ===== */
+  .nav-bar {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .nav-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav-inner a {
+    display: block;
+    padding: 14px 18px;
+    text-decoration: none;
+    color: var(--text-light);
+    font-size: 0.88em;
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-inner a:hover { color: var(--primary); border-bottom-color: var(--primary); }
+
+  /* ===== Layout ===== */
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  section { margin-bottom: 48px; }
+  h2 {
+    font-size: 1.5em;
+    font-weight: 800;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .icon { font-size: 1.2em; }
+  h3 { font-size: 1.15em; font-weight: 700; margin: 24px 0 12px; color: var(--primary-dark); }
+  h4 { font-size: 1em; font-weight: 700; margin: 16px 0 8px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 0 0 16px 24px; }
+  li { margin-bottom: 6px; }
+
+  /* ===== Cards ===== */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .feature-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
+  .feature-card .fi { font-size: 2em; margin-bottom: 8px; }
+  .feature-card h4 { margin: 0 0 6px; font-size: 1em; }
+  .feature-card p { font-size: 0.88em; color: var(--text-light); margin: 0; }
+
+  /* ===== OS Tabs ===== */
+  .os-tabs { display: flex; gap: 0; margin-bottom: 0; }
+  .os-tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.95em;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    background: var(--bg);
+    color: var(--text-light);
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .os-tab.active { background: var(--card); color: var(--text); box-shadow: 0 -2px 6px rgba(0,0,0,0.04); }
+  .os-tab.win.active { border-top: 3px solid var(--win-color); }
+  .os-tab.mac.active { border-top: 3px solid var(--mac-color); }
+  .os-content {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0 0 12px 12px;
+    padding: 24px;
+  }
+  .os-content.active { display: block; }
+
+  /* ===== Code ===== */
+  .path-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: "Cascadia Code", "SFMono-Regular", "Consolas", "Menlo", monospace;
+    font-size: 0.88em;
+    word-break: break-all;
+    margin: 10px 0 16px;
+    position: relative;
+  }
+  .path-box .label {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.78em;
+    padding: 2px 10px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .path-box.win .label { background: var(--win-color); }
+  .path-box.mac .label { background: var(--mac-color); }
+
+  /* ===== Steps ===== */
+  .steps { counter-reset: step; list-style: none; margin-left: 0; padding: 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 14px 18px;
+    background: var(--bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .steps li::before {
+    content: counter(step);
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.9em;
+  }
+  .steps li .step-body { flex: 1; }
+  .steps li strong { display: block; margin-bottom: 4px; }
+
+  /* ===== Tables ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 20px;
+    font-size: 0.92em;
+  }
+  thead th {
+    background: var(--primary);
+    color: #fff;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.88em;
+  }
+  thead th:first-child { border-radius: 8px 0 0 0; }
+  thead th:last-child { border-radius: 0 8px 0 0; }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: var(--bg); }
+  tbody tr:hover { background: #e8f0fe; }
+
+  /* ===== Badges ===== */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78em;
+    font-weight: 700;
+  }
+  .badge-slider { background: #dbeafe; color: #1d4ed8; }
+  .badge-popup { background: #fef3c7; color: #92400e; }
+  .badge-color { background: #fce7f3; color: #9d174d; }
+  .badge-check { background: #dcfce7; color: #166534; }
+  .badge-angle { background: #e0e7ff; color: #3730a3; }
+
+  /* ===== Callout ===== */
+  .callout {
+    padding: 16px 20px;
+    border-radius: 10px;
+    margin: 16px 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .callout .co-icon { font-size: 1.4em; flex-shrink: 0; }
+  .callout-info { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .callout-warn { background: #fffbeb; border: 1px solid #fde68a; }
+  .callout-danger { background: #fef2f2; border: 1px solid #fecaca; }
+  .callout-tip { background: #f0fdf4; border: 1px solid #bbf7d0; }
+
+  /* ===== Accordion ===== */
+  details {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  details summary {
+    padding: 14px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+  }
+  details summary::before { content: "▸"; transition: transform 0.2s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details summary::-webkit-details-marker { display: none; }
+  details .details-body { padding: 0 18px 18px; }
+
+  /* ===== Easing Grid ===== */
+  .easing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .easing-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85em;
+  }
+  .easing-item .en { color: var(--text-light); font-size: 0.88em; }
+
+  /* ===== Footer ===== */
+  footer {
+    text-align: center;
+    padding: 32px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--text-light);
+    font-size: 0.85em;
+  }
+
+  /* ===== Color Preset Grid ===== */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+    margin: 12px 0;
+  }
+  .preset-chip {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85em;
+    text-align: center;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 1.6em; }
+    .hero { padding: 40px 16px 32px; }
+    .container { padding: 20px 16px 48px; }
+    .card-grid { grid-template-columns: 1fr; }
+    .nav-inner a { padding: 12px 12px; font-size: 0.82em; }
+    h2 { font-size: 1.25em; }
+    table { font-size: 0.82em; }
+    thead th, tbody td { padding: 8px 10px; }
+  }
+
+  /* ===== Print ===== */
+  @media print {
+    .nav-bar { display: none; }
+    .hero { padding: 20px; background: #2563eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .os-content { display: block !important; border: 1px solid #ccc; margin-bottom: 12px; }
+    .os-tabs { display: none; }
+    body { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== Hero ==================== -->
+<header class="hero">
+  <h1>OST WindyLines</h1>
+  <div class="subtitle">流れる線エフェクト — Adobe Premiere Pro プラグイン</div>
+  <div class="version">v1.0 ユーザーガイド</div>
+</header>
+
+<!-- ==================== Navigation ==================== -->
+<nav class="nav-bar">
+  <div class="nav-inner">
+    <a href="#features">機能紹介</a>
+    <a href="#requirements">動作環境</a>
+    <a href="#install">インストール</a>
+    <a href="#quickstart">基本の使い方</a>
+    <a href="#params">パラメーター解説</a>
+    <a href="#presets">プリセット</a>
+    <a href="#tips">便利なTips</a>
+    <a href="#faq">FAQ</a>
+  </div>
+</nav>
+
+<div class="container">
+
+<!-- ==================== Features ==================== -->
+<section id="features">
+  <h2><span class="icon">✨</span>主な機能</h2>
+  <div class="card-grid">
+    <div class="feature-card">
+      <div class="fi">🎨</div>
+      <h4>50+ プリセット</h4>
+      <p>エフェクトプリセットとカラープリセットで、ワンクリックでプロ品質の仕上がりに。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fi">⚡</div>
+      <h4>GPU リアルタイム描画</h4>
+      <p>CUDA / Metal / OpenCL / DirectX の4バックエンドをサポート。4K〜8K でも軽快。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fi">🌊</div>
+      <h4>28種イージング</h4>
+      <p>Sine・Quad・Cubic・Back・Elastic・Bounce など、多彩なアニメーションカーブ。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fi">🖌️</div>
+      <h4>自由な外観調整</h4>
+      <p>太さ・長さ・角度・シアー変形・端のスタイルなどを細かく設定可能。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fi">💨</div>
+      <h4>モーションブラー</h4>
+      <p>速度連動のリアルなモーションブラーで映像に臨場感を。影エフェクトにも対応。</p>
+    </div>
+    <div class="feature-card">
+      <div class="fi">🎯</div>
+      <h4>要素追従</h4>
+      <p>テロップやオブジェクトのアルファ領域を自動検出し、その周囲に線を発生。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Requirements ==================== -->
+<section id="requirements">
+  <h2><span class="icon">💻</span>動作環境</h2>
+  <div class="card-grid">
+    <div class="card">
+      <h3 style="color:var(--win-color);">🪟 Windows</h3>
+      <table>
+        <tbody>
+          <tr><td><strong>OS</strong></td><td>Windows 10 / 11（64bit）</td></tr>
+          <tr><td><strong>CPU</strong></td><td>Intel Core i5 以上</td></tr>
+          <tr><td><strong>GPU</strong></td><td>NVIDIA GTX 1060 以上（推奨）<br>AMD / Intel GPU も対応</td></tr>
+          <tr><td><strong>RAM</strong></td><td>8 GB 以上</td></tr>
+          <tr><td><strong>Premiere Pro</strong></td><td>CC 2018 以降</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--mac-color);">🍎 macOS</h3>
+      <table>
+        <tbody>
+          <tr><td><strong>OS</strong></td><td>macOS 11（Big Sur）以降</td></tr>
+          <tr><td><strong>CPU</strong></td><td>Apple Silicon / Intel Core i5 以上</td></tr>
+          <tr><td><strong>GPU</strong></td><td>Metal 対応 GPU</td></tr>
+          <tr><td><strong>RAM</strong></td><td>8 GB 以上</td></tr>
+          <tr><td><strong>Premiere Pro</strong></td><td>CC 2018 以降</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Install ==================== -->
+<section id="install">
+  <h2><span class="icon">📦</span>インストール方法</h2>
+
+  <div class="callout callout-warn">
+    <span class="co-icon">⚠️</span>
+    <div>インストール・アンインストールの前に、<strong>Adobe Premiere Pro を必ず終了</strong>してください。</div>
+  </div>
+
+  <!-- OS Tabs -->
+  <div class="os-tabs">
+    <div class="os-tab win active" onclick="switchOS('win')">🪟 Windows</div>
+    <div class="os-tab mac" onclick="switchOS('mac')">🍎 macOS</div>
+  </div>
+
+  <!-- Windows -->
+  <div id="os-win" class="os-content active">
+    <h3>インストール手順</h3>
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Premiere Pro を終了する</strong>
+          タスクトレイにも残っていないことを確認してください。
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>プラグインファイルをコピー</strong>
+          ダウンロードした ZIP を展開し、<code>OST_WindyLines.aex</code> を以下のフォルダにコピーします。
+          <div class="path-box win">
+            <span class="label">コピー先</span><br>
+            C:\Program Files\Adobe\Common\Plug-ins\7.0\MediaCore\
+          </div>
+          <div class="callout callout-info" style="margin:8px 0">
+            <span class="co-icon">💡</span>
+            <div>フォルダが存在しない場合は手動で作成してください。管理者権限が必要な場合があります。</div>
+          </div>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>セキュリティ警告への対処</strong>
+          Windows Defender SmartScreen の警告が表示された場合は：
+          <ol style="margin-top:6px;">
+            <li>「<strong>詳細情報</strong>」をクリック</li>
+            <li>「<strong>実行</strong>」をクリック</li>
+          </ol>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Premiere Pro を起動</strong>
+          エフェクトパネルで <strong>「おしゃれテロップ」→「流れる線」</strong> が表示されれば完了です。
+        </div>
+      </li>
+    </ol>
+
+    <h3>アンインストール</h3>
+    <p>以下のファイルを削除するだけです：</p>
+    <div class="path-box win">
+      <span class="label">削除対象</span><br>
+      C:\Program Files\Adobe\Common\Plug-ins\7.0\MediaCore\OST_WindyLines.aex
+    </div>
+  </div>
+
+  <!-- macOS -->
+  <div id="os-mac" class="os-content">
+    <h3>インストール手順</h3>
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>Premiere Pro を終了する</strong>
+          Dock アイコンを右クリック →「終了」で完全に終了してください。
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>プラグインファイルをコピー</strong>
+          ダウンロードした ZIP を展開し、<code>OST_WindyLines.plugin</code> を以下のフォルダにコピーします。
+          <div class="path-box mac">
+            <span class="label">コピー先</span><br>
+            /Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/
+          </div>
+          <div class="callout callout-tip" style="margin:8px 0">
+            <span class="co-icon">🍎</span>
+            <div>Finder メニューの「<strong>移動</strong>」→「<strong>フォルダへ移動…</strong>」（<kbd>⇧</kbd><kbd>⌘</kbd><kbd>G</kbd>）で上記パスを入力すると便利です。管理者パスワードが必要な場合があります。</div>
+          </div>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>セキュリティ警告への対処</strong>
+          「開発元を確認できない」等の警告が表示された場合は：
+          <ol style="margin-top:6px;">
+            <li><strong>システム設定</strong>を開く</li>
+            <li><strong>プライバシーとセキュリティ</strong>を選択</li>
+            <li>「<strong>このまま許可</strong>」をクリック</li>
+          </ol>
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>Premiere Pro を起動</strong>
+          エフェクトパネルで <strong>「おしゃれテロップ」→「流れる線」</strong> が表示されれば完了です。
+        </div>
+      </li>
+    </ol>
+
+    <h3>アンインストール</h3>
+    <p>以下を削除するだけです：</p>
+    <div class="path-box mac">
+      <span class="label">削除対象</span><br>
+      /Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/OST_WindyLines.plugin
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Quick Start ==================== -->
+<section id="quickstart">
+  <h2><span class="icon">🚀</span>基本の使い方</h2>
+  <div class="card">
+    <ol class="steps">
+      <li>
+        <div class="step-body">
+          <strong>クリップを選択</strong>
+          タイムライン上で、エフェクトを適用したいクリップを選択します。
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>エフェクトを適用</strong>
+          エフェクトパネルで <strong>「おしゃれテロップ」→「流れる線」</strong> をダブルクリック、またはクリップにドラッグ＆ドロップします。
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>プリセットで即スタート</strong>
+          エフェクトコントロールパネル最上部の「<strong>プリセットパラメーター</strong>」からプリセットを選ぶだけで、すぐにプロ品質の仕上がりに。
+        </div>
+      </li>
+      <li>
+        <div class="step-body">
+          <strong>パラメーターを調整</strong>
+          必要に応じて本数・太さ・長さ・色・イージングなどを細かく調整します。パラメーターの詳細は<a href="#params">次のセクション</a>を参照してください。
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout callout-tip">
+      <span class="co-icon">💡</span>
+      <div><strong>パフォーマンスのコツ</strong>：シーケンス設定で「<strong>GPU アクセラレーション</strong>」を有効にすると、リアルタイム再生が可能になります。線の本数が多い場合（500本以上）は再生が重くなることがあります。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== Parameters ==================== -->
+<section id="params">
+  <h2><span class="icon">🎛️</span>パラメーター解説</h2>
+
+  <p>エフェクトコントロールパネルに表示される全パラメーターの解説です。</p>
+
+  <!-- 基本設定 -->
+  <details open>
+    <summary>基本設定</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>範囲</th><th>デフォルト</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>プリセットパラメーター</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>—</td>
+            <td>デフォルト</td>
+            <td>エフェクト全体のプリセット。選択するとすべてのパラメーターが一括変更されます。</td>
+          </tr>
+          <tr>
+            <td><strong>ランダムシード</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 1,000,000</td>
+            <td>1</td>
+            <td>線の配置・色割り当て等に使う乱数のシード値。変えると線のパターンが変わります。</td>
+          </tr>
+          <tr>
+            <td><strong>線の数</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>1 〜 5,000</td>
+            <td>100</td>
+            <td>同時にレンダリングする線の本数。多いほどリッチですが処理が重くなります。</td>
+          </tr>
+          <tr>
+            <td><strong>寿命 (fps)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>1 〜 600</td>
+            <td>20</td>
+            <td>各線が表示されるフレーム数。長くするとゆっくり流れます。</td>
+          </tr>
+          <tr>
+            <td><strong>インターバル (fps)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 600</td>
+            <td>180</td>
+            <td>線のグループが再出現するまでの間隔（フレーム数）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- カラー -->
+  <details>
+    <summary>カラー設定</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>カラーモード</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>
+              <strong>単色</strong>：すべての線を同じ色で描画<br>
+              <strong>プリセット</strong>：33種の配色テーマから選択<br>
+              <strong>カスタム</strong>：8色を自由に設定
+            </td>
+          </tr>
+          <tr>
+            <td><strong>カラープリセット</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>モードが「プリセット」の場合に有効。33種類のカラーテーマ。</td>
+          </tr>
+          <tr>
+            <td><strong>単色カラー</strong></td>
+            <td><span class="badge badge-color">カラー</span></td>
+            <td>モードが「単色」の場合に使用する色。</td>
+          </tr>
+          <tr>
+            <td><strong>カスタム 1〜8</strong></td>
+            <td><span class="badge badge-color">カラー</span></td>
+            <td>モードが「カスタム」の場合の8色パレット。線ごとにランダムに割り当てられます。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- イージング・移動 -->
+  <details>
+    <summary>イージング ・ 移動</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>範囲</th><th>デフォルト</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>イージング</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>28種類</td>
+            <td>スムーサーステップ</td>
+            <td>線の移動速度カーブ。In＝加速、Out＝減速、InOut＝加速→減速、OutIn＝減速→加速。<a href="#easing-list">一覧はこちら</a></td>
+          </tr>
+          <tr>
+            <td><strong>移動距離の連動</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>—</td>
+            <td>オフ</td>
+            <td>移動距離を描画範囲の幅 or 高さに連動させるか。連動時は「連動率」で倍率を指定。</td>
+          </tr>
+          <tr>
+            <td><strong>移動距離連動率 (%)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 500</td>
+            <td>2.0</td>
+            <td>連動モード時の倍率。</td>
+          </tr>
+          <tr>
+            <td><strong>移動距離 (px)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 5,000</td>
+            <td>300</td>
+            <td>線が一生涯で移動するピクセル距離。大きいほど速く流れます。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- 外観 -->
+  <details>
+    <summary>外観（太さ・長さ・角度・端のスタイル）</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>範囲</th><th>デフォルト</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>太さ (px)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>1 〜 200</td>
+            <td>8</td>
+            <td>線の太さ（ピクセル）。連動設定で描画範囲に比例させることも可能。</td>
+          </tr>
+          <tr>
+            <td><strong>長さ (px)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 2,000</td>
+            <td>200</td>
+            <td>線の最大長。アニメーション中は 0 → 最大 → 0 と変化します。</td>
+          </tr>
+          <tr>
+            <td><strong>線の角度</strong></td>
+            <td><span class="badge badge-angle">角度</span></td>
+            <td>—</td>
+            <td>0°</td>
+            <td>線が流れる方向（角度）。0° で水平右向き。</td>
+          </tr>
+          <tr>
+            <td><strong>シアー（傾斜）</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>-2.0 〜 2.0</td>
+            <td>0</td>
+            <td>線を平行四辺形に変形する係数。0 で通常の長方形。正の値で右上がりに傾斜。</td>
+          </tr>
+          <tr>
+            <td><strong>端のスタイル</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>—</td>
+            <td>ラウンド</td>
+            <td><strong>フラット</strong>：四角い端 ／ <strong>ラウンド</strong>：丸い端</td>
+          </tr>
+          <tr>
+            <td><strong>テールフェード</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 1</td>
+            <td>0</td>
+            <td>尾の透明度を段階的にフェードさせます。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- 起点と描画範囲 -->
+  <details>
+    <summary>起点と描画範囲</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>範囲</th><th>デフォルト</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>範囲ソース</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>—</td>
+            <td>元要素</td>
+            <td><strong>画面全体</strong>：画面いっぱいに線を発生<br><strong>元要素</strong>：テロップなどのアルファ領域を自動検出して、その周囲に線を発生</td>
+          </tr>
+          <tr>
+            <td><strong>アルファしきい値</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 1</td>
+            <td>0.02</td>
+            <td>「元要素」選択時に、アルファ値がこの値以上のピクセルを要素として検出します。</td>
+          </tr>
+          <tr>
+            <td><strong>起点モード</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>—</td>
+            <td>中央</td>
+            <td><strong>中央</strong>：要素にまとわりつく ／ <strong>前方</strong>：要素から出ていく ／ <strong>後方</strong>：要素に向かってくる</td>
+          </tr>
+          <tr>
+            <td><strong>進行方向</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>—</td>
+            <td>全て同じ</td>
+            <td>線の流れる向きの振り分け方。</td>
+          </tr>
+          <tr>
+            <td><strong>開始時間 (fps)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>-36,000 〜 36,000</td>
+            <td>-300</td>
+            <td>アニメーション開始フレーム。負の値にするとクリップ冒頭から線が出た状態にできます。</td>
+          </tr>
+          <tr>
+            <td><strong>継続時間 (fps)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 36,000</td>
+            <td>0</td>
+            <td>線が出現する期間。0 ＝ 無制限。</td>
+          </tr>
+          <tr>
+            <td><strong>奥行き強度</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 10</td>
+            <td>3</td>
+            <td>擬似的な奥行き感の強さ。太さとアルファに変化を付けます。</td>
+          </tr>
+          <tr>
+            <td><strong>範囲オフセット X / Y</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>-2,000 〜 2,000</td>
+            <td>0</td>
+            <td>描画範囲の位置をピクセル単位で移動します。</td>
+          </tr>
+          <tr>
+            <td><strong>範囲スケール X / Y (%)</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 200</td>
+            <td>75 / 100</td>
+            <td>描画範囲の大きさを拡大・縮小します。</td>
+          </tr>
+          <tr>
+            <td><strong>範囲の回転</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>-180 〜 180</td>
+            <td>0</td>
+            <td>描画範囲を回転させます。</td>
+          </tr>
+          <tr>
+            <td><strong>目安の表示</strong></td>
+            <td><span class="badge badge-check">ON/OFF</span></td>
+            <td>—</td>
+            <td>OFF</td>
+            <td>描画範囲の境界線をプレビュー表示します（書き出し時は非表示推奨）。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- シャドウ -->
+  <details>
+    <summary>シャドウ</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>範囲</th><th>デフォルト</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><strong>影を有効化</strong></td><td><span class="badge badge-check">ON/OFF</span></td><td>—</td><td>OFF</td><td>線に影を付けます。</td></tr>
+          <tr><td><strong>影色</strong></td><td><span class="badge badge-color">カラー</span></td><td>—</td><td>黒</td><td>影の色。</td></tr>
+          <tr><td><strong>オフセット X / Y</strong></td><td><span class="badge badge-slider">数値</span></td><td>-100 〜 100</td><td>5</td><td>影の位置ずれ量（ピクセル）。</td></tr>
+          <tr><td><strong>不透明度</strong></td><td><span class="badge badge-slider">数値</span></td><td>0 〜 1</td><td>0.5</td><td>影の透明度。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- モーションブラー -->
+  <details>
+    <summary>モーションブラー</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>範囲</th><th>デフォルト</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><strong>モーションブラー</strong></td><td><span class="badge badge-check">ON/OFF</span></td><td>—</td><td>OFF</td><td>速度に連動したブラーを有効化。</td></tr>
+          <tr><td><strong>サンプル数</strong></td><td><span class="badge badge-slider">数値</span></td><td>1 〜 32</td><td>8</td><td>ブラー品質。多いほどスムーズですが重くなります。</td></tr>
+          <tr><td><strong>シャッター角度</strong></td><td><span class="badge badge-slider">数値</span></td><td>0 〜 360</td><td>180</td><td>ブラーの長さ。360° でフレーム間の全移動距離にブラーがかかります。</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <!-- その他 -->
+  <details>
+    <summary>その他の設定</summary>
+    <div class="details-body">
+      <table>
+        <thead><tr><th>パラメーター</th><th>型</th><th>範囲</th><th>デフォルト</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>アンチエイリアス</strong></td>
+            <td><span class="badge badge-slider">数値</span></td>
+            <td>0 〜 5</td>
+            <td>0</td>
+            <td>線の端のスムーズさ。大きいほど滑らかですが、見た目の太さがわずかに増加します。</td>
+          </tr>
+          <tr>
+            <td><strong>要素を隠す</strong></td>
+            <td><span class="badge badge-check">ON/OFF</span></td>
+            <td>—</td>
+            <td>OFF</td>
+            <td>ON にすると元のクリップ映像を非表示にし、線のみを描画します。</td>
+          </tr>
+          <tr>
+            <td><strong>合成モード</strong></td>
+            <td><span class="badge badge-popup">選択</span></td>
+            <td>—</td>
+            <td>アルファ</td>
+            <td>
+              <strong>背面</strong>：要素の背面にのみ描画<br>
+              <strong>前面</strong>：要素の前面にのみ描画<br>
+              <strong>背面と前面</strong>：両方に描画<br>
+              <strong>アルファ</strong>：アルファチャンネルで合成
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<!-- ==================== Easing List ==================== -->
+<section id="easing-list">
+  <h2><span class="icon">📈</span>イージング一覧（全28種）</h2>
+  <p>「<strong>In</strong>」は緩やか → 速い、「<strong>Out</strong>」は速い → 緩やか、「<strong>InOut</strong>」はその組み合わせ、「<strong>OutIn</strong>」はOutの後にInが続きます。</p>
+
+  <div class="easing-grid">
+    <div class="easing-item"><strong>リニア</strong> <span class="en">Linear</span></div>
+    <div class="easing-item"><strong>スムースステップ</strong> <span class="en">Smoothstep</span></div>
+    <div class="easing-item"><strong>スムーサーステップ</strong> <span class="en">Smootherstep</span></div>
+    <div class="easing-item"><strong>サインイン</strong> <span class="en">Sine In</span></div>
+    <div class="easing-item"><strong>サインアウト</strong> <span class="en">Sine Out</span></div>
+    <div class="easing-item"><strong>サインインアウト</strong> <span class="en">Sine InOut</span></div>
+    <div class="easing-item"><strong>サインアウトイン</strong> <span class="en">Sine OutIn</span></div>
+    <div class="easing-item"><strong>二次イン</strong> <span class="en">Quad In</span></div>
+    <div class="easing-item"><strong>二次アウト</strong> <span class="en">Quad Out</span></div>
+    <div class="easing-item"><strong>二次インアウト</strong> <span class="en">Quad InOut</span></div>
+    <div class="easing-item"><strong>二次アウトイン</strong> <span class="en">Quad OutIn</span></div>
+    <div class="easing-item"><strong>三次イン</strong> <span class="en">Cubic In</span></div>
+    <div class="easing-item"><strong>三次アウト</strong> <span class="en">Cubic Out</span></div>
+    <div class="easing-item"><strong>三次インアウト</strong> <span class="en">Cubic InOut</span></div>
+    <div class="easing-item"><strong>三次アウトイン</strong> <span class="en">Cubic OutIn</span></div>
+    <div class="easing-item"><strong>サークルイン</strong> <span class="en">Circle In</span></div>
+    <div class="easing-item"><strong>サークルアウト</strong> <span class="en">Circle Out</span></div>
+    <div class="easing-item"><strong>サークルインアウト</strong> <span class="en">Circle InOut</span></div>
+    <div class="easing-item"><strong>サークルアウトイン</strong> <span class="en">Circle OutIn</span></div>
+    <div class="easing-item"><strong>バックイン</strong> <span class="en">Back In</span></div>
+    <div class="easing-item"><strong>バックアウト</strong> <span class="en">Back Out</span></div>
+    <div class="easing-item"><strong>バックインアウト</strong> <span class="en">Back InOut</span></div>
+    <div class="easing-item"><strong>エラスティックイン</strong> <span class="en">Elastic In</span></div>
+    <div class="easing-item"><strong>エラスティックアウト</strong> <span class="en">Elastic Out</span></div>
+    <div class="easing-item"><strong>エラスティックインアウト</strong> <span class="en">Elastic InOut</span></div>
+    <div class="easing-item"><strong>バウンスイン</strong> <span class="en">Bounce In</span></div>
+    <div class="easing-item"><strong>バウンスアウト</strong> <span class="en">Bounce Out</span></div>
+    <div class="easing-item"><strong>バウンスインアウト</strong> <span class="en">Bounce InOut</span></div>
+  </div>
+</section>
+
+<!-- ==================== Presets ==================== -->
+<section id="presets">
+  <h2><span class="icon">🎨</span>カラープリセット一覧</h2>
+  <p>カラーモードを「プリセット」にすると、以下の 33 テーマから選べます。各テーマは 8 色のカラーパレットで構成され、線ごとにランダムに割り当てられます。</p>
+  <div class="preset-grid">
+    <div class="preset-chip">🌈 レインボー</div>
+    <div class="preset-chip">🍬 パステル</div>
+    <div class="preset-chip">🌲 フォレスト</div>
+    <div class="preset-chip">💜 サイバー</div>
+    <div class="preset-chip">⚠️ ハザード</div>
+    <div class="preset-chip">🌸 さくら</div>
+    <div class="preset-chip">🏜️ デザート</div>
+    <div class="preset-chip">✨ スターダスト</div>
+    <div class="preset-chip">🌿 若葉</div>
+    <div class="preset-chip">🔥 フレイム</div>
+    <div class="preset-chip">🦊 妖艶</div>
+    <div class="preset-chip">💎 リフレッシュ</div>
+    <div class="preset-chip">💫 ドリーミー</div>
+    <div class="preset-chip">🌅 サンセット</div>
+    <div class="preset-chip">🌊 オーシャン</div>
+    <div class="preset-chip">🍂 オータム</div>
+    <div class="preset-chip">❄️ スノー</div>
+    <div class="preset-chip">🐋 深海</div>
+    <div class="preset-chip">🎉 パーティー</div>
+    <div class="preset-chip">🌌 ナイトスカイ</div>
+    <div class="preset-chip">💎 アメジスト</div>
+    <div class="preset-chip">🌷 花畑</div>
+    <div class="preset-chip">💎 ジュエル</div>
+    <div class="preset-chip">🍭 パステル2</div>
+    <div class="preset-chip">🌍 アースカラー</div>
+    <div class="preset-chip">🌙 ムーンライト</div>
+    <div class="preset-chip">✨ きらめく光</div>
+    <div class="preset-chip">💡 ネオン</div>
+    <div class="preset-chip">⚡ 警告</div>
+    <div class="preset-chip">🌌 オーロラ</div>
+    <div class="preset-chip">🌋 溶岩</div>
+    <div class="preset-chip">🥇 ゴールド</div>
+    <div class="preset-chip">⬛ モノクローム</div>
+  </div>
+</section>
+
+<!-- ==================== Tips ==================== -->
+<section id="tips">
+  <h2><span class="icon">💡</span>便利な Tips</h2>
+
+  <div class="card">
+    <h3>🔑 パフォーマンスを最大化するには</h3>
+    <ul>
+      <li>シーケンス設定で <strong>GPU アクセラレーション</strong>（Mercury Playback Engine）を有効にしてください。</li>
+      <li>プレビュー時は線の本数を <strong>100〜300本</strong> に抑えると軽快です。最終書き出し時に増やしましょう。</li>
+      <li>モーションブラーの<strong>サンプル数</strong>を減らすと処理が軽くなります（4〜8 で十分なケースが多いです）。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>🎬 テロップとの組み合わせ</h3>
+    <ul>
+      <li>テロップクリップに「流れる線」を適用すると、テロップの形に沿って線が流れます。</li>
+      <li><strong>範囲ソース = 元要素</strong> にすることで、テロップのアルファ領域を自動検出します。</li>
+      <li><strong>起点モード</strong>で「前方」「後方」を選ぶと、テロップから線が出る / テロップに線が向かう演出になります。</li>
+      <li><strong>要素を隠す = ON</strong> にすると、テロップを消して線だけを描画できます。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>🎨 配色のコツ</h3>
+    <ul>
+      <li>まずは<strong>カラープリセット</strong>を試して雰囲気を確認、気に入ったら<strong>カスタム</strong>で微調整するのがおすすめ。</li>
+      <li><strong>ランダムシード</strong>を変更すると、同じプリセットでも色の割り当てパターンが変わります。</li>
+      <li>落ち着いた印象にしたい場合は彩度の低いプリセット（スノー、ムーンライト、モノクローム等）がおすすめ。</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>📐 シアー変形の活用</h3>
+    <ul>
+      <li>「<strong>シアー（傾斜）</strong>」パラメーターを調整すると、線を平行四辺形に変形できます。</li>
+      <li>正の値で右上がり、負の値で右下がりの傾斜に。斜体テキストの雰囲気と合わせると統一感が出ます。</li>
+      <li><strong>端のスタイル = ラウンド</strong>と組み合わせると、先端が丸くなった傾斜ラインになります。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ==================== FAQ ==================== -->
+<section id="faq">
+  <h2><span class="icon">❓</span>よくある質問 (FAQ)</h2>
+
+  <details>
+    <summary>エフェクトパネルに「流れる線」が表示されません</summary>
+    <div class="details-body">
+      <ol>
+        <li>プラグインファイルが正しいフォルダにコピーされているか確認してください（<a href="#install">インストール手順</a>参照）。</li>
+        <li>Premiere Pro を<strong>完全に再起動</strong>してください（バックグラウンドプロセスも終了）。</li>
+        <li>エフェクトパネルの検索欄に「<strong>流れる線</strong>」または「<strong>WindyLines</strong>」と入力して検索してみてください。</li>
+      </ol>
+    </div>
+  </details>
+
+  <details>
+    <summary>GPU が認識されません / GPU レンダリングが使えません</summary>
+    <div class="details-body">
+      <ul>
+        <li><strong>GPU ドライバ</strong>を最新版に更新してください。</li>
+        <li>Premiere Pro の <strong>ファイル → プロジェクト設定 → 一般</strong> で「<strong>Mercury Playback Engine - GPU 高速処理</strong>」が選択されていることを確認してください。</li>
+        <li>GPU が使えない場合は自動的に CPU フォールバックで動作します（動作はしますが速度は低下します）。</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>動作が重い・再生がカクつきます</summary>
+    <div class="details-body">
+      <ul>
+        <li><strong>線の数</strong>を減らしてください（100〜300本推奨）。</li>
+        <li><strong>モーションブラー</strong>を OFF にするか、サンプル数を減らしてください。</li>
+        <li>GPU アクセラレーションが有効になっているか確認してください。</li>
+        <li>プレビュー解像度を 1/2 や 1/4 に下げるとリアルタイム再生しやすくなります。</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>macOS で「開発元を確認できないため開けません」と表示されます</summary>
+    <div class="details-body">
+      <ol>
+        <li><strong>システム設定</strong>を開く</li>
+        <li><strong>プライバシーとセキュリティ</strong>を選択</li>
+        <li>画面下部に表示される「<strong>このまま許可</strong>」をクリック</li>
+        <li>Premiere Pro を再起動</li>
+      </ol>
+    </div>
+  </details>
+
+  <details>
+    <summary>Windows で SmartScreen の警告が表示されます</summary>
+    <div class="details-body">
+      <p>初回実行時にのみ表示されます。「<strong>詳細情報</strong>」→「<strong>実行</strong>」をクリックしてください。以降は表示されません。</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>線がまったく表示されません</summary>
+    <div class="details-body">
+      <ul>
+        <li><strong>線の数</strong>が 0 になっていないか確認してください。</li>
+        <li><strong>合成モード</strong>設定を確認。「背面」にしていて要素がない場合は見えません。</li>
+        <li><strong>要素を隠す</strong>が ON で、範囲ソースが「元要素」の場合、アルファのない映像では何も描画されません。</li>
+        <li><strong>開始時間</strong>が大きすぎる値になっていないか確認してください。</li>
+        <li>プリセットを「デフォルト」に戻して動作を確認してみてください。</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary>アンチエイリアスを上げると線が太くなった気がします</summary>
+    <div class="details-body">
+      <p>これは<strong>正常な動作です</strong>。アンチエイリアスは線のエッジに半透明のフェード領域を追加するため、視覚的に線が少し太く感じられます。精密なサイズが必要な場合は、アンチエイリアス値を 0.5〜1.0 に抑えてください。</p>
+    </div>
+  </details>
+
+  <details>
+    <summary>別のプロジェクトに設定を引き継ぐにはどうすればよいですか？</summary>
+    <div class="details-body">
+      <p>Premiere Pro の<strong>エフェクトプリセット機能</strong>を使うのがおすすめです。</p>
+      <ol>
+        <li>調整済みのエフェクトを右クリック → 「<strong>プリセットの保存</strong>」</li>
+        <li>別のプロジェクトでプリセットを選択して適用</li>
+      </ol>
+    </div>
+  </details>
+</section>
+
+<!-- ==================== License ==================== -->
+<section id="license">
+  <h2><span class="icon">📄</span>ライセンスについて</h2>
+  <div class="card">
+    <p>このソフトウェアは商用ライセンスです。詳細はプラグインに同梱の EULA をご確認ください。</p>
+    <h4>制作物の利用について</h4>
+    <p>このプラグインで制作した映像作品は、<strong>商用・非商用を問わず自由に使用・配布</strong>できます。クレジット表記は任意です。</p>
+  </div>
+</section>
+
+</div><!-- /.container -->
+
+<!-- ==================== Footer ==================== -->
+<footer>
+  <p>OST WindyLines — 流れる線エフェクト for Adobe Premiere Pro</p>
+  <p>Copyright &copy; 2026 Kiyoto Nakamura. All rights reserved.</p>
+  <p style="margin-top:8px;font-size:0.8em;">Adobe, Premiere Pro は Adobe Inc. の登録商標です。本製品は Adobe Inc. の公式製品ではありません。</p>
+</footer>
+
+<!-- ==================== Script ==================== -->
+<script>
+function switchOS(os) {
+  document.querySelectorAll('.os-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.os-content').forEach(c => c.classList.remove('active'));
+  document.querySelector('.os-tab.' + os).classList.add('active');
+  document.getElementById('os-' + os).classList.add('active');
+}
+</script>
+</body>
+</html>
