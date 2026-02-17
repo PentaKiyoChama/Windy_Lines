@@ -157,6 +157,7 @@ typedef struct
 	float mLineB;            // inLineB
 	float mLineAA;           // inLineAA
 	int mLineCap;            // inLineCap
+	float mLineSkew;         // inLineSkew
 	int mLineCount;          // inLineCount
 	int mLineSeed;           // inLineSeed
 	int mLineEasing;         // inLineEasing
@@ -258,6 +259,7 @@ extern void ProcAmp2_CUDA(
 	float lineB,
 	float lineAA,
 	int lineCap,
+	float lineSkew,
 	int lineCount,
 	int lineSeed,
 	int lineEasing,
@@ -1265,6 +1267,10 @@ public:
 	const float lineLength = static_cast<float>(GetParam(OST_WINDYLINES_LINE_LENGTH, inRenderParams->inClipTime).mFloat64);
 	const int lineCap = NormalizePopupParam(GetParam(OST_WINDYLINES_LINE_CAP, inRenderParams->inClipTime), 2);
 		const float lineAngle = static_cast<float>(GetParam(OST_WINDYLINES_LINE_ANGLE, inRenderParams->inClipTime).mFloat32);
+		const float lineSkewRaw = static_cast<float>(GetParam(OST_WINDYLINES_LINE_SKEW, inRenderParams->inClipTime).mFloat64);
+		const float lineSkew = std::isfinite(lineSkewRaw)
+			? (lineSkewRaw < LINE_SKEW_MIN_VALUE ? LINE_SKEW_MIN_VALUE : (lineSkewRaw > LINE_SKEW_MAX_VALUE ? LINE_SKEW_MAX_VALUE : lineSkewRaw))
+			: LINE_SKEW_DFLT;
 		const float lineAA = static_cast<float>(GetParam(OST_WINDYLINES_LINE_AA, inRenderParams->inClipTime).mFloat64);
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
@@ -1334,6 +1340,7 @@ public:
 			params.mLineB = outC2 < 0.0f ? 0.0f : (outC2 > 1.0f ? 1.0f : outC2);     // Y
 		}
 		params.mLineAA = lineAAScaled;
+		params.mLineSkew = lineSkew;
 		const int lineCountDefault = lineCountF < 1.0f ? 1 : (lineCountF > 5000.0f ? 5000 : (int)lineCountF);
 		const bool skipFirstFrame = false;
 		const int lineCount = skipFirstFrame ? 0 : lineCountDefault;
@@ -1972,7 +1979,7 @@ public:
 		lineData[outputIndex * 4 + 2] = d2;
 		lineData[outputIndex * 4 + 3] = d3;
 
-		const float radius = fabsf(segCenterX) + halfLen + halfThick + aa;
+		const float radius = fabsf(segCenterX) + halfLen + halfThick + aa + fabsf(params.mLineSkew) * (halfThick + aa);
 		const float minXf = centerX + segCenterX * lineCos - radius;
 		const float maxXf = centerX + segCenterX * lineCos + radius;
 		const float minYf = centerY + segCenterX * lineSin - radius;
@@ -2108,6 +2115,7 @@ public:
 			params.mLineB,
 			params.mLineAA,
 			params.mLineCap,
+			params.mLineSkew,
 			params.mLineCount,
 			params.mLineSeed,
 			params.mLineEasing,
@@ -2273,6 +2281,7 @@ public:
 		clSetKernelArg(mKernelOpenCL, 62, sizeof(int), &params.mMotionBlurSamples);
 		clSetKernelArg(mKernelOpenCL, 63, sizeof(float), &params.mMotionBlurStrength);
 		clSetKernelArg(mKernelOpenCL, 64, sizeof(float), &params.mMotionBlurVelocity);
+		clSetKernelArg(mKernelOpenCL, 65, sizeof(float), &params.mLineSkew);
 
 			// Launch the kernel
 			size_t threadBlock[2] = { 16, 16 };

@@ -144,6 +144,7 @@ namespace ParamNames
     constexpr const char* LENGTH            = "長さ(px)";
     constexpr const char* LINE_CAP          = "端のスタイル";
     constexpr const char* ANGLE             = "線の角度";
+    constexpr const char* SKEW              = "平行四辺形の傾き";
     constexpr const char* AA                = "アンチエイリアス";
     constexpr const char* TAIL_FADE         = "テールフェード";
     constexpr const char* POSITION_HEADER   = "起点と描画範囲";
@@ -241,6 +242,7 @@ namespace ParamNames
 #define P_LENGTH            PARAM(ParamNames::LENGTH)
 #define P_LINE_CAP          PARAM(ParamNames::LINE_CAP)
 #define P_ANGLE             PARAM(ParamNames::ANGLE)
+#define P_SKEW              PARAM(ParamNames::SKEW)
 #define P_AA                PARAM(ParamNames::AA)
 #define P_TAIL_FADE         PARAM(ParamNames::TAIL_FADE)
 #define P_POSITION_HEADER   PARAM(ParamNames::POSITION_HEADER)

@@ -245,7 +245,8 @@
 		((int)(inMotionBlurEnable))
 		((int)(inMotionBlurSamples))
 		((float)(inMotionBlurStrength))
-		((float)(inMotionBlurVelocity)),
+		((float)(inMotionBlurVelocity))
+		((float)(inLineSkew)),
 			((uint2)(inXY)(KERNEL_XY)))
 		{
 			if (inXY.x < inWidth && inXY.y < inHeight)
@@ -263,6 +264,7 @@
 				const float originalG = pixel.y;
 				const float originalB = pixel.z;
 				const float aa = inLineAA > 0.0f ? inLineAA : 1.0f;
+				const float lineSkew = fmin(fmax(inLineSkew, -2.0f), 2.0f);
 				
 				// Front lines accumulator for blend mode 2
 				float frontR = 0.0f, frontG = 0.0f, frontB = 0.0f, frontA = 0.0f;
@@ -373,6 +375,7 @@
 								
 								// Line sample
 								float px = pxBase + blurOffset;
+								px -= lineSkew * py;
 								
 								// Distance calculation (SDF)
 								float dist = 0.0f;
@@ -401,6 +404,7 @@
 								// Shadow sample
 								if (inShadowEnable != 0) {
 									float spx = spxBase + blurOffset;
+									spx -= lineSkew * spy;
 									
 									float sdist = 0.0f;
 									if (inLineCap == 0) {
@@ -508,6 +512,7 @@
 						float px = dx * lineCos + dy * lineSin;
 						float py = -dx * lineSin + dy * lineCos;
 						px -= segCenterX;
+						px -= lineSkew * py;
 						
 						float dist = 0.0f;
 						if (inLineCap == 0) {
@@ -540,6 +545,7 @@
 							float spx = sdx * lineCos + sdy * lineSin;
 							float spy = -sdx * lineSin + sdy * lineCos;
 							spx -= segCenterX;
+							spx -= lineSkew * spy;
 							
 							float sdist = 0.0f;
 							if (inLineCap == 0) {

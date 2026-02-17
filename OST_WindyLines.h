@@ -168,7 +168,8 @@ enum
 	OST_WINDYLINES_LENGTH_LINKAGE_RATE,          // 25. Length linkage rate (%)
 	OST_WINDYLINES_LINE_LENGTH,                  // 26. Line length (px)
 	OST_WINDYLINES_LINE_ANGLE,                   // 27. Line angle (degrees)
-	OST_WINDYLINES_LINE_CAP,                     // 28. Line cap style
+	OST_WINDYLINES_LINE_SKEW,                    // 28. Parallelogram skew
+	OST_WINDYLINES_LINE_CAP,                     // 29. Line cap style
 	OST_WINDYLINES_LINE_TAIL_FADE,               // 29. Tail fade amount
 	
 	// ▼ Position & Spawn - Line Origin
@@ -222,7 +223,7 @@ enum
 	// ▼ License
 	OST_WINDYLINES_LICENSE_HEADER,               // 68. License topic start
 	OST_WINDYLINES_LICENSE_STATUS,               // 69. License status / activate popup
-	OST_WINDYLINES_LICENSE_TOPIC_END,            // 70. License topic end
+	OST_WINDYLINES_LICENSE_TOPIC_END,            // License topic end
 	
 	OST_WINDYLINES_NUM_PARAMS
 };
@@ -326,6 +327,12 @@ struct EffectPreset
 #define	LINE_LENGTH_MIN_SLIDER		0
 #define	LINE_LENGTH_MAX_SLIDER		2000
 #define	LINE_LENGTH_DFLT			200
+
+#define	LINE_SKEW_MIN_VALUE		-2
+#define	LINE_SKEW_MAX_VALUE		2
+#define	LINE_SKEW_MIN_SLIDER	-2
+#define	LINE_SKEW_MAX_SLIDER	2
+#define	LINE_SKEW_DFLT			0
 
 #define	LINE_AA_MIN_VALUE			0
 #define	LINE_AA_MAX_VALUE			5

@@ -158,6 +158,7 @@
 		((float)(inLineB))
 		((float)(inLineAA))
 		((int)(inLineCap))
+		((float)(inLineSkew))
 		((int)(inLineCount))
 		((int)(inLineSeed))
 		((int)(inLineEasing))
@@ -226,6 +227,7 @@
 			float lineOnlyAlpha = 0.0f;
 
 			const float aa = inLineAA > 0.0f ? inLineAA : 1.0f;
+			const float lineSkew = fminf(fmaxf(inLineSkew, -2.0f), 2.0f);
 			const int tileX = inTileSize > 0 ? (int)(inXY.x / (unsigned int)inTileSize) : 0;
 			const int tileY = inTileSize > 0 ? (int)(inXY.y / (unsigned int)inTileSize) : 0;
 			const int tileIndex = tileY * inTileCountX + tileX;
@@ -292,6 +294,7 @@
 							float spxSample = sdx * lineCos + sdy * lineSin;
 							spxSample -= (segCenterX + sampleOffset);
 							const float spySample = -sdx * lineSin + sdy * lineCos;
+							spxSample -= lineSkew * spySample;
 							
 							float sdist = 0.0f;
 							if (inLineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
@@ -337,6 +340,7 @@
 						float spx = sdx * lineCos + sdy * lineSin;
 						const float spy = -sdx * lineSin + sdy * lineCos;
 					spx -= segCenterX;
+					spx -= lineSkew * spy;
 					
 					float sdist = 0.0f;
 					if (inLineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
@@ -442,6 +446,7 @@
 							// For trail: sample past positions (line was at smaller X values before)
 							// segCenterX + sampleOffset shifts the reference point forward
 							pxSample -= (segCenterX + sampleOffset);
+							pxSample -= lineSkew * pySample;
 							
 							float distSample = 0.0f;
 							if (inLineCap == 0)
@@ -483,6 +488,7 @@
 						float px = dx * lineCos + dy * lineSin;
 						const float py = -dx * lineSin + dy * lineCos;
 						px -= segCenterX;
+						px -= lineSkew * py;
 						
 						float dist = 0.0f;
 						if (inLineCap == 0)
@@ -522,6 +528,7 @@
 				float px = dx * lineCos + dy * lineSin;
 				const float py = -dx * lineSin + dy * lineCos;
 				px -= segCenterX;
+				px -= lineSkew * py;
 
 				float dist = 0.0f;
 				if (inLineCap == 0)  // 0 = Flat (box), 1 = Round (capsule)
@@ -768,6 +775,7 @@
 		float lineB,
 		float lineAA,
 		int lineCap,
+		float lineSkew,
 		int lineCount,
 		int lineSeed,
 		int lineEasing,
@@ -837,6 +845,7 @@
 			lineB,
 			lineAA,
 			lineCap,
+			lineSkew,
 			lineCount,
 			lineSeed,
 			lineEasing,

@@ -46,13 +46,16 @@ static inline float ApplyEasing(float t, int easingType)
 		case 3: return 1.0f - cosf((float)M_PI * t * 0.5f);
 		case 4: return sinf((float)M_PI * t * 0.5f);
 		case 5: return EaseInOutSine(t);
-		case 6:
+		case 6: // OutInSine: fast→slow→fast with smooth midpoint
 		{
+			float outIn;
 			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 4);
+				outIn = 0.5f * ApplyEasing(t * 2.0f, 4);
 			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 3);
+				outIn = 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 3);
 			}
+			const float k = 0.25f;
+			return outIn * (1.0f - k) + t * k;
 		}
 		case 7: return t * t;
 		case 8: return 1.0f - (1.0f - t) * (1.0f - t);
@@ -63,13 +66,16 @@ static inline float ApplyEasing(float t, int easingType)
 			const float v = u - 1.0f;
 			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v));
 		}
-		case 10:
+		case 10: // OutInQuad: fast→slow→fast with smooth midpoint
 		{
+			float outIn;
 			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 8);
+				outIn = 0.5f * ApplyEasing(t * 2.0f, 8);
 			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 7);
+				outIn = 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 7);
 			}
+			const float k = 0.25f;
+			return outIn * (1.0f - k) + t * k;
 		}
 		case 11: return t * t * t;
 		case 12:
@@ -84,13 +90,16 @@ static inline float ApplyEasing(float t, int easingType)
 			const float v = u - 1.0f;
 			return 0.5f + 0.5f * (1.0f - (1.0f - v) * (1.0f - v) * (1.0f - v));
 		}
-		case 14:
+		case 14: // OutInCubic: fast→slow→fast with smooth midpoint
 		{
+			float outIn;
 			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 12);
+				outIn = 0.5f * ApplyEasing(t * 2.0f, 12);
 			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 11);
+				outIn = 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 11);
 			}
+			const float k = 0.25f;
+			return outIn * (1.0f - k) + t * k;
 		}
 		case 15: return 1.0f - sqrtf(1.0f - t * t);
 		case 16:
@@ -107,13 +116,16 @@ static inline float ApplyEasing(float t, int easingType)
 			const float v = u - 2.0f;
 			return 0.5f * (sqrtf(1.0f - v * v) + 1.0f);
 		}
-		case 18:
+		case 18: // OutInCirc: fast→slow→fast with smooth midpoint
 		{
+			float outIn;
 			if (t < 0.5f) {
-				return 0.5f * ApplyEasing(t * 2.0f, 16);
+				outIn = 0.5f * ApplyEasing(t * 2.0f, 16);
 			} else {
-				return 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 15);
+				outIn = 0.5f + 0.5f * ApplyEasing((t - 0.5f) * 2.0f, 15);
 			}
+			const float k = 0.25f;
+			return outIn * (1.0f - k) + t * k;
 		}
 		case 19:
 		{

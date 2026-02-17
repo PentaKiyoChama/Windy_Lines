@@ -1385,6 +1385,7 @@ static void ApplyEffectPreset(
 	updateFloat(OST_WINDYLINES_LINE_THICKNESS, preset.thickness);
 	updateFloat(OST_WINDYLINES_LINE_LENGTH, preset.length);
 	updateAngle(OST_WINDYLINES_LINE_ANGLE, preset.angle);
+	updateFloat(OST_WINDYLINES_LINE_SKEW, static_cast<float>(LINE_SKEW_DFLT));
 	updateFloat(OST_WINDYLINES_LINE_TAIL_FADE, preset.tailFade);
 	updateFloat(OST_WINDYLINES_LINE_AA, preset.aa);
 	
@@ -1468,6 +1469,7 @@ static void ApplyDefaultEffectParams(
 	updateFloat(OST_WINDYLINES_LINE_THICKNESS, static_cast<float>(LINE_THICKNESS_DFLT));
 	updateFloat(OST_WINDYLINES_LINE_LENGTH, static_cast<float>(LINE_LENGTH_DFLT));
 	updateAngle(OST_WINDYLINES_LINE_ANGLE, 0.0f);
+	updateFloat(OST_WINDYLINES_LINE_SKEW, static_cast<float>(LINE_SKEW_DFLT));
 	updateFloat(OST_WINDYLINES_LINE_TAIL_FADE, static_cast<float>(LINE_TAIL_FADE_DFLT));
 	updateFloat(OST_WINDYLINES_LINE_AA, static_cast<float>(LINE_AA_DFLT));
 	
@@ -1790,6 +1792,20 @@ static PF_Err ParamsSetup(
 		P_ANGLE,
 		0,
 		OST_WINDYLINES_LINE_ANGLE);
+
+	// Line Skew (Parallelogram)
+	AEFX_CLR_STRUCT(def);
+	PF_ADD_FLOAT_SLIDERX(
+		P_SKEW,
+		LINE_SKEW_MIN_VALUE,
+		LINE_SKEW_MAX_VALUE,
+		LINE_SKEW_MIN_SLIDER,
+		LINE_SKEW_MAX_SLIDER,
+		LINE_SKEW_DFLT,
+		PF_Precision_TENTHS,
+		0,
+		0,
+		OST_WINDYLINES_LINE_SKEW);
 
 	// Line Cap
 	AEFX_CLR_STRUCT(def);
@@ -2306,6 +2322,10 @@ static PF_Err Render(
 		const float lineLength = (float)params[OST_WINDYLINES_LINE_LENGTH]->u.fs_d.value;
 		const int lineCap = normalizePopup(params[OST_WINDYLINES_LINE_CAP]->u.pd.value, 2);
 		const float lineAngle = (float)FIX_2_FLOAT(params[OST_WINDYLINES_LINE_ANGLE]->u.ad.value);
+		const float lineSkewRaw = (float)params[OST_WINDYLINES_LINE_SKEW]->u.fs_d.value;
+		const float lineSkew = std::isfinite(lineSkewRaw)
+			? (lineSkewRaw < LINE_SKEW_MIN_VALUE ? LINE_SKEW_MIN_VALUE : (lineSkewRaw > LINE_SKEW_MAX_VALUE ? LINE_SKEW_MAX_VALUE : lineSkewRaw))
+			: LINE_SKEW_DFLT;
 		const float lineAA = (float)params[OST_WINDYLINES_LINE_AA]->u.fs_d.value;
 		
 		// Spawn Source: if "Full Frame" selected, ignore alpha threshold
@@ -2926,10 +2946,11 @@ static PF_Err Render(
 					const float skipDy = (y + 0.5f) - ld.centerY;
 					const float shadowMargin = shadowEnable ? fmaxf(fabsf(shadowOffsetX), fabsf(shadowOffsetY)) : 0.0f;
 					const float margin = ld.halfThick + lineAAScaled + shadowMargin;
+					const float skewMarginX = fabsf(lineSkew) * margin;
 					const float skipPx = skipDx * ld.cosA + skipDy * ld.sinA - ld.segCenterX;
 					const float skipPy = -skipDx * ld.sinA + skipDy * ld.cosA;
 					
-					if (fabsf(skipPx) > ld.halfLen + margin && fabsf(skipPy) > margin)
+					if (fabsf(skipPx) > ld.halfLen + margin + skewMarginX && fabsf(skipPy) > margin)
 					{
 						continue;  // Skip this line - pixel is too far away
 					}
@@ -2960,6 +2981,7 @@ static PF_Err Render(
 								float spxSample = sdx * ld.cosA + sdy * ld.sinA;
 								const float spySample = -sdx * ld.sinA + sdy * ld.cosA;
 								spxSample -= (ld.segCenterX + sampleOffset);
+								spxSample -= lineSkew * spySample;
 
 								float sdistSample = (lineCap == 0)
 									? SDFBox(spxSample, spySample, ld.halfLen, ld.halfThick)
@@ -2986,6 +3008,7 @@ static PF_Err Render(
 							float spx = sdx * ld.cosA + sdy * ld.sinA;
 							const float spy = -sdx * ld.sinA + sdy * ld.cosA;
 							spx -= ld.segCenterX;
+							spx -= lineSkew * spy;
 
 							float sdist = (lineCap == 0)
 								? SDFBox(spx, spy, ld.halfLen, ld.halfThick)
@@ -3007,6 +3030,7 @@ static PF_Err Render(
 						float spx = sdx * ld.cosA + sdy * ld.sinA;
 						const float spy = -sdx * ld.sinA + sdy * ld.cosA;
 						spx -= ld.segCenterX;
+						spx -= lineSkew * spy;
 
 						float sdist = (lineCap == 0)
 							? SDFBox(spx, spy, ld.halfLen, ld.halfThick)
@@ -3072,6 +3096,7 @@ static PF_Err Render(
 								float pxSample = dx * ld.cosA + dy * ld.sinA;
 								const float pySample = -dx * ld.sinA + dy * ld.cosA;
 								pxSample -= (ld.segCenterX + sampleOffset);
+								pxSample -= lineSkew * pySample;
 
 								float distSample = (lineCap == 0)
 									? SDFBox(pxSample, pySample, ld.halfLen, ld.halfThick)
@@ -3098,6 +3123,7 @@ static PF_Err Render(
 							float px = dx * ld.cosA + dy * ld.sinA;
 							const float py = -dx * ld.sinA + dy * ld.cosA;
 							px -= ld.segCenterX;
+							px -= lineSkew * py;
 
 							float dist = (lineCap == 0)
 								? SDFBox(px, py, ld.halfLen, ld.halfThick)
@@ -3119,6 +3145,7 @@ static PF_Err Render(
 						float px = dx * ld.cosA + dy * ld.sinA;
 						const float py = -dx * ld.sinA + dy * ld.cosA;
 						px -= ld.segCenterX;
+						px -= lineSkew * py;
 
 						float dist = (lineCap == 0)
 							? SDFBox(px, py, ld.halfLen, ld.halfThick)
