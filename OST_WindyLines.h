@@ -43,7 +43,7 @@
 // ========== DEBUG RENDER MARKERS ==========
 // Set to 1 to enable visual markers in top-left corner (GPU/CPU indicator)
 // Set to 0 to disable completely (zero performance impact)
-#define ENABLE_DEBUG_RENDER_MARKERS 1
+#define ENABLE_DEBUG_RENDER_MARKERS 0
 // ========== DEBUG LOGGING (Common) ==========
 #if defined(_DEBUG) || defined(DEBUG)
 static std::mutex sLogMutex;

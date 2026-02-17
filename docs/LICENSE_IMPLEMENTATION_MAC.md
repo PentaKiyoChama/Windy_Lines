@@ -299,6 +299,7 @@ Webサイト上でライセンス認証を完了するフロー。
 https://penta.bubbleapps.io/version-test/activate
   ?token=<32hex>       ← ワンタイムトークン（activation_token.txt に永続化）
   &mid=<16hex>         ← machine_id_hash
+  &platform=<mac|win>  ← OS種別（ユーザーにも判別しやすい最小情報）
   &product=OST_WindyLines
   &ver=<バージョン文字列>
 ```
