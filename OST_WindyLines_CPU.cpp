@@ -1852,7 +1852,7 @@ static PF_Err ParamsSetup(
 		LINE_SKEW_MIN_SLIDER,
 		LINE_SKEW_MAX_SLIDER,
 		LINE_SKEW_DFLT,
-		PF_Precision_TENTHS,
+		PF_Precision_HUNDREDTHS,
 		0,
 		0,
 		OST_WINDYLINES_LINE_SKEW);
@@ -3444,16 +3444,17 @@ extern "C" DllExport PF_Err EffectMain(
 		// Effect Preset: apply preset parameters or defaults
 		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_EFFECT_PRESET)
 		{
-			const int presetValue = params[OST_WINDYLINES_EFFECT_PRESET]->u.pd.value;
-			DebugLog("Effect Preset changed: presetValue=%d (1=Default, 2+=Preset[n-2])", presetValue);
+			const int rawPresetValue = params[OST_WINDYLINES_EFFECT_PRESET]->u.pd.value;
+			const int normalizedPresetIndex = NormalizePopupValue(rawPresetValue, 1 + kEffectPresetCount);
+			DebugLog("Effect Preset changed: raw=%d -> normalized=%d (0=Default, 1+=Preset[n-1])", rawPresetValue, normalizedPresetIndex);
 			
-			if (presetValue == 1)
+			if (normalizedPresetIndex == 0)
 			{
 				DebugLog("Applying default effect params...");
 				ApplyDefaultEffectParams(in_data, out_data, params);
 				DebugLog("Default effect params applied.");
 			}
-			else if (presetValue > 1)
+			else if (normalizedPresetIndex > 0)
 			{
 				// Debounce: ignore double-fire within 200ms
 				const uint32_t currentTime = GetCurrentTimeMs();
@@ -3466,13 +3467,13 @@ extern "C" DllExport PF_Err EffectMain(
 					break;  // Ignore duplicate event
 				}
 				sLastPresetClickTime.store(currentTime);
-				DebugLog("Applying effect preset index=%d...", presetValue - 2);
-				ApplyEffectPreset(in_data, out_data, params, presetValue - 2);
+				DebugLog("Applying effect preset index=%d...", normalizedPresetIndex - 1);
+				ApplyEffectPreset(in_data, out_data, params, normalizedPresetIndex - 1);
 				DebugLog("Effect preset applied.");
 			}
 			else
 			{
-				DebugLog("presetValue <= 0, no action taken");
+				DebugLog("normalizedPresetIndex < 0, no action taken");
 			}
 		}
 		

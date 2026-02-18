@@ -18,7 +18,6 @@ enum ColorPreset
 	COLOR_PRESET_DESERT,
 	COLOR_PRESET_STARDUST,
 	COLOR_PRESET_WAKABA,
-	COLOR_PRESET_DANGERZONE,
 	COLOR_PRESET_YOEN,
 	COLOR_PRESET_SOKAI,
 	COLOR_PRESET_DREAMYWIND,
@@ -27,7 +26,6 @@ enum ColorPreset
 	COLOR_PRESET_AUTUMN,
 	COLOR_PRESET_SNOW,
 	COLOR_PRESET_DEEPSEA,
-	COLOR_PRESET_MORNINGDEW,
 	COLOR_PRESET_NIGHTSKY,
 	COLOR_PRESET_FLAME,
 	COLOR_PRESET_EARTH,
@@ -108,19 +106,13 @@ namespace ColorPresets {
 		{255, 229, 255, 128}, {255, 178, 242, 153}, {255, 255, 255, 153}, {255, 76, 178, 51}
 	};
 
-	// 危険地帯 (DangerZone)
-	const PresetColor kDangerZone[8] = {
-		{255, 0, 0, 0}, {255, 255, 204, 0}, {255, 255, 102, 0}, {255, 51, 51, 51},
-		{255, 229, 178, 0}, {255, 204, 76, 0}, {255, 25, 25, 25}, {255, 255, 153, 0}
-	};
-
 	// 妖艶 (Yoen)
 	const PresetColor kYoen[8] = {
 		{255, 102, 0, 128}, {255, 153, 0, 204}, {255, 51, 0, 76}, {255, 204, 25, 76},
 		{255, 76, 25, 102}, {255, 229, 0, 153}, {255, 25, 0, 38}, {255, 178, 51, 229}
 	};
 
-	// 爽快 (Sokai)
+	// フレッシュ (Sokai)
 	const PresetColor kSokai[8] = {
 		{255, 0, 178, 255}, {255, 76, 255, 178}, {255, 204, 242, 255}, {255, 0, 128, 204},
 		{255, 128, 255, 204}, {255, 25, 229, 255}, {255, 229, 255, 242}, {255, 0, 153, 229}
@@ -162,13 +154,7 @@ namespace ColorPresets {
 		{255, 106, 90, 205}, {255, 123, 104, 238}, {255, 147, 112, 219}, {255, 138, 43, 226}
 	};
 
-	// 朝つゆ (MorningDew)
-	const PresetColor kMorningDew[8] = {
-		{255, 255, 255, 0}, {255, 255, 165, 0}, {255, 255, 20, 147}, {255, 0, 191, 255},
-		{255, 30, 144, 255}, {255, 50, 205, 50}, {255, 138, 43, 226}, {255, 255, 69, 0}
-	};
-
-	// 夜空 (NightSky)
+	// 夜景 (NightSky)
 	const PresetColor kNightSky[8] = {
 		{255, 25, 25, 112}, {255, 0, 0, 139}, {255, 72, 61, 139}, {255, 106, 90, 205},
 		{255, 123, 104, 238}, {255, 147, 112, 219}, {255, 138, 43, 226}, {255, 148, 0, 211}
@@ -277,42 +263,40 @@ inline const PresetColor* GetPresetPalette(int presetIndex) {
 		case 7: return ColorPresets::kDesert;
 		case 8: return ColorPresets::kStarDust;
 		case 9: return ColorPresets::kWakaba;
-		case 10: return ColorPresets::kDangerZone;
-		case 11: return ColorPresets::kYoen;
-		case 12: return ColorPresets::kSokai;
-		case 13: return ColorPresets::kDreamyWind;
-		case 14: return ColorPresets::kSunset;
-		case 15: return ColorPresets::kOcean;
-		case 16: return ColorPresets::kAutumn;
-		case 17: return ColorPresets::kSnow;
-		case 18: return ColorPresets::kDeepSea;
-		case 19: return ColorPresets::kMorningDew;
-		case 20: return ColorPresets::kNightSky;
-		case 21: return ColorPresets::kFlame;
-		case 22: return ColorPresets::kEarth;
-		case 23: return ColorPresets::kJewel;
-		case 24: return ColorPresets::kPastel2;
-		case 25: return ColorPresets::kCityNight;
-		case 26: return ColorPresets::kMoonlight;
-		case 27: return ColorPresets::kDazzlingLight;
-		case 28: return ColorPresets::kNeonBlast;
-		case 29: return ColorPresets::kToxicSwamp;
-		case 30: return ColorPresets::kCosmicStorm;
-		case 31: return ColorPresets::kLavaFlow;
-		case 32: return ColorPresets::kGold;
-		case 33: return ColorPresets::kMonochrome;
-		case 34: return ColorPresets::kred_and_black;
-		case 35: return ColorPresets::kSandyOcean;
+		case 10: return ColorPresets::kYoen;
+		case 11: return ColorPresets::kSokai;
+		case 12: return ColorPresets::kDreamyWind;
+		case 13: return ColorPresets::kSunset;
+		case 14: return ColorPresets::kOcean;
+		case 15: return ColorPresets::kAutumn;
+		case 16: return ColorPresets::kSnow;
+		case 17: return ColorPresets::kDeepSea;
+		case 18: return ColorPresets::kNightSky;
+		case 19: return ColorPresets::kFlame;
+		case 20: return ColorPresets::kEarth;
+		case 21: return ColorPresets::kJewel;
+		case 22: return ColorPresets::kPastel2;
+		case 23: return ColorPresets::kCityNight;
+		case 24: return ColorPresets::kMoonlight;
+		case 25: return ColorPresets::kDazzlingLight;
+		case 26: return ColorPresets::kNeonBlast;
+		case 27: return ColorPresets::kToxicSwamp;
+		case 28: return ColorPresets::kCosmicStorm;
+		case 29: return ColorPresets::kLavaFlow;
+		case 30: return ColorPresets::kGold;
+		case 31: return ColorPresets::kMonochrome;
+		case 32: return ColorPresets::kred_and_black;
+		case 33: return ColorPresets::kSandyOcean;
 		default: return ColorPresets::kRainbow;  // Fallback to first preset
 	}
 }
 
 // Total number of color presets (for UI generation)
-static const int kColorPresetCount = 35;
+static const int kColorPresetCount = 33;
 
 // Total number of menu items including separators
-// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets=35 = 39
-static const int kUnifiedPresetCount = 39;
+// Single=1 + Sep=1 + Custom=1 + Sep=1 + Presets=33 = 37
+static const int kUnifiedPresetCount = 37;
 
 // Preset names (Japanese) for UI labels
 static const char* kColorPresetNames[] = {
@@ -325,17 +309,15 @@ static const char* kColorPresetNames[] = {
 	"砂漠",  // Desert
 	"星屑",  // StarDust
 	"若葉",  // Wakaba
-	"危険地帯",  // DangerZone
 	"妖艶",  // Yoen
-	"爽快",  // Sokai
+	"フレッシュ",  // Sokai
 	"ドリーム",  // DreamyWind
 	"夕焼け",  // Sunset
 	"オーシャン",  // Ocean
 	"秋",  // Autumn
 	"雪",  // Snow
 	"深海",  // DeepSea
-	"朝つゆ",  // MorningDew
-	"夜空",  // NightSky
+	"夜景",  // NightSky
 	"炎",  // Flame
 	"大地",  // Earth
 	"宝石",  // Jewel
@@ -380,7 +362,7 @@ inline void UnifiedIndexToColorModeAndPreset(int unifiedIndex, int& outColorMode
 	} else if (unifiedIndex == 2) {
 		outColorMode = 1;  // Custom
 		outPresetIndex = 0;
-	} else if (unifiedIndex >= 4 && unifiedIndex < 4 + 35) {
+	} else if (unifiedIndex >= 4 && unifiedIndex < 4 + 33) {
 		outColorMode = 2;  // Preset
 		outPresetIndex = unifiedIndex - 4;  // 0-based preset index
 	} else {
@@ -396,7 +378,7 @@ inline int ColorModeAndPresetToUnifiedIndex(int colorMode, int presetIndex) {
 	if (colorMode == 1) return 2;  // Custom
 	if (colorMode == 2) {  // Preset
 		int idx = presetIndex + 4;  // Skip Single, Sep, Custom, Sep
-		if (idx >= 4 && idx < 4 + 35) return idx;
+		if (idx >= 4 && idx < 4 + 33) return idx;
 		return 4;  // Default to first preset
 	}
 	return 0;  // Default to Single
