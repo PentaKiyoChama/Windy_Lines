@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>おしゃれテロップのプラグイン インストールガイド</title>
+  <title>おしゃれテロッププラグイン　インストールガイド</title>
   <style>
     :root {
       --bg: #f8fafc;
@@ -54,6 +54,30 @@
       margin-bottom: 18px;
       font-size: 0.94rem;
     }
+    .toc {
+      margin-bottom: 18px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .toc h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      color: #1d4ed8;
+    }
+    .toc ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .toc a {
+      color: #1e40af;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .toc a:hover {
+      text-decoration: underline;
+    }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -86,6 +110,16 @@
       font-size: 0.85rem;
       word-break: break-all;
     }
+    .path-note {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-radius: 8px;
+      color: #92400e;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
     .sub {
       margin-top: 14px;
       padding-top: 12px;
@@ -109,7 +143,7 @@
 </head>
 <body>
   <header class="hero">
-    <h1>おしゃれテロップのプラグイン インストールガイド</h1>
+    <h1>おしゃれテロッププラグイン　インストールガイド</h1>
     <p>Windows / macOS 向け（Adobe Premiere Pro）</p>
   </header>
 
@@ -118,27 +152,31 @@
       ⚠️ インストール前に <strong>Adobe Premiere Pro を完全終了</strong>してください。
     </div>
 
-    <section class="card" style="margin-bottom:14px;">
-      <h2 style="margin-bottom:10px; color: var(--primary);">🔓 ライセンス認証（ウォーターマーク「Edit with おしゃれテロップ」を消す）</h2>
-      <ol class="steps" style="margin-bottom:8px;">
-        <li>Premiere Pro で対象クリップを選択し、「流れる線」エフェクトを適用します。</li>
-        <li>エフェクトコントロール内の <strong>「ライセンス」</strong> グループを開きます。</li>
-        <li><strong>「アクティベート」</strong> を選択します。</li>
-        <li>ブラウザが開いたら、以降はブラウザ画面の案内に従って認証を完了してください。</li>
-      </ol>
-      <div class="muted">※ 認証完了後、ウォーターマークは表示されなくなります。</div>
-    </section>
+    <div class="warning">
+      📁 コピー先フォルダは <strong>ユーザー環境・OS・Adobeバージョン</strong> により異なる場合があります。以下のパスは代表例としてご利用ください。
+    </div>
 
-    <div class="grid">
+    <nav class="toc" aria-label="目次">
+      <h2>📚 目次</h2>
+      <ul>
+        <li><a href="#install">インストール</a></li>
+        <li><a href="#license">ライセンス認証</a></li>
+      </ul>
+    </nav>
+
+    <section id="install" aria-label="インストール">
+      <h2 style="margin:0 0 12px; color: var(--primary);">📦 インストール</h2>
+      <div class="grid">
       <section class="card win">
         <h2>🪟 Windows</h2>
         <ol class="steps">
           <li>
-            ZIP を展開し、<strong>OST_WindyLines.aex</strong> をコピー
+            ZIP を展開し、<strong>○○.aex</strong> をコピー
             <div class="path">C:\Program Files\Adobe\Common\Plug-ins\7.0\MediaCore\</div>
+            <div class="path-note">※ このコピー先フォルダはユーザー環境・OS・Adobeバージョンにより異なる場合があります（上記は代表例）。</div>
           </li>
           <li>Premiere Pro を起動</li>
-          <li>エフェクトパネルで <strong>「おしゃれテロップ」→「風を感じるライン」</strong> を確認</li>
+          <li>エフェクト一覧で <strong>「おしゃれテロップ」</strong> カテゴリー内に該当のプラグインがあることを確認</li>
         </ol>
 
         <div class="sub">
@@ -151,7 +189,7 @@
 
         <div class="sub">
           <h3>アンインストール</h3>
-          <div class="path">C:\Program Files\Adobe\Common\Plug-ins\7.0\MediaCore\OST_WindyLines.aex</div>
+          <div class="path">C:\Program Files\Adobe\Common\Plug-ins\7.0\MediaCore\○○.aex</div>
           <div class="muted">上記ファイルを削除してください。</div>
         </div>
       </section>
@@ -160,11 +198,12 @@
         <h2>🍎 macOS</h2>
         <ol class="steps">
           <li>
-            ZIP を展開し、<strong>OST_WindyLines.plugin</strong> をコピー
+            ZIP を展開し、<strong>○○.plugin</strong> をコピー
             <div class="path">/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/</div>
+            <div class="path-note">※ このコピー先フォルダはユーザー環境・OS・Adobeバージョンにより異なる場合があります（上記は代表例）。</div>
           </li>
           <li>Premiere Pro を起動</li>
-          <li>エフェクトパネルで <strong>「おしゃれテロップ」→「風を感じるライン」</strong> を確認</li>
+          <li>エフェクト一覧で <strong>「おしゃれテロップ」</strong> カテゴリー内に該当のプラグインがあることを確認</li>
         </ol>
 
         <div class="sub">
@@ -178,14 +217,26 @@
 
         <div class="sub">
           <h3>アンインストール</h3>
-          <div class="path">/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/OST_WindyLines.plugin</div>
+          <div class="path">/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore/○○.plugin</div>
           <div class="muted">上記ファイルを削除してください。</div>
         </div>
       </section>
-    </div>
+      </div>
+    </section>
+
+    <section id="license" class="card" style="margin-top:14px;">
+      <h2 style="margin-bottom:10px; color: var(--primary);">🔓 ライセンス認証（ウォーターマーク「Edit with おしゃれテロップ」を消す）</h2>
+      <ol class="steps" style="margin-bottom:8px;">
+        <li>Premiere Pro で対象クリップを選択し、該当のプラグインを適用します。</li>
+        <li>エフェクトコントロール内の <strong>「ライセンス」</strong> グループを開きます。</li>
+        <li><strong>「アクティベート」</strong> を選択します。</li>
+        <li>ブラウザが開いたら、以降はブラウザ画面の案内に従って認証を完了してください。</li>
+      </ol>
+      <div class="muted">※ 認証完了後、ウォーターマークは表示されなくなります。</div>
+    </section>
 
     <footer>
-      おしゃれテロップ — インストールガイド
+      おしゃれテロッププラグイン — インストールガイド
     </footer>
   </main>
 </body>
