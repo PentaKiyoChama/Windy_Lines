@@ -125,6 +125,7 @@ static void EnsureCudaBuffer(void** buffer, size_t& capacityBytes, size_t requir
     #define HAS_DIRECTX 0
     #define HAS_METAL   1
     #include <Metal/Metal.h>
+    #include <dlfcn.h>
 #endif
 #include <math.h>
 
@@ -746,8 +747,22 @@ public:
 			@autoreleasepool{
 				prSuiteError result = suiteError_NoError;
 
-                // Use correct bundle identifier for this plugin
-                NSString *pluginBundlePath = [[NSBundle bundleWithIdentifier:@"MyCompany.OST-WindyLines"] bundlePath];
+                // Find the plugin bundle - try bundle identifier first, then dladdr fallback
+                NSBundle *pluginBundle = [NSBundle bundleWithIdentifier:@"com.penta-douga.OSTWindyLines"];
+                if (!pluginBundle)
+                {
+                    // Fallback: locate bundle from the executable path using dladdr
+                    Dl_info dlInfo;
+                    if (dladdr((const void*)&sMetalPipelineStateCache, &dlInfo) && dlInfo.dli_fname)
+                    {
+                        NSString *execPath = [NSString stringWithUTF8String:dlInfo.dli_fname];
+                        // execPath = .../OST_WindyLines.plugin/Contents/MacOS/OST_WindyLines
+                        // Go up 3 levels to reach .plugin bundle root
+                        NSString *bundlePath = [[[execPath stringByDeletingLastPathComponent] stringByDeletingLastPathComponent] stringByDeletingLastPathComponent];
+                        pluginBundle = [NSBundle bundleWithPath:bundlePath];
+                    }
+                }
+                NSString *pluginBundlePath = [pluginBundle bundlePath];
                 NSString *metalLibPath = [pluginBundlePath stringByAppendingPathComponent:@"Contents/Resources/MetalLib/OST_WindyLines.metallib"];
                 if(!(metalLibPath && [[NSFileManager defaultManager] fileExistsAtPath:metalLibPath]))
                 {
