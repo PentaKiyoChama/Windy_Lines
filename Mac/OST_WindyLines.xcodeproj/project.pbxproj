@@ -163,6 +163,7 @@
 				TargetAttributes = {
 					7E83C0F9170F4840008B8043 = {
 						DevelopmentTeam = K6BMA3VLGX;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -302,6 +303,7 @@
 				INSTALL_PATH = "";
 				ONLY_ACTIVE_ARCH = YES;
 				PREMIERE_SDK_BASE_PATH = "/Users/kiyotonakamura/Desktop/Premiere Pro 26.0 C++ SDK";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.OSTWindyLines";
 				SDKROOT = macosx;
 				SYMROOT = "$(BUILD_DIR)";
 				WRAPPER_EXTENSION = plugin;
@@ -335,6 +337,7 @@
 				);
 				INSTALL_PATH = "$(INSTALL_PATH)";
 				PREMIERE_SDK_BASE_PATH = "/Users/kiyotonakamura/Desktop/Premiere Pro 26.0 C++ SDK";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.OSTWindyLines";
 				SDKROOT = macosx;
 				SYMROOT = "$(BUILD_DIR)";
 				WRAPPER_EXTENSION = plugin;
@@ -345,9 +348,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = K6BMA3VLGX;
+				DEVELOPMENT_TEAM = K6BMA3VLGX;
 				DSTROOT = "$(PROJECT_DIR)/build/install-root";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
@@ -374,8 +379,9 @@
 					OpenCL,
 					"-liconv",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "MyCompany.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.--PRODUCT-NAME-rfc1034identifier-";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REZ_SEARCH_PATHS = (
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
 					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Resources\"",
@@ -392,11 +398,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = NO;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = K6BMA3VLGX;
+				DEVELOPMENT_TEAM = K6BMA3VLGX;
 				DSTROOT = "$(PROJECT_DIR)/build/install-root";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "OST_WindyLines-Prefix.pch";
@@ -422,7 +428,7 @@
 					OpenCL,
 					"-liconv",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "MyCompany.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.--PRODUCT-NAME-rfc1034identifier-";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REZ_SEARCH_PATHS = (

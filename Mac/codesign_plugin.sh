@@ -26,8 +26,19 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}OST_WindyLines - プラグイン署名${NC}"
 echo -e "${BLUE}========================================${NC}\n"
 
+# ビルド構成（Debug/Release）
+BUILD_CONFIG="${1:-Release}"
+if [ "$BUILD_CONFIG" != "Debug" ] && [ "$BUILD_CONFIG" != "Release" ]; then
+    echo -e "${RED}✗${NC} 無効な構成です: $BUILD_CONFIG"
+    echo "使い方: ./Mac/codesign_plugin.sh [Debug|Release]"
+    exit 1
+fi
+
+# Entitlements（必要なら codesign_config.sh 側で上書き可能）
+ENTITLEMENTS_PATH="${ENTITLEMENTS_PATH:-$SCRIPT_DIR/OST_WindyLines.entitlements.plist}"
+
 # プラグインファイルの検索
-PLUGIN_PATH="$SCRIPT_DIR/build/Debug/OST_WindyLines.plugin"
+PLUGIN_PATH="$SCRIPT_DIR/build/$BUILD_CONFIG/OST_WindyLines.plugin"
 
 if [ ! -d "$PLUGIN_PATH" ]; then
     echo -e "${RED}✗${NC} プラグインが見つかりません: $PLUGIN_PATH"
@@ -37,6 +48,8 @@ fi
 
 echo -e "${YELLOW}対象:${NC} $PLUGIN_PATH"
 echo -e "${YELLOW}証明書:${NC} $CODESIGN_IDENTITY"
+echo -e "${YELLOW}構成:${NC} $BUILD_CONFIG"
+echo -e "${YELLOW}Entitlements:${NC} $ENTITLEMENTS_PATH"
 echo ""
 
 # 既存の署名を削除
@@ -46,11 +59,21 @@ echo -e "${GREEN}✓${NC} 完了\n"
 
 # 署名実行
 echo -e "${YELLOW}[2/3] プラグインに署名中...${NC}"
-codesign --deep --force --verify --verbose \
-    --sign "$CODESIGN_IDENTITY" \
-    --options runtime \
-    --timestamp \
-    "$PLUGIN_PATH"
+if [ -f "$ENTITLEMENTS_PATH" ]; then
+    codesign --deep --force --verify --verbose \
+        --sign "$CODESIGN_IDENTITY" \
+        --options runtime \
+        --entitlements "$ENTITLEMENTS_PATH" \
+        --timestamp \
+        "$PLUGIN_PATH"
+else
+    echo -e "${YELLOW}[WARN]${NC} entitlements が見つかりません。Hardened Runtimeのみで署名します。"
+    codesign --deep --force --verify --verbose \
+        --sign "$CODESIGN_IDENTITY" \
+        --options runtime \
+        --timestamp \
+        "$PLUGIN_PATH"
+fi
 
 echo -e "${GREEN}✓${NC} 署名完了\n"
 
