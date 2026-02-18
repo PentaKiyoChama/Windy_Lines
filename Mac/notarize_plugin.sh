@@ -26,7 +26,15 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}OST_WindyLines - Apple 公証${NC}"
 echo -e "${BLUE}========================================${NC}\n"
 
-PLUGIN_PATH="$SCRIPT_DIR/build/Debug/OST_WindyLines.plugin"
+# ビルド構成（Debug/Release）
+BUILD_CONFIG="${1:-Release}"
+if [ "$BUILD_CONFIG" != "Debug" ] && [ "$BUILD_CONFIG" != "Release" ]; then
+    echo -e "${RED}✗${NC} 無効な構成です: $BUILD_CONFIG"
+    echo "使い方: ./Mac/notarize_plugin.sh [Debug|Release]"
+    exit 1
+fi
+
+PLUGIN_PATH="$SCRIPT_DIR/build/$BUILD_CONFIG/OST_WindyLines.plugin"
 ZIP_PATH="$SCRIPT_DIR/build/OST_WindyLines_Notarization.zip"
 
 if [ ! -d "$PLUGIN_PATH" ]; then
@@ -38,7 +46,7 @@ fi
 echo -e "${YELLOW}[1/5] 署名の確認...${NC}"
 if ! codesign --verify --deep --strict "$PLUGIN_PATH" 2>/dev/null; then
     echo -e "${RED}✗${NC} プラグインが署名されていません。"
-    echo "まず ./Mac/codesign_plugin.sh を実行してください。"
+    echo "まず ./Mac/codesign_plugin.sh $BUILD_CONFIG を実行してください。"
     exit 1
 fi
 echo -e "${GREEN}✓${NC} 署名済み\n"

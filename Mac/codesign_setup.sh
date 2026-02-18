@@ -157,6 +157,7 @@ export CODESIGN_IDENTITY="$CERT_NAME"
 export TEAM_ID="$TEAM_ID"
 export APPLE_ID="${APPLE_ID:-your@email.com}"
 export KEYCHAIN_PROFILE="AC_PASSWORD"
+export ENTITLEMENTS_PATH="$(dirname "$0")/OST_WindyLines.entitlements.plist"
 EOF
 
 chmod +x "$(dirname "$0")/codesign_config.sh"
