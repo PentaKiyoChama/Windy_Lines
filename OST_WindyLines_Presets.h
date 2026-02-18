@@ -14,7 +14,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 2, 0.0f, 0.0f,
 	  4, 4.0f,
 	  1, 9, 2, false,
-	  2, 200.0f, 2, 5.0f, 2, 200.0f
+	  2, 200.0f, 2, 5.0f, 2, 200.0f, 0.0f
 	},
 	// ゆっくり背景
 	{ "ゆっくり背景",
@@ -24,7 +24,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 1, 0.0f, 0.0f,
 	  1, 5.0f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// ゆっくり背景対流
 	{ "ゆっくり背景対流",
@@ -34,7 +34,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 0, 0.0f, 0.0f,
 	  3, 0.7f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 電脳空間
 	{ "電脳空間",
@@ -44,7 +44,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 4, 0.0f, 0.0f,
 	  2, 0.5f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 吹雪
 	{ "吹雪",
@@ -54,7 +54,7 @@ static const EffectPreset kEffectPresets[] =
 	  2, 0.0f, 5, 0.0f, 0.0f,
 	  3, 0.6f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 禅フロー
 	{ "禅フロー",
@@ -64,7 +64,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 1, 0.0f, 0.0f,
 	  2, 0.2f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// スピードライン
 	{ "スピードライン",
@@ -74,7 +74,7 @@ static const EffectPreset kEffectPresets[] =
 	  3, 0.2f, 8, 0.0f, 0.0f,
 	  2, 0.4f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 紙吹雪
 	{ "紙吹雪",
@@ -84,7 +84,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 3, 0.0f, 0.0f,
 	  2, 0.6f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// ワープスピード
 	{ "ワープスピード",
@@ -94,7 +94,7 @@ static const EffectPreset kEffectPresets[] =
 	  3, 0.25f, 9, 0.0f, 0.0f,
 	  2, 0.5f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 落ち葉
 	{ "落ち葉",
@@ -104,7 +104,7 @@ static const EffectPreset kEffectPresets[] =
 	  2, 0.0f, 2, 0.0f, 0.0f,
 	  2, 0.4f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// レーザーグリッド
 	{ "レーザーグリッド",
@@ -114,7 +114,7 @@ static const EffectPreset kEffectPresets[] =
 	  3, 0.15f, 0, 0.0f, 0.0f,
 	  2, 0.3f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 海の波
 	{ "海の波",
@@ -124,7 +124,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 1, 0.0f, 0.0f,
 	  3, 0.5f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 星空
 	{ "星空",
@@ -134,7 +134,7 @@ static const EffectPreset kEffectPresets[] =
 	  2, 0.0f, 6, 0.0f, 0.0f,
 	  2, 0.6f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// シネマダスト
 	{ "シネマダスト",
@@ -144,7 +144,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 0, 0.0f, 0.0f,
 	  2, 0.2f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// エナジーバースト
 	{ "エナジーバースト",
@@ -154,7 +154,7 @@ static const EffectPreset kEffectPresets[] =
 	  3, 0.3f, 7, 0.0f, 0.0f,
 	  2, 0.7f,
 	  1, 0, 1, false,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 雨
 	{ "雨",
@@ -164,7 +164,7 @@ static const EffectPreset kEffectPresets[] =
 	  2, 0.0f, 2, -300.0f, 0.0f,
 	  1, 10.0f,
 	  2, 2, 1, true,
-	  0, 100.0f, 0, 100.0f, 0, 100.0f
+	  0, 100.0f, 0, 100.0f, 0, 100.0f, 0.0f
 	},
 	// 地下水路
 	{ "地下水路",
@@ -174,7 +174,7 @@ static const EffectPreset kEffectPresets[] =
 	  1, 0.0f, 23, -300.0f, 0.0f,
 	  1, 4.0f,
 	  2, 36, 1, false,
-	  0, 100.0f, 0, 100.0f, 2, 100.0f
+	  0, 100.0f, 0, 100.0f, 2, 100.0f, 0.0f
 	}
 };
 

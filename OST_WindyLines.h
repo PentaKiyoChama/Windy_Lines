@@ -303,6 +303,7 @@ struct EffectPreset
 	float thicknessLinkageRate; // %
 	int travelLinkage;     // 0=Off, 1=Width, 2=Height
 	float travelLinkageRate;    // %
+	float lineSkew;        // -2..2 (preset-driven)
 };
 
 // Preset data array - auto-generated from presets.tsv

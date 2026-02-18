@@ -52,6 +52,7 @@ def format_preset_cpp(preset):
     thickness = float(preset['thickness'])
     length = float(preset['length'])
     angle = float(preset['angle'])
+    skew = float(preset.get('skew', 0.0) or 0.0)
     tailFade = float(preset['tailFade'])
     aa = float(preset['aa'])
     originMode = int(float(preset['originMode']))
@@ -92,7 +93,7 @@ def format_preset_cpp(preset):
     cpp += f'\t  {animPattern}, {centerGap}f, {easing}, {startTime}f, {duration}f,\n'
     cpp += f'\t  {blendMode}, {depthStrength}f,\n'
     cpp += f'\t  {lineCap}, {unifiedPresetIndex}, {spawnSource}, {"true" if hideElement else "false"},\n'
-    cpp += f'\t  {lengthLinkage}, {lengthLinkageRate}f, {thicknessLinkage}, {thicknessLinkageRate}f, {travelLinkage}, {travelLinkageRate}f\n'
+    cpp += f'\t  {lengthLinkage}, {lengthLinkageRate}f, {thicknessLinkage}, {thicknessLinkageRate}f, {travelLinkage}, {travelLinkageRate}f, {skew}f\n'
     cpp += '\t}'
     
     return cpp

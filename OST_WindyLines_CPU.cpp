@@ -1411,7 +1411,7 @@ static void ApplyEffectPreset(
 	updateFloat(OST_WINDYLINES_LINE_THICKNESS, preset.thickness);
 	updateFloat(OST_WINDYLINES_LINE_LENGTH, preset.length);
 	updateAngle(OST_WINDYLINES_LINE_ANGLE, preset.angle);
-	updateFloat(OST_WINDYLINES_LINE_SKEW, static_cast<float>(LINE_SKEW_DFLT));
+	updateFloat(OST_WINDYLINES_LINE_SKEW, preset.lineSkew);
 	updateFloat(OST_WINDYLINES_LINE_TAIL_FADE, preset.tailFade);
 	updateFloat(OST_WINDYLINES_LINE_AA, preset.aa);
 	
