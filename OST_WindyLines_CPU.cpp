@@ -450,8 +450,27 @@ static std::string LoadOrCreateActivationToken()
 	return token;
 }
 
+// === Bubble endpoints ===
+// - Release (NDEBUG defined): production endpoint (no /version-test)
+// - Debug  : test endpoint (/version-test)
+// Optional override for local QA:
+// - Define OST_WINDYLINES_FORCE_TEST_ENDPOINT to force /version-test even in Release
+#if defined(OST_WINDYLINES_FORCE_TEST_ENDPOINT)
+static const char* kBubbleBaseUrl = "https://penta.bubbleapps.io/version-test";
+static const wchar_t* kBubbleApiHostW = L"penta.bubbleapps.io";
+static const wchar_t* kBubbleApiPathW = L"/version-test/api/1.1/wf/ppplugin_test";
+#elif defined(NDEBUG)
+static const char* kBubbleBaseUrl = "https://penta.bubbleapps.io";
+static const wchar_t* kBubbleApiHostW = L"penta.bubbleapps.io";
+static const wchar_t* kBubbleApiPathW = L"/api/1.1/wf/ppplugin_test";
+#else
+static const char* kBubbleBaseUrl = "https://penta.bubbleapps.io/version-test";
+static const wchar_t* kBubbleApiHostW = L"penta.bubbleapps.io";
+static const wchar_t* kBubbleApiPathW = L"/version-test/api/1.1/wf/ppplugin_test";
+#endif
+
 // === Open browser for activation ===
-static const char* kActivatePageUrl = "https://penta.bubbleapps.io/version-test/activate";
+static const std::string kActivatePageUrl = std::string(kBubbleBaseUrl) + "/activate";
 
 static void OpenActivationPage()
 {
@@ -463,7 +482,7 @@ static void OpenActivationPage()
 #else
 		"mac";
 #endif
-	const std::string url = std::string(kActivatePageUrl)
+	const std::string url = kActivatePageUrl
 		+ "?token=" + token
 		+ "&mid=" + mid
 		+ "&platform=" + std::string(platform)
@@ -481,7 +500,7 @@ static void OpenActivationPage()
 }
 
 // === License auto-refresh: background API check when cache expires ===
-static const char* kLicenseApiEndpoint = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test";
+static const std::string kLicenseApiEndpoint = std::string(kBubbleBaseUrl) + "/api/1.1/wf/ppplugin_test";
 static const int kAuthorizedCacheTtlSec = 600;     // 10 min TTL (periodic re-verification)
 static const int kDeniedCacheTtlSec = 600;          // 10 min TTL when denied
 // Salt is XOR-obfuscated so `strings` cannot extract it from the binary.
@@ -708,7 +727,7 @@ static void TriggerBackgroundCacheRefresh()
 		}
 
 		HINTERNET hConnect = WinHttpConnect(hSession,
-			L"penta.bubbleapps.io",
+			kBubbleApiHostW,
 			INTERNET_DEFAULT_HTTPS_PORT, 0);
 		if (!hConnect)
 		{
@@ -720,7 +739,7 @@ static void TriggerBackgroundCacheRefresh()
 
 		HINTERNET hRequest = WinHttpOpenRequest(hConnect,
 			L"POST",
-			L"/version-test/api/1.1/wf/ppplugin_test",
+			kBubbleApiPathW,
 			NULL, WINHTTP_NO_REFERER,
 			WINHTTP_DEFAULT_ACCEPT_TYPES,
 			WINHTTP_FLAG_SECURE);
