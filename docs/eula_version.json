@@ -1,10 +1,10 @@
 {
-  "eulaVersion": "v1.3.0-common",
-  "updatedAt": "2026-02-18",
+  "eulaVersion": "v1.4.0-common",
+  "updatedAt": "2026-02-19",
   "title": "エンドユーザーライセンス契約 (EULA)",
   "documents": {
     "markdown": "docs/EULA.md",
     "html": "docs/EULA.html"
   },
-  "notes": "正式運用ベースで、無償版のウォーターマーク継続利用条件を含む全プラグイン共通版"
+  "notes": "第8条「通信機能および情報の取り扱い」を追加。ライセンス認証通信の目的・送信データ・ローカルキャッシュ・オフライン時の動作を明記"
 }

@@ -5,7 +5,7 @@
 
 ## 1. 現行バージョン
 
-- EULAバージョン: `v1.3.0-common`
+- EULAバージョン: `v1.4.0-common`
 - EULA本文(Markdown): `docs/EULA.md`
 - EULA本文(HTML): `docs/EULA.html`
 
@@ -22,7 +22,7 @@
 - `title` (text) 例: `エンドユーザーライセンス契約 (EULA)`
 - `html_body` (text) ※ `docs/EULA.html` の本文
 - `markdown_body` (text, optional) ※ `docs/EULA.md` の原文保存用
-- `change_summary` (text) 例: `無償版のウォーターマーク継続利用条件を明記`
+- `change_summary` (text) 例: `第8条「通信機能および情報の取り扱い」を追加（ライセンス認証通信の明記）`
 
 ## Data Type: `EulaAcceptance`
 
