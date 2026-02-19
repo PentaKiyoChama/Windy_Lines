@@ -1,0 +1,10 @@
+{
+  "eulaVersion": "v1.3.0-common",
+  "updatedAt": "2026-02-18",
+  "title": "エンドユーザーライセンス契約 (EULA)",
+  "documents": {
+    "markdown": "docs/EULA.md",
+    "html": "docs/EULA.html"
+  },
+  "notes": "正式運用ベースで、無償版のウォーターマーク継続利用条件を含む全プラグイン共通版"
+}
