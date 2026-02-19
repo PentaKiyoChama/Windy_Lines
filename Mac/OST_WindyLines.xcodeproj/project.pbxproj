@@ -223,7 +223,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nset -euo pipefail\n\nPLUGIN_SRC=\"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\"\n\n# 権限問題を避けたい場合はユーザー領域を推奨\n# DEST_DIR=\"${HOME}/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\nDEST_DIR=\"/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\n\nDEST_PLUGIN=\"${DEST_DIR}/${FULL_PRODUCT_NAME}\"\n\necho \"[INFO] Source: ${PLUGIN_SRC}\"\necho \"[INFO] Dest  : ${DEST_PLUGIN}\"\n\n[ -d \"${PLUGIN_SRC}\" ] || { echo \"[ERROR] Built plugin not found\"; exit 1; }\n\nmkdir -p \"${DEST_DIR}\"\n\n# 1) build成果物をクリーン化して再署名\nfind \"${PLUGIN_SRC}\" -exec xattr -c {} \\; 2>/dev/null || true\nxattr -d com.apple.FinderInfo \"${PLUGIN_SRC}\" 2>/dev/null || true\nfind \"${PLUGIN_SRC}\" -name '._*' -type f -delete || true\nfind \"${PLUGIN_SRC}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${PLUGIN_SRC}\" || true\ncodesign --force --deep --sign - \"${PLUGIN_SRC}\"\n\n# 2) 配置先を丸ごと置き換え（古い残骸を消す）\nrm -rf \"${DEST_PLUGIN}\"\nditto \"${PLUGIN_SRC}\" \"${DEST_PLUGIN}\"\n\n# 3) 配置後もクリーン化して再署名\nfind \"${DEST_PLUGIN}\" -exec xattr -c {} \\; 2>/dev/null || true\nxattr -d com.apple.FinderInfo \"${DEST_PLUGIN}\" 2>/dev/null || true\nfind \"${DEST_PLUGIN}\" -name '._*' -type f -delete || true\nfind \"${DEST_PLUGIN}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${DEST_PLUGIN}\" || true\ncodesign --force --deep --sign - \"${DEST_PLUGIN}\"\n\n# 4) 検証\ncodesign --verify --deep --strict --verbose=2 \"${DEST_PLUGIN}\"\n\necho \"[OK] Deploy + sanitize + sign + verify completed\"\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nset -euo pipefail\n\nPLUGIN_SRC=\"${BUILT_PRODUCTS_DIR}/${FULL_PRODUCT_NAME}\"\n\n# 権限問題を避けたい場合はユーザー領域を推奨\n# DEST_DIR=\"${HOME}/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\nDEST_DIR=\"/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\n\nDEST_PLUGIN=\"${DEST_DIR}/${FULL_PRODUCT_NAME}\"\n\necho \"[INFO] Source: ${PLUGIN_SRC}\"\necho \"[INFO] Dest  : ${DEST_PLUGIN}\"\n\n[ -d \"${PLUGIN_SRC}\" ] || { echo \"[ERROR] Built plugin not found\"; exit 1; }\n\nmkdir -p \"${DEST_DIR}\"\n\n# 1) build成果物をクリーン化（署名は外部スクリプトで実施）\nfind \"${PLUGIN_SRC}\" -exec xattr -c {} \\; 2>/dev/null || true\nxattr -d com.apple.FinderInfo \"${PLUGIN_SRC}\" 2>/dev/null || true\nfind \"${PLUGIN_SRC}\" -name '._*' -type f -delete || true\nfind \"${PLUGIN_SRC}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${PLUGIN_SRC}\" || true\n\n# 2) 配置先を丸ごと置き換え（古い残骸を消す）\nrm -rf \"${DEST_PLUGIN}\"\nditto \"${PLUGIN_SRC}\" \"${DEST_PLUGIN}\"\n\n# 3) 配置後もクリーン化（署名は実施しない）\nfind \"${DEST_PLUGIN}\" -exec xattr -c {} \\; 2>/dev/null || true\nxattr -d com.apple.FinderInfo \"${DEST_PLUGIN}\" 2>/dev/null || true\nfind \"${DEST_PLUGIN}\" -name '._*' -type f -delete || true\nfind \"${DEST_PLUGIN}\" -name '.DS_Store' -type f -delete || true\ndot_clean -m \"${DEST_PLUGIN}\" || true\n\n# 4) 配置確認\n[ -d \"${DEST_PLUGIN}\" ] || { echo \"[ERROR] Deploy failed\"; exit 1; }\n\necho \"[OK] Deploy + sanitize completed (no ad-hoc signing)\"\n";
 		};
 		3F57A75326FE9DE9004786EA /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -379,7 +379,7 @@
 					OpenCL,
 					"-liconv",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.--PRODUCT-NAME-rfc1034identifier-";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.OSTWindyLines";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REZ_SEARCH_PATHS = (
@@ -428,7 +428,7 @@
 					OpenCL,
 					"-liconv",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.--PRODUCT-NAME-rfc1034identifier-";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.penta-douga.OSTWindyLines";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REZ_SEARCH_PATHS = (
