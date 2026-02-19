@@ -1,10 +1,10 @@
 {
-  "eulaVersion": "v1.4.0-common",
+  "eulaVersion": "v1.5.0-common",
   "updatedAt": "2026-02-19",
   "title": "エンドユーザーライセンス契約 (EULA)",
   "documents": {
     "markdown": "docs/EULA.md",
     "html": "docs/EULA.html"
   },
-  "notes": "第8条「通信機能および情報の取り扱い」を追加。ライセンス認証通信の目的・送信データ・ローカルキャッシュ・オフライン時の動作を明記"
+  "notes": "賠償責任上限額・返金不可ポリシー・サーバー側データ保持期間・契約終了後存続条項・ライセンサー地位承継条項を追加"
 }
