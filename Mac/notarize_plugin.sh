@@ -34,27 +34,35 @@ if [ "$BUILD_CONFIG" != "Debug" ] && [ "$BUILD_CONFIG" != "Release" ]; then
     exit 1
 fi
 
-PLUGIN_PATH="$SCRIPT_DIR/build/$BUILD_CONFIG/OST_WindyLines.plugin"
-ZIP_PATH="$SCRIPT_DIR/build/OST_WindyLines_Notarization.zip"
+PLUGIN_PATH="$SCRIPT_DIR/build/${BUILD_CONFIG}_signed/OST_WindyLines.plugin"
+ZIP_PATH="/tmp/OST_WindyLines_Notarization.zip"
 
 if [ ! -d "$PLUGIN_PATH" ]; then
     echo -e "${RED}✗${NC} プラグインが見つかりません: $PLUGIN_PATH"
     exit 1
 fi
 
+# /tmp にクリーンコピーして署名確認＆ZIP化（Finder xattr 問題回避）
+WORK_DIR="/tmp/ost_notarize_$$"
+PLUGIN_TMP="$WORK_DIR/OST_WindyLines.plugin"
+rm -rf "$WORK_DIR"
+mkdir -p "$WORK_DIR"
+ditto --norsrc "$PLUGIN_PATH" "$PLUGIN_TMP"
+
 # 署名確認
 echo -e "${YELLOW}[1/5] 署名の確認...${NC}"
-if ! codesign --verify --deep --strict "$PLUGIN_PATH" 2>/dev/null; then
+if ! codesign --verify --deep --strict "$PLUGIN_TMP" 2>/dev/null; then
     echo -e "${RED}✗${NC} プラグインが署名されていません。"
     echo "まず ./Mac/codesign_plugin.sh $BUILD_CONFIG を実行してください。"
+    rm -rf "$WORK_DIR"
     exit 1
 fi
 echo -e "${GREEN}✓${NC} 署名済み\n"
 
-# ZIP 化
+# ZIP 化（/tmp 上のクリーンコピーから）
 echo -e "${YELLOW}[2/5] ZIP アーカイブ作成中...${NC}"
 rm -f "$ZIP_PATH"
-ditto -c -k --keepParent "$PLUGIN_PATH" "$ZIP_PATH"
+ditto -c -k --keepParent "$PLUGIN_TMP" "$ZIP_PATH"
 echo -e "${GREEN}✓${NC} 作成完了: $ZIP_PATH"
 echo "   サイズ: $(du -h "$ZIP_PATH" | cut -f1)\n"
 
@@ -64,8 +72,6 @@ echo "   (数分かかる場合があります)"
 echo ""
 
 SUBMIT_OUTPUT=$(xcrun notarytool submit "$ZIP_PATH" \
-    --apple-id "$APPLE_ID" \
-    --team-id "$TEAM_ID" \
     --keychain-profile "$KEYCHAIN_PROFILE" \
     --wait 2>&1)
 
@@ -90,8 +96,6 @@ fi
 # ステータス確認
 echo -e "${YELLOW}[4/5] 公証ステータスの確認...${NC}"
 xcrun notarytool info "$SUBMISSION_ID" \
-    --apple-id "$APPLE_ID" \
-    --team-id "$TEAM_ID" \
     --keychain-profile "$KEYCHAIN_PROFILE"
 
 echo ""
@@ -100,14 +104,19 @@ echo ""
 if echo "$SUBMIT_OUTPUT" | grep -q "status: Accepted"; then
     echo -e "${GREEN}✓${NC} 公証成功！\n"
     
-    # ステープル
+    # ステープル（/tmp コピーに適用）
     echo -e "${YELLOW}[5/5] 公証チケットのステープル中...${NC}"
-    xcrun stapler staple "$PLUGIN_PATH"
+    xcrun stapler staple "$PLUGIN_TMP"
     
     # 検証
     echo -e "${GREEN}✓${NC} ステープル完了\n"
     echo "検証:"
-    xcrun stapler validate "$PLUGIN_PATH"
+    xcrun stapler validate "$PLUGIN_TMP"
+    
+    # ステープル済みバンドルを元の場所に反映
+    rm -rf "$PLUGIN_PATH"
+    ditto "$PLUGIN_TMP" "$PLUGIN_PATH"
+    rm -rf "$WORK_DIR"
     
     echo ""
     echo -e "${GREEN}========================================${NC}"
@@ -122,6 +131,7 @@ if echo "$SUBMIT_OUTPUT" | grep -q "status: Accepted"; then
     echo "  ./Mac/create_installer.sh"
     
 else
+    rm -rf "$WORK_DIR"
     echo -e "${RED}✗${NC} 公証に失敗しました。"
     echo ""
     echo "詳細ログの確認:"
