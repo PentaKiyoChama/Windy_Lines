@@ -218,7 +218,106 @@ GPU で `inClipTime` が期待値と異なる場合:
 
 ---
 
-## 8. 配布チェックリスト
+## 9. 初回実装ステップバイステップ（エージェント / 初回開発者向け）
+
+> `init_project.sh` でプロジェクト生成後、最初のビルド通過までの手順。  
+> 「Hello World」的な最小エフェクト（画面を指定色でティント）を作る例。
+
+### Step 1: パラメータ名を定義
+
+**`_ParamNames.h`** を開き、既存のサンプルパラメータを確認。  
+ここに追加するパラメータの日本語名を定義する。
+
+```cpp
+namespace ParamNames {
+    constexpr const char* TINT_AMOUNT = "ティント量";
+    constexpr const char* TINT_COLOR_R = "色 R";
+    constexpr const char* TINT_COLOR_G = "色 G";
+    constexpr const char* TINT_COLOR_B = "色 B";
+}
+#define P_TINT_AMOUNT    PARAM(ParamNames::TINT_AMOUNT)
+#define P_TINT_COLOR_R   PARAM(ParamNames::TINT_COLOR_R)
+// ...
+```
+
+### Step 2: メインヘッダーにパラメータ定義
+
+**`.h`** の enum にパラメータ ID を追加（**Input の次から連番**）:
+
+```cpp
+enum {
+    PARAM_INPUT = 0,
+    PARAM_TINT_AMOUNT,
+    PARAM_TINT_COLOR_R,
+    PARAM_TINT_COLOR_G,
+    PARAM_TINT_COLOR_B,
+    PARAM_COUNT
+};
+```
+
+MIN/MAX/DFLT マクロを追加:
+
+```cpp
+#define TINT_AMOUNT_MIN   0.0f
+#define TINT_AMOUNT_MAX   100.0f
+#define TINT_AMOUNT_DFLT  50.0f
+```
+
+### Step 3: CPU 側を実装
+
+**`_CPU.cpp`**:
+
+1. `ParamsSetup()` に `PF_ADD_FLOAT_SLIDER` で各パラメータを登録
+2. `SmartRender()` でパラメータの値を取得し、ピクセルごとにティント処理
+
+### Step 4: CUDA カーネルを実装（リファレンス）
+
+**`.cu`** に `__global__ void TintKernel(...)` を記述。  
+引数の順序を `ProcAmpParams` のフィールド順と**完全一致**させること。
+
+### Step 5: OpenCL/Metal カーネルを実装
+
+**`.cl`** に `__kernel void TintKernel(...)` を記述。  
+`.cu` から:
+- `cosf` → `cos`, `fminf` → `fmin` へ変換
+- `__device__` 修飾子を除去
+- その他は DEV_GUIDE セクション1 の対応表を参照
+
+`.metal` は `.cl` を `#include` するだけなので**編集不要**。
+
+### Step 6: GPU ホストを接続
+
+**`_GPU.cpp`**:
+
+1. `ProcAmpParams` 構造体にフィールドを追加（`.cu` / `.cl` のカーネル引数と同じ順序）
+2. `Render()` 内のパラメータ取得部分で値を `params` に格納
+3. カーネルディスパッチ呼び出し部分を確認
+
+### Step 7: ビルド＆テスト
+
+```bash
+# Mac
+cd Mac
+xcodebuild clean -configuration Debug ARCHS=arm64
+xcodebuild -configuration Debug ARCHS=arm64
+./install_plugin.sh
+# → Premiere Pro を再起動してエフェクト適用
+```
+
+### 最終チェック
+
+```bash
+# ProcAmpParams の順序照合（手動 diff）
+grep -E '^\s+(int|float|unsigned)\s+m' *_GPU.cpp | head -20
+grep -oE 'in[A-Z][a-zA-Z]+' *.cu | head -20
+grep -oE 'in[A-Z][a-zA-Z]+' *.cl | head -20
+```
+
+3つの出力が同じ順序であれば OK。
+
+---
+
+## 10. 配布チェックリスト
 
 - [ ] `ENABLE_DEBUG_RENDER_MARKERS` = 0
 - [ ] `ENABLE_GPU_RENDERING` = 1

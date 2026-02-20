@@ -1,0 +1,430 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA000001 /* TEMPLATE_Plugin_CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BB000001 /* TEMPLATE_Plugin_CPU.cpp */; };
+		AA000002 /* TEMPLATE_Plugin_GPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BB000002 /* TEMPLATE_Plugin_GPU.cpp */; settings = {COMPILER_FLAGS = "-x objective-c++"; }; };
+		AA000003 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB000010 /* Cocoa.framework */; };
+		AA000004 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB000011 /* Metal.framework */; };
+		AA000005 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BB000012 /* OpenCL.framework */; };
+		AA000006 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BB000020 /* InfoPlist.strings */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		BB000001 /* TEMPLATE_Plugin_CPU.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TEMPLATE_Plugin_CPU.cpp; path = ../TEMPLATE_Plugin_CPU.cpp; sourceTree = SOURCE_ROOT; };
+		BB000002 /* TEMPLATE_Plugin_GPU.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; name = TEMPLATE_Plugin_GPU.cpp; path = ../TEMPLATE_Plugin_GPU.cpp; sourceTree = SOURCE_ROOT; };
+		BB000003 /* TEMPLATE_Plugin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TEMPLATE_Plugin.h; path = ../TEMPLATE_Plugin.h; sourceTree = SOURCE_ROOT; };
+		BB000004 /* TEMPLATE_Plugin_Common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TEMPLATE_Plugin_Common.h; path = ../TEMPLATE_Plugin_Common.h; sourceTree = SOURCE_ROOT; };
+		BB000005 /* TEMPLATE_Plugin_ParamNames.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TEMPLATE_Plugin_ParamNames.h; path = ../TEMPLATE_Plugin_ParamNames.h; sourceTree = SOURCE_ROOT; };
+		BB000006 /* TEMPLATE_Plugin_Version.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TEMPLATE_Plugin_Version.h; path = ../TEMPLATE_Plugin_Version.h; sourceTree = SOURCE_ROOT; };
+		BB000007 /* TEMPLATE_Plugin.r */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.rez; name = TEMPLATE_Plugin.r; path = ../TEMPLATE_Plugin.r; sourceTree = SOURCE_ROOT; };
+		BB000008 /* TEMPLATE_Plugin.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; name = TEMPLATE_Plugin.metal; path = ../TEMPLATE_Plugin.metal; sourceTree = SOURCE_ROOT; };
+		BB000009 /* TEMPLATE_Plugin.cl */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.opencl; name = TEMPLATE_Plugin.cl; path = ../TEMPLATE_Plugin.cl; sourceTree = SOURCE_ROOT; };
+		BB00000A /* TEMPLATE_Plugin.cu */ = {isa = PBXFileReference; lastKnownFileType = text; name = TEMPLATE_Plugin.cu; path = ../TEMPLATE_Plugin.cu; sourceTree = SOURCE_ROOT; };
+		BB00000B /* TEMPLATE_Plugin-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TEMPLATE_Plugin-Prefix.pch"; sourceTree = "<group>"; };
+		BB00000C /* TEMPLATE_Plugin-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "TEMPLATE_Plugin-Info.plist"; sourceTree = "<group>"; };
+		BB000010 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		BB000011 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		BB000012 /* OpenCL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenCL.framework; path = System/Library/Frameworks/OpenCL.framework; sourceTree = SDKROOT; };
+		BB000030 /* TEMPLATE_Plugin.plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TEMPLATE_Plugin.plugin; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		CC000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000003 /* Cocoa.framework in Frameworks */,
+				AA000004 /* Metal.framework in Frameworks */,
+				AA000005 /* OpenCL.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DD000001 = {
+			isa = PBXGroup;
+			children = (
+				DD000002 /* Source */,
+				DD000003 /* Headers */,
+				DD000004 /* GPU Kernels */,
+				DD000005 /* Resources */,
+				DD000006 /* Frameworks */,
+				DD000007 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DD000002 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				BB000001 /* TEMPLATE_Plugin_CPU.cpp */,
+				BB000002 /* TEMPLATE_Plugin_GPU.cpp */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		DD000003 /* Headers */ = {
+			isa = PBXGroup;
+			children = (
+				BB000003 /* TEMPLATE_Plugin.h */,
+				BB000004 /* TEMPLATE_Plugin_Common.h */,
+				BB000005 /* TEMPLATE_Plugin_ParamNames.h */,
+				BB000006 /* TEMPLATE_Plugin_Version.h */,
+				BB00000B /* TEMPLATE_Plugin-Prefix.pch */,
+			);
+			name = Headers;
+			sourceTree = "<group>";
+		};
+		DD000004 /* GPU Kernels */ = {
+			isa = PBXGroup;
+			children = (
+				BB00000A /* TEMPLATE_Plugin.cu */,
+				BB000009 /* TEMPLATE_Plugin.cl */,
+				BB000008 /* TEMPLATE_Plugin.metal */,
+			);
+			name = "GPU Kernels";
+			sourceTree = "<group>";
+		};
+		DD000005 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				BB000007 /* TEMPLATE_Plugin.r */,
+				BB00000C /* TEMPLATE_Plugin-Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		DD000006 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				BB000010 /* Cocoa.framework */,
+				BB000011 /* Metal.framework */,
+				BB000012 /* OpenCL.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		DD000007 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BB000030 /* TEMPLATE_Plugin.plugin */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EE000001 /* TEMPLATE_Plugin */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF000003 /* Build configuration list for PBXNativeTarget "TEMPLATE_Plugin" */;
+			buildPhases = (
+				CC000002 /* Sources */,
+				CC000001 /* Frameworks */,
+				CC000003 /* Resources */,
+				CC000004 /* Rez */,
+				CC000005 /* ShellScript — Metal Compile */,
+				CC000006 /* ShellScript — Deploy */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TEMPLATE_Plugin;
+			productName = TEMPLATE_Plugin;
+			productReference = BB000030 /* TEMPLATE_Plugin.plugin */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		FF000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1540;
+				TargetAttributes = {
+					EE000001 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = FF000002 /* Build configuration list for PBXProject "TEMPLATE_Plugin" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				English,
+				Japanese,
+				en,
+				Base,
+			);
+			mainGroup = DD000001;
+			productRefGroup = DD000007 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EE000001 /* TEMPLATE_Plugin */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CC000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000006 /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXRezBuildPhase section */
+		CC000004 /* Rez */ = {
+			isa = PBXRezBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXRezBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		CC000005 /* ShellScript — Metal Compile */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${SRCROOT}/../TEMPLATE_Plugin.metal",
+			);
+			name = "ShellScript — Metal Compile";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Resources/MetalLib/TEMPLATE_Plugin.metallib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "# Metal Shader Compilation\nset -e\n\nMETAL_SOURCE=\"${SRCROOT}/../TEMPLATE_Plugin.metal\"\nHEADERS_PATH=\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"\nMETAL_CMD=$(xcrun --find metal 2>/dev/null)\nMETALLIB_CMD=$(xcrun --find metallib 2>/dev/null)\nMETAL_AR_CMD=$(xcrun --find metal-ar 2>/dev/null)\n\nTMP_DIR=\"${DERIVED_FILE_DIR}/64/MetalBuild\"\nmkdir -p \"${TMP_DIR}\"\n\nDEST_DIR=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Resources/MetalLib\"\nmkdir -p \"${DEST_DIR}\"\n\n\"$METAL_CMD\" -arch air64 -emit-llvm -c -ffast-math \\\n  -I\"${HEADERS_PATH}\" \\\n  -DGF_DEVICE_TARGET_METAL=1 \\\n  -DGF_DEVICE_TARGET_METAL_IOS=0 \\\n  -o \"${TMP_DIR}/TEMPLATE_Plugin.air\" \\\n  \"${METAL_SOURCE}\"\n\n\"$METAL_AR_CMD\" rcs \"${TMP_DIR}/TEMPLATE_Plugin.metal-ar\" \"${TMP_DIR}/TEMPLATE_Plugin.air\"\n\"$METALLIB_CMD\" -o \"${DEST_DIR}/TEMPLATE_Plugin.metallib\" \"${TMP_DIR}/TEMPLATE_Plugin.metal-ar\"\n\necho \"Metal shader compiled: ${DEST_DIR}/TEMPLATE_Plugin.metallib\"\n";
+		};
+		CC000006 /* ShellScript — Deploy */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "ShellScript — Deploy";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "# Deploy to MediaCore plugin directory\nDEST=\"/Library/Application Support/Adobe/Common/Plug-ins/7.0/MediaCore\"\nBUILT=\"${TARGET_BUILD_DIR}/${FULL_PRODUCT_NAME}\"\n\nif [ -d \"$BUILT\" ]; then\n  # Clean extended attributes\n  xattr -cr \"$BUILT\" 2>/dev/null || true\n  find \"$BUILT\" -name '._*' -delete 2>/dev/null || true\n  find \"$BUILT\" -name '.DS_Store' -delete 2>/dev/null || true\n  dot_clean \"$BUILT\" 2>/dev/null || true\n\n  ditto \"$BUILT\" \"$DEST/${FULL_PRODUCT_NAME}\"\n  echo \"Deployed: $DEST/${FULL_PRODUCT_NAME}\"\nelse\n  echo \"warning: Build product not found: $BUILT\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CC000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000001 /* TEMPLATE_Plugin_CPU.cpp in Sources */,
+				AA000002 /* TEMPLATE_Plugin_GPU.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		BB000020 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				BB000021 /* en */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		11000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AE_SDK_BASE_PATH = "__TPL_AE_SDK_PATH__";
+				PREMIERE_SDK_BASE_PATH = "__TPL_PREMIERE_SDK_PATH__";
+				COPY_PHASE_STRIP = NO;
+				GCC_INPUT_FILETYPE = sourcecode.cpp.objcpp;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_PKGINFO_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.__TPL_VENDOR__.__TPL_MATCH_NAME_NOUNDERSCORE__";
+				REZ_SEARCH_PATHS = (
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+				);
+				SDKROOT = macosx;
+				SYMROOT = "$(BUILD_DIR)";
+				WRAPPER_EXTENSION = plugin;
+			};
+			name = Debug;
+		};
+		11000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AE_SDK_BASE_PATH = "__TPL_AE_SDK_PATH__";
+				PREMIERE_SDK_BASE_PATH = "__TPL_PREMIERE_SDK_PATH__";
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_INPUT_FILETYPE = sourcecode.cpp.objcpp;
+				GENERATE_PKGINFO_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.__TPL_VENDOR__.__TPL_MATCH_NAME_NOUNDERSCORE__";
+				REZ_SEARCH_PATHS = (
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+				);
+				SDKROOT = macosx;
+				SYMROOT = "$(BUILD_DIR)";
+				WRAPPER_EXTENSION = plugin;
+			};
+			name = Release;
+		};
+		22000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DSTROOT = "$(PROJECT_DIR)/build/install-root";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "TEMPLATE_Plugin-Prefix.pch";
+				HEADER_SEARCH_PATHS = (
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
+					"\"${DERIVED_FILE_DIR}/64/PreprocessedOpenCL\"",
+					"\"${DERIVED_FILE_DIR}/64/PreprocessedMetal\"",
+				);
+				INFOPLIST_FILE = "TEMPLATE_Plugin-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				OBJROOT = "$(PROJECT_DIR)/build";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Cocoa,
+					"-framework",
+					Metal,
+					"-framework",
+					OpenCL,
+					"-liconv",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.__TPL_VENDOR__.__TPL_MATCH_NAME_NOUNDERSCORE__";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SHARED_PRECOMPS_DIR = "$(PROJECT_DIR)/build/SharedPrecompiledHeaders";
+				SYMROOT = "$(PROJECT_DIR)/build";
+			};
+			name = Debug;
+		};
+		22000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DSTROOT = "$(PROJECT_DIR)/build/install-root";
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "TEMPLATE_Plugin-Prefix.pch";
+				HEADER_SEARCH_PATHS = (
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${PREMIERE_SDK_BASE_PATH}/Examples/Utils\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Headers/SP\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Util\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/Resources\"",
+					"\"${AE_SDK_BASE_PATH}/Examples/GPUUtils\"",
+					"\"${DERIVED_FILE_DIR}/64/PreprocessedOpenCL\"",
+				);
+				INFOPLIST_FILE = "TEMPLATE_Plugin-Info.plist";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				OBJROOT = "$(PROJECT_DIR)/build";
+				OTHER_LDFLAGS = (
+					"-framework",
+					Cocoa,
+					"-framework",
+					Metal,
+					"-framework",
+					OpenCL,
+					"-liconv",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.__TPL_VENDOR__.__TPL_MATCH_NAME_NOUNDERSCORE__";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SHARED_PRECOMPS_DIR = "$(PROJECT_DIR)/build/SharedPrecompiledHeaders";
+				SYMROOT = "$(PROJECT_DIR)/build";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		FF000002 /* Build configuration list for PBXProject "TEMPLATE_Plugin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				11000001 /* Debug */,
+				11000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF000003 /* Build configuration list for PBXNativeTarget "TEMPLATE_Plugin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				22000001 /* Debug */,
+				22000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = FF000001 /* Project object */;
+}

@@ -13,7 +13,48 @@ chmod +x init_project.sh
 ./init_project.sh
 ```
 
-対話形式でプロジェクト名等を入力すると、全プレースホルダーが自動置換された新プロジェクトが生成されます。
+対話形式で **プラグインID** と **日本語エフェクト名** を入力すると、デフォルト設定で新プロジェクトを生成できます。  
+最初の確認で `y` を選ぶと確認は1回だけ、`n` を選ぶと詳細入力後に最終確認が入ります。
+
+---
+
+## 前提条件（SDK のダウンロード）
+
+テンプレートをビルドするには以下の SDK が必要です。
+
+| SDK | 入手先 | 設定名 |
+|-----|--------|--------|
+| **Premiere Pro C++ SDK** | [Adobe Developer Console](https://developer.adobe.com/) → Downloads | `PREMIERE_SDK_BASE_PATH` |
+| **After Effects SDK** | 同上 | `AE_SDK_BASE_PATH` |
+| **CUDA Toolkit 12.x** (Win) | [NVIDIA Developer](https://developer.nvidia.com/cuda-downloads) | `CUDA_SDK_BASE_PATH` |
+
+### Mac — SDK 配置例
+
+```
+~/Desktop/Premiere Pro 26.0 C++ SDK/
+  Examples/
+    Headers/        ← PrSDK*.h, AE ヘッダー
+    Utils/          ← PrGPUFilterModule.h
+    Resources/      ← PiPLTool
+    Projects/
+      GPUVideoFilter/   ← ここにプロジェクトを配置すると相対パスが通る
+
+~/Desktop/AfterEffectsSDK/
+  Examples/
+    Headers/        ← A.h, AEConfig.h, SPProps.h 等
+    Util/
+    Resources/
+    GPUUtils/
+```
+
+### Win — 環境変数の設定
+
+```
+AE_SDK_BASE_PATH    = C:\AfterEffectsSDK
+CUDA_SDK_BASE_PATH  = C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0
+PREMSDKBUILDPATH    = <プロジェクト>\Win\Build
+BOOST_BASE_PATH     = C:\boost
+```
 
 ---
 
@@ -43,10 +84,14 @@ template/
 ├── presets.tsv                  ← エフェクトプリセットマスターデータ
 │
 ├── Mac/
+│   ├── TEMPLATE_Plugin.xcodeproj/  ← Xcodeプロジェクト（自動生成）
+│   │   └── project.pbxproj
 │   ├── TEMPLATE_Plugin-Info.plist
 │   ├── TEMPLATE_Plugin-Prefix.pch
 │   ├── TEMPLATE_Plugin.entitlements.plist
+│   ├── en.lproj/InfoPlist.strings
 │   ├── codesign_config.sh
+│   ├── codesign_setup.sh       ← 署名初期セットアップ
 │   ├── codesign_plugin.sh
 │   ├── notarize_plugin.sh
 │   ├── install_plugin.sh
@@ -55,6 +100,8 @@ template/
 │
 ├── Win/
 │   ├── TEMPLATE_Plugin.sln
+│   ├── TEMPLATE_Plugin.vcxproj          ← Visual Studio プロジェクト
+│   ├── TEMPLATE_Plugin.vcxproj.filters
 │   ├── TEMPLATE_Plugin.i
 │   ├── .gitattributes
 │   └── .gitignore
@@ -200,9 +247,9 @@ Metal専用コードの二重管理を回避。メンテナンスが1箇所で�
 ## チェックリスト：新プロジェクト開始時
 
 - [ ] `init_project.sh` でプロジェクト生成
-- [ ] Premiere Pro SDK を配置（パスを確認）
-- [ ] Mac: Xcode プロジェクト作成 or 既存をクローン
-- [ ] Win: `.sln` を Visual Studio 2022 で開く
+- [ ] Premiere Pro SDK / After Effects SDK をダウンロード＆配置
+- [ ] Mac: Xcode プロジェクトの SDK パス設定（下記参照）
+- [ ] Win: `.sln` を Visual Studio 2022 で開く＆環境変数確認
 - [ ] `_ParamNames.h` でパラメータ名を定義
 - [ ] `.h` でパラメータ enum と定数を定義
 - [ ] `_CPU.cpp` で ParamsSetup と SmartRender を実装
@@ -214,8 +261,200 @@ Metal専用コードの二重管理を回避。メンテナンスが1箇所で�
 - [ ] Win: ビルド → インストール → テスト
 - [ ] カラープリセット使用時: `color_presets.tsv` を編集 → converter 実行
 - [ ] PiPL 日本語対応: `tools/patch_pipl_japanese.py` を設定
-- [ ] コード署名（Mac）: `codesign_config.sh` を設定
-- [ ] 配布パッケージ: `package_cross_platform.sh`
+- [ ] コード署名（Mac）: `Mac/codesign_setup.sh` を実行
+- [ ] 配布パッケージ: `Mac/package_cross_platform.sh`
+
+---
+
+## Mac — Xcode プロジェクト設定ガイド
+
+### 生成済みの .xcodeproj を開く
+
+```bash
+cd <生成先>/Mac
+open <MATCH_NAME>.xcodeproj
+```
+
+テンプレートの `project.pbxproj` には以下が事前設定されています:
+
+- **Product Type**: Bundle (`.plugin`)
+- **ソースファイル**: `_CPU.cpp`, `_GPU.cpp`（Obj-C++ モード）
+- **フレームワーク**: Cocoa, Metal, OpenCL
+- **リンカーフラグ**: `-liconv`（Shift-JIS 変換用）
+- **Rez ビルドフェーズ**: `.r` ファイルの PiPL コンパイル
+- **Run Script (Metal)**: `.metal` → `.metallib` のコンパイル＆バンドル内配置
+- **Run Script (Deploy)**: ビルド後に MediaCore ディレクトリへ自動デプロイ
+
+### SDK パスの設定（初回のみ）
+
+Xcode プロジェクトを開いたら、**Project（ターゲットではない）のBuild Settings** で以下を確認・変更:
+
+| 設定キー | デフォルト値（要変更） | 例 |
+|----------|----------------------|-----|
+| `PREMIERE_SDK_BASE_PATH` | `__TPL_PREMIERE_SDK_PATH__` | `/Users/you/Desktop/Premiere Pro 26.0 C++ SDK` |
+| `AE_SDK_BASE_PATH` | `__TPL_AE_SDK_PATH__` | `/Users/you/Desktop/AfterEffectsSDK` |
+
+> **ヒント**: Build Settings 画面で `PREMIERE` や `AE_SDK` で検索すると素早く見つかります。  
+> User-Defined セクションに表示されます。
+
+### Development Team の設定（署名が必要な場合）
+
+1. ターゲットの **Signing & Capabilities** タブを開く
+2. **Team** に自分の Apple Developer アカウントを選択
+3. `CODE_SIGNING_ALLOWED` のデフォルトは `NO`（開発中は署名不要）
+
+### ビルド & テスト
+
+```bash
+cd Mac
+# Debugビルド（arm64）
+xcodebuild clean -configuration Debug ARCHS=arm64
+xcodebuild -configuration Debug ARCHS=arm64
+
+# プラグインを MediaCore にインストール
+./install_plugin.sh
+
+# Premiere Pro を再起動してテスト
+```
+
+### Metal シェーダー Run Script の仕組み
+
+`project.pbxproj` 内の Run Script フェーズが以下を実行:
+
+1. `xcrun --find metal` で Metal コンパイラを検出
+2. `.metal` → `.air`（中間表現） → `.metallib`（Metal ライブラリ）にコンパイル
+3. 成果物をバンドル内の `Resources/MetalLib/` にコピー
+
+```
+Build Phases の順序:
+  Sources → Frameworks → Resources → Rez → Metal Compile → Deploy
+```
+
+---
+
+## Win — Visual Studio プロジェクト設定ガイド
+
+### .sln を開く
+
+Visual Studio 2022 で `Win/<MATCH_NAME>.sln` を開きます。  
+`.vcxproj` には以下が事前設定されています:
+
+- **構成**: Debug/Release × x64
+- **出力**: `.aex` バンドル
+- **CUDA ビルド**: カスタムビルドステップで `nvcc.exe` 呼び出し
+- **OpenCL 文字列化**: `.cl` → プリプロセス → C文字列ヘッダー
+- **PiPL 変換**: `.r` → PiPLTool → `patch_pipl_japanese.py` → `.rcp`
+- **エンコーディング**: `/source-charset:utf-8 /execution-charset:shift_jis`
+
+### 環境変数の確認
+
+ビルド前にこれらの変数が定義されているか確認（`PreBuildEvent` で自動チェック）:
+
+| 変数 | 用途 |
+|------|------|
+| `AE_SDK_BASE_PATH` | After Effects SDK のルート |
+| `CUDA_SDK_BASE_PATH` | CUDA Toolkit のルート |
+| `PREMSDKBUILDPATH` | ビルド出力先 |
+| `BOOST_BASE_PATH` | Boost ライブラリ |
+
+### プラグイン配置
+
+ビルド成果物（`.aex`）を以下のディレクトリにコピー:
+
+```
+C:\Program Files\Adobe\Adobe Premiere Pro 2026\Plug-ins\Common\
+```
+
+### 注意: SDK 内での配置
+
+`vcxproj` 内のヘッダー参照パス（`..\..\..\..\Headers` など）は、プロジェクトが **SDK 内の `Examples/Projects/GPUVideoFilter/` 配下** に配置されている前提です。SDK 外に配置する場合は `AdditionalIncludeDirectories` を環境変数ベースのパスに変更してください。
+
+---
+
+## コード署名 & 公証（Mac）
+
+### 初期セットアップ
+
+```bash
+cd Mac
+./codesign_setup.sh
+```
+
+このスクリプトが以下を対話形式で設定:
+1. Apple Developer Program 登録状態の確認
+2. Developer ID Application 証明書の検出
+3. Team ID の取得
+4. App-Specific Password の Keychain 保存
+5. `codesign_config.sh` の自動生成
+
+### 署名 → 公証 → インストール
+
+```bash
+./codesign_plugin.sh      # コード署名
+./notarize_plugin.sh      # Apple 公証
+./install_plugin.sh       # MediaCore にインストール
+```
+
+### クロスプラットフォーム配布
+
+```bash
+./package_cross_platform.sh    # Mac + Win を ZIP にまとめる
+```
+
+---
+
+## エージェント向け：初期作業ガイド
+
+> **AI エージェントがこの README を読み込んだ後、最初に行うべき作業手順。**
+> ユーザーから「エフェクトの概要」を受け取ったら、以下の順序で実装を進める。
+
+### Phase 1: パラメータ定義（コード変更 3ファイル）
+
+1. **`_ParamNames.h`** — パラメータの日本語表示名を定義
+   ```cpp
+   constexpr const char* AMOUNT = "量";
+   #define P_AMOUNT    PARAM(ParamNames::AMOUNT)
+   ```
+
+2. **`.h`（メインヘッダー）** — パラメータ enum、MIN/MAX/DFLT、ProcAmpParams 構造体を定義
+   ```cpp
+   enum { PARAM_AMOUNT = 1, PARAM_COUNT };
+   #define AMOUNT_MIN 0.0f
+   #define AMOUNT_MAX 100.0f
+   #define AMOUNT_DFLT 50.0f
+   ```
+
+3. **`_CPU.cpp` の `ParamsSetup()`** — Premiere Pro にパラメータを登録
+   ```cpp
+   PF_ADD_FLOAT_SLIDER(P_AMOUNT, AMOUNT_MIN, AMOUNT_MAX, ...);
+   ```
+
+### Phase 2: GPU カーネル実装（3ファイル同期 — 最重要ルール）
+
+**必ず 3箇所に同じロジックを実装する:**
+
+4. **`.cu`（CUDA）** — リファレンス実装を先に書く
+5. **`.cl`（OpenCL/Metal）** — `.cu` と同じロジック、関数名・数学関数を OpenCL 版に変換
+6. **`_CPU.cpp` の `SmartRender()`** — GPU が使えない環境用フォールバック
+
+### Phase 3: ホスト側接続（2ファイル）
+
+7. **`_GPU.cpp`** — `ProcAmpParams` にフィールドを追加し、`Render()` でパラメータ取得→カーネルへ渡す
+8. **`_CPU.cpp` の `SmartRender()`** — パラメータ取得してピクセルループ実行
+
+### Phase 4: 検証
+
+9. **ProcAmpParams の順序照合** — `.h` の構造体 / `.cu` カーネル引数 / `.cl` カーネル引数が完全一致か確認
+10. Mac ビルド: `cd Mac && xcodebuild -configuration Debug ARCHS=arm64 && ./install_plugin.sh`
+11. Premiere Pro で動作確認
+
+### エージェントへの注意事項
+
+- **`_Common.h` の `static inline` 関数**は CPU で使える。GPU カーネル内では同じロジックを `__device__`（CUDA）/ 修飾子なし（OpenCL）で再定義する必要がある
+- **ProcAmpParams のフィールド順序を絶対に間違えない**（Metal がバッファ丸渡しのため、1つずれると描画が壊れる）
+- **カーネルに渡さないパラメータ**は構造体末尾の CPU-only セクションに置く
+- **数学関数**は CUDA (`cosf`) と OpenCL (`cos`) で名前が違う — DEV_GUIDE の対応表を参照
+- **`.metal` は `.cl` を `#include` するだけ**なので、`.cl` だけ編集すれば Metal も対応完了
 
 ---
 

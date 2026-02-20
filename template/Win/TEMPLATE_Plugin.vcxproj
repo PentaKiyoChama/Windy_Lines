@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{__TPL_PROJECT_GUID__}</ProjectGuid>
+    <RootNamespace>__TPL_MATCH_NAME__</RootNamespace>
+    <ProjectName>__TPL_MATCH_NAME__ (GPU)</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC70.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros">
+    <!-- SDK パスのデフォルト値（環境変数未定義時に使用） -->
+    <AE_SDK_BASE_PATH Condition="'$(AE_SDK_BASE_PATH)' == ''">..\..\..\..\..\..\..\..</AE_SDK_BASE_PATH>
+    <CUDA_SDK_BASE_PATH Condition="'$(CUDA_SDK_BASE_PATH)' == ''">C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0</CUDA_SDK_BASE_PATH>
+    <PREMSDKBUILDPATH Condition="'$(PREMSDKBUILDPATH)' == ''">$(ProjectDir)Build</PREMSDKBUILDPATH>
+    <PREMIERE_PLUGINS_PATH Condition="'$(PREMIERE_PLUGINS_PATH)' == ''">$(ProjectDir)Build\Debug</PREMIERE_PLUGINS_PATH>
+    <BOOST_BASE_PATH Condition="'$(BOOST_BASE_PATH)' == ''">C:\boost</BOOST_BASE_PATH>
+  </PropertyGroup>
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.40219.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(PREMSDKBUILDPATH)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</IgnoreImportLibrary>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(PREMSDKBUILDPATH)\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\</IntDir>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">__TPL_MATCH_NAME__</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.aex</TargetExt>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">__TPL_MATCH_NAME__</TargetName>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.aex</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>X64</TargetEnvironment>
+      <TypeLibraryName>.\Debug/__TPL_MATCH_NAME__.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>..\..\..\..\Headers;..\..\..\..\Headers\SP;..\..\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <StructMemberAlignment>Default</StructMemberAlignment>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <BrowseInformation>true</BrowseInformation>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+      <PreprocessorDefinitions>MSWindows;_USE_MATH_DEFINES;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/source-charset:utf-8 /execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;PRWIN_ENV;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+      <AdditionalIncludeDirectories>$(AE_SDK_BASE_PATH)\Examples\Headers\;$(AE_SDK_BASE_PATH)\Examples\Resources\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>vfw32.lib;msacm32.lib;winmm.lib;comctl32.lib;cudart_static.lib;OpenCL.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>$(IntDir)$(TargetName).pdb</ProgramDatabaseFile>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
+      <ImportLibrary>$(IntDir)/$(TargetName).lib</ImportLibrary>
+      <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(CUDA_SDK_BASE_PATH)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <Bscmake>
+      <OutputFile>$(IntDir)$(TargetName).bsc</OutputFile>
+    </Bscmake>
+    <PreBuildEvent>
+      <Command>if not defined AE_SDK_BASE_PATH echo "AE_SDK_BASE_PATH is not defined! Please refer to Premiere_SDK_Guide.pdf chapter 12."
+if not defined CUDA_SDK_BASE_PATH echo "CUDA_SDK_BASE_PATH is not defined! Please make sure the CUDA SDK is correctly installed."
+if not defined PREMSDKBUILDPATH echo "PREMSDKBUILDPATH is not defined!"
+if not defined BOOST_BASE_PATH echo "BOOST_BASE_PATH is not defined!"</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\..\..\Headers;..\..\..\..\Headers\SP;..\..\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <Optimization>Full</Optimization>
+      <PreprocessorDefinitions>NDEBUG;MSWindows;_USE_MATH_DEFINES;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/source-charset:utf-8 /execution-charset:shift_jis %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+      <TargetMachine>MachineX64</TargetMachine>
+      <ImportLibrary>$(IntDir)/$(TargetName).lib</ImportLibrary>
+      <AdditionalDependencies>cudart_static.lib;OpenCL.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(CUDA_SDK_BASE_PATH)\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <Bscmake>
+      <OutputFile>$(IntDir)$(TargetName).bsc</OutputFile>
+    </Bscmake>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>$(AE_SDK_BASE_PATH)\Examples\Headers\;$(AE_SDK_BASE_PATH)\Examples\Resources\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <PreBuildEvent>
+      <Command>if not defined AE_SDK_BASE_PATH echo "AE_SDK_BASE_PATH is not defined!"
+if not defined CUDA_SDK_BASE_PATH echo "CUDA_SDK_BASE_PATH is not defined!"
+if not defined PREMSDKBUILDPATH echo "PREMSDKBUILDPATH is not defined!"
+if not defined BOOST_BASE_PATH echo "BOOST_BASE_PATH is not defined!"</Command>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+  <!-- ヘッダーファイル -->
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUDeviceSuite.h" />
+    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUImageProcessingSuite.h" />
+    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUFilter.h" />
+    <ClInclude Include="..\..\..\..\Headers\PrSDKPixelFormat.h" />
+    <ClInclude Include="..\__TPL_MATCH_NAME__.h" />
+    <ClInclude Include="..\..\Utils\PrGPUFilterModule.h" />
+    <ClInclude Include="..\..\Utils\DirectXUtils.h" />
+  </ItemGroup>
+  <!-- PiPL リソース (.r → .rcp → .rr) -->
+  <ItemGroup>
+    <CustomBuild Include="..\__TPL_MATCH_NAME__.r">
+      <FileType>Document</FileType>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Converting PiPL for %(Filename) with Japanese patch</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cl /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
+"$(AE_SDK_BASE_PATH)\Examples\Resources\PiPLTool" "$(IntDir)%(Filename).rr" "..\%(Filename).rcp"
+python "..\patch_pipl_japanese.py"
+      </Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).rr;%(Outputs)</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Converting PiPL for %(Filename) with Japanese patch</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">cl /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
+"$(AE_SDK_BASE_PATH)\Examples\Resources\PiPLTool" "$(IntDir)%(Filename).rr" "..\%(Filename).rcp"
+python "..\patch_pipl_japanese.py"
+      </Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).rr;%(Outputs)</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <!-- Windows リソース (.rc) -->
+  <ItemGroup>
+    <ResourceCompile Include="..\__TPL_MATCH_NAME__.rc" />
+  </ItemGroup>
+  <!-- ソースファイル -->
+  <ItemGroup>
+    <ClCompile Include="..\..\Utils\DirectXUtils.cpp" />
+    <ClCompile Include="..\__TPL_MATCH_NAME___CPU.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\Debug/</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="..\__TPL_MATCH_NAME___GPU.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\Debug/</ObjectFileName>
+    </ClCompile>
+  </ItemGroup>
+  <!-- CUDA カーネル -->
+  <ItemGroup>
+    <CustomBuild Include="..\__TPL_MATCH_NAME__.cu">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">rem CUDA compilation
+"$(CUDA_SDK_BASE_PATH)\bin\nvcc.exe" -D_DEBUG -arch=sm_75 -use_fast_math -m64 -c -ccbin "$(VC_ExecutablePath_x64_x64)" -D_MBCS -Xcompiler /MDd,/EHsc,/W3,/nologo,/Zi -I"$(CUDA_SDK_BASE_PATH)\include" -I"./" -I"$(ProjectDir)..\..\..\..\Headers" -I"$(BOOST_BASE_PATH)" -I"$(AE_SDK_BASE_PATH)\Examples\Headers" -I"$(AE_SDK_BASE_PATH)\Shared\Headers" -o "$(IntDir)%(Filename).obj" "$(ProjectDir)..\%(Filename).cu"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building %(Filename).cu</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).obj</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">rem CUDA compilation
+"$(CUDA_SDK_BASE_PATH)\bin\nvcc.exe" -arch=sm_75 -use_fast_math -m64 -c -ccbin "$(VC_ExecutablePath_x64_x64)" -D_MBCS -Xcompiler /MD,/EHsc,/W3,/nologo,/Zi -I"$(CUDA_SDK_BASE_PATH)\include" -I"./" -I"$(ProjectDir)..\..\..\..\Headers" -I"$(BOOST_BASE_PATH)" -I"$(AE_SDK_BASE_PATH)\Examples\Headers" -I"$(AE_SDK_BASE_PATH)\Shared\Headers" -o "$(IntDir)%(Filename).obj" "$(ProjectDir)..\%(Filename).cu"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building %(Filename).cu</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).obj</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <!-- OpenCL カーネル → 文字列化 -->
+  <ItemGroup>
+    <CustomBuild Include="..\__TPL_MATCH_NAME__.cl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">del /Q "$(ProjectDir)%(Filename).i" 2&gt; nul
+"cl.exe" /nologo -D GF_DEVICE_TARGET_OPENCL=1 -I"$(BOOST_BASE_PATH)" -I"..\..\..\..\Headers" /TP /P "%(FullPath)"
+python "..\..\Utils\CreateCString.py" -i "$(ProjectDir)%(Filename).i" -o "$(IntDir)PreprocessedOpenCL\%(Filename).cl.h" --name k%(Filename)_OpenCLString</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Preprocessing OpenCL to Strings for %(Filename).cl</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)%(Filename).i;$(IntDir)\PreprocessedOpenCL\%(Filename).cl.h;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">del /Q "$(ProjectDir)%(Filename).i" 2&gt; nul
+"cl.exe" /nologo -D GF_DEVICE_TARGET_OPENCL=1 -I"$(BOOST_BASE_PATH)" -I"..\..\..\..\Headers" /TP /P "%(FullPath)"
+python "..\..\Utils\CreateCString.py" -i "$(ProjectDir)%(Filename).i" -o "$(IntDir)PreprocessedOpenCL\%(Filename).cl.h" --name k%(Filename)_OpenCLString</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Preprocessing OpenCL to Strings for %(Filename).cl</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)%(Filename).i;$(IntDir)\PreprocessedOpenCL\%(Filename).cl.h;%(Outputs)</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
