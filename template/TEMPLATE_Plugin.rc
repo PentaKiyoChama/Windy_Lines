@@ -1,0 +1,4 @@
+// __TPL_MATCH_NAME__.rc
+// Windows Resource File
+#pragma code_page(932)
+#include "__TPL_MATCH_NAME__.rcp"
