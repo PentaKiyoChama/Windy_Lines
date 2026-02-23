@@ -69,9 +69,11 @@ template/
 ├── TEMPLATE_Plugin_Version.h    ← バージョン管理（ここだけ変更すればOK）
 ├── TEMPLATE_Plugin_Common.h     ← CPU/GPU共有ユーティリティ（static inline）
 ├── TEMPLATE_Plugin_ParamNames.h ← パラメータ名（UTF-8→Shift-JIS自動変換）
+├── TEMPLATE_Plugin_License.h    ← ライセンス検証インターフェース
+├── TEMPLATE_Plugin_WatermarkMask.h ← ウォーターマークビットマップ（要生成）
 │
-├── TEMPLATE_Plugin_CPU.cpp      ← CPUレンダラー（フォールバック）+ エントリーポイント
-├── TEMPLATE_Plugin_GPU.cpp      ← GPUホストコントローラー（CUDA/Metal/OpenCLディスパッチ）
+├── TEMPLATE_Plugin_CPU.cpp      ← CPUレンダラー（フォールバック）+ エントリーポイント + ライセンス実装
+├── TEMPLATE_Plugin_GPU.cpp      ← GPUホストコントローラー（CUDA/Metal/OpenCLディスパッチ）+ ライセンスチェック
 │
 ├── TEMPLATE_Plugin.cu           ← CUDA カーネル（Windows, リファレンス実装）
 ├── TEMPLATE_Plugin.cl           ← OpenCL カーネル（Mac/Windows共通）
@@ -110,7 +112,9 @@ template/
 │   ├── color_preset_converter.py    ← TSV → ColorPresets.h 自動生成
 │   ├── preset_converter.py          ← TSV → Presets.h 自動生成
 │   ├── patch_pipl_japanese.py       ← PiPL日本語パッチ
-│   └── convert_r_encoding.py        ← .r ファイルエンコーディング変換
+│   ├── convert_r_encoding.py        ← .r ファイルエンコーディング変換
+│   ├── generate_watermark_mask.py   ← ウォーターマーク画像 → .h 生成ツール
+│   └── activate_license_cache.py    ← ライセンスキャッシュ手動書き込みツール
 │
 └── docs/
     └── TEMPLATE_DEV_GUIDE.md        ← 開発ガイド（本ファイル参照）
@@ -148,6 +152,49 @@ _ParamNames.h─┤
               ├─→ .r  (PiPL定義)
               └─→ .rc (Windowsリソース)
 ```
+
+---
+
+## ライセンス認証システム
+
+テンプレートには **OshareTelop 共通ライセンスシステム** が組み込まれています。  
+1つのプラグインでアクティベートすれば、同じマシン上の全 OshareTelop プラグインがアンロックされます。
+
+### 仕組み
+
+| コンポーネント | 説明 |
+|---|---|
+| **キャッシュファイル** | `~/Library/Application Support/OshareTelop/license_cache_v1.txt` (Mac) / `%APPDATA%\OshareTelop\license_cache_v1.txt` (Win) |
+| **Machine ID** | `DJB2(hostname\|platform\|sizeof(void*))` — プラグイン非依存 |
+| **署名ソルト** | `OST_WL_2026_SALT_K9x3` — 全 OshareTelop プラグイン共通 |
+| **バックグラウンドリフレッシュ** | TTL=600s、オフライン猶予=3600s |
+| **ウォーターマーク** | 未認証時に CPU SmartRender で描画（387×41 ビットマップ） |
+
+### ウォーターマーク生成
+
+```bash
+python3 tools/generate_watermark_mask.py \
+  --text "Edit with" \
+  --text2 "おしゃれテロップ・YourPlugin" \
+  --font /path/to/NotoSansJP-Regular.ttf \
+  --header-guard YOUR_UPPER_GUARD_H \
+  --out YourPlugin_WatermarkMask.h
+```
+
+初期状態では 1×1 のダミーマスクがプレースホルダーとして入っています。  
+リリース前に必ず上記コマンドで本物のウォーターマークを生成してください。
+
+### 手動アクティベーション（テスト用）
+
+```bash
+python3 tools/activate_license_cache.py
+```
+
+### 主要関数（CPU.cpp 内）
+
+- `IsLicenseAuthenticated()` — 現在の認証状態を返す（bool）
+- `RefreshLicenseAuthenticatedState(force)` — キャッシュファイルの読み込みとバックグラウンドリフレッシュ
+- `OpenActivationPage()` — ブラウザでアクティベーションページを開く
 
 ---
 

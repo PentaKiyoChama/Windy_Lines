@@ -1,22 +1,33 @@
 #!/usr/bin/env python3
+"""
+License activation cache writer for __TPL_MATCH_NAME__.
+
+Verifies license via Bubble API and writes shared OshareTelop license cache.
+The cache file is shared across all OshareTelop plugins — one activation
+unlocks all plugins.
+
+Usage:
+  python3 activate_license_cache.py --license-key YOUR_KEY
+  python3 activate_license_cache.py --license-key YOUR_KEY --endpoint https://...
+"""
 import argparse
-import hashlib
 import json
 import os
 import platform
+import socket
+import struct
 import tempfile
 import time
 import urllib.error
 import urllib.request
-import uuid
-from typing import Dict, Optional, Tuple
 from pathlib import Path
+from typing import Dict, Optional, Tuple
 
 DEFAULT_ENDPOINT = "https://penta.bubbleapps.io/version-test/api/1.1/wf/ppplugin_test"
 DEFAULT_TIMEOUT = 8
 DEFAULT_FAIL_TTL = 600
 DEFAULT_OK_TTL = 600
-PRODUCT_NAME = "OST_WindyLines"
+PRODUCT_NAME = "__TPL_MATCH_NAME__"
 PLUGIN_VERSION = "1.0.0"
 CACHE_SIGNATURE_SALT = "OST_WL_2026_SALT_K9x3"
 
@@ -29,9 +40,10 @@ def djb2_hash(s: str) -> int:
     return h
 
 
-def compute_cache_signature(authorized_str: str, validated_unix_str: str, machine_id_hash_val: str, expire_unix_str: str = "") -> str:
+def compute_cache_signature(authorized_str: str, validated_unix_str: str,
+                            machine_id_hash_val: str, expire_unix_str: str = "") -> str:
     """Compute cache signature matching C++ ComputeCacheSignature.
-    
+
     C++ payload format: "authorized|validated_unix|machine_id|expire_unix|salt"
     """
     payload = f"{authorized_str}|{validated_unix_str}|{machine_id_hash_val}|{expire_unix_str}|{CACHE_SIGNATURE_SALT}"
@@ -45,26 +57,26 @@ def cache_path() -> Path:
     if os.name == "nt":
         appdata = os.environ.get("APPDATA")
         if appdata:
-                return Path(appdata) / "OshareTelop" / "license_cache_v1.txt"
+            return Path(appdata) / "OshareTelop" / "license_cache_v1.txt"
         userprofile = os.environ.get("USERPROFILE", "C:/")
-            return Path(userprofile) / "AppData" / "Roaming" / "OshareTelop" / "license_cache_v1.txt"
+        return Path(userprofile) / "AppData" / "Roaming" / "OshareTelop" / "license_cache_v1.txt"
     home = Path.home()
-        return home / "Library" / "Application Support" / "OshareTelop" / "license_cache_v1.txt"
+    return home / "Library" / "Application Support" / "OshareTelop" / "license_cache_v1.txt"
 
 
 def machine_id_hash() -> str:
     """Compute machine ID matching C++ GetMachineIdHash (DJB2-based)."""
-    import socket
-    import struct
     hostname = socket.gethostname()
     ptr_size = struct.calcsize("P")
-    raw = f"{hostname}|mac|{ptr_size}"
+    plat = "win" if os.name == "nt" else "mac"
+    raw = f"{hostname}|{plat}|{ptr_size}"
     h1 = djb2_hash(raw)
     h2 = djb2_hash(raw + "_salt_ost")
     return f"{h1:08x}{h2:08x}"
 
 
-def post_verify(endpoint: str, api_key: Optional[str], timeout_sec: int) -> Tuple[int, Dict, str]:
+def post_verify(endpoint: str, api_key: Optional[str],
+                timeout_sec: int) -> Tuple[int, Dict, str]:
     payload = {
         "action": "verify",
         "machine_id": machine_id_hash(),
@@ -87,7 +99,7 @@ def post_verify(endpoint: str, api_key: Optional[str], timeout_sec: int) -> Tupl
             try:
                 parsed = json.loads(body)
             except json.JSONDecodeError:
-                parsed = {}
+                pass
             return int(resp.status), parsed, body
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
@@ -95,7 +107,7 @@ def post_verify(endpoint: str, api_key: Optional[str], timeout_sec: int) -> Tupl
         try:
             parsed = json.loads(body)
         except json.JSONDecodeError:
-            parsed = {}
+            pass
         return int(e.code), parsed, body
 
 
@@ -137,7 +149,8 @@ def parse_authorized(status_code: int, body_json: Dict) -> Tuple[bool, str, int]
     return False, "invalid_json_response", DEFAULT_FAIL_TTL
 
 
-def write_cache_file(path: Path, authorized: bool, reason: str, ttl_sec: int, mid_hash: str) -> None:
+def write_cache_file(path: Path, authorized: bool, reason: str, ttl_sec: int,
+                     mid_hash: str) -> None:
     now = int(time.time())
     expire = now + max(1, ttl_sec)
     auth_str = "true" if authorized else "false"
@@ -146,19 +159,18 @@ def write_cache_file(path: Path, authorized: bool, reason: str, ttl_sec: int, mi
     sig = compute_cache_signature(auth_str, now_str, mid_hash, expire_str)
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = "\n".join(
-        [
-            f"authorized={auth_str}",
-            f"reason={reason}",
-            f"validated_unix={now}",
-            f"cache_expire_unix={expire}",
-            f"machine_id_hash={mid_hash}",
-            f"cache_signature={sig}",
-            "",
-        ]
-    )
+    content = "\n".join([
+        f"authorized={auth_str}",
+        f"reason={reason}",
+        f"validated_unix={now}",
+        f"cache_expire_unix={expire}",
+        f"machine_id_hash={mid_hash}",
+        f"cache_signature={sig}",
+        "",
+    ])
 
-    with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", dir=str(path.parent)) as tmp:
+    with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8",
+                                     dir=str(path.parent)) as tmp:
         tmp.write(content)
         tmp_path = Path(tmp.name)
 
@@ -166,12 +178,14 @@ def write_cache_file(path: Path, authorized: bool, reason: str, ttl_sec: int, mi
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify license via API and write local auth cache for OST_WindyLines")
+    parser = argparse.ArgumentParser(
+        description=f"Verify license via API and write local auth cache for {PRODUCT_NAME}")
     parser.add_argument("--endpoint", default=DEFAULT_ENDPOINT, help="Verification endpoint (POST)")
     parser.add_argument("--api-key", default="", help="Optional bearer token")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="HTTP timeout seconds")
     args = parser.parse_args()
 
+    print(f"[INFO] product: {PRODUCT_NAME}")
     print(f"[INFO] endpoint: {args.endpoint}")
     print(f"[INFO] platform: {'win' if os.name == 'nt' else 'mac'}")
 

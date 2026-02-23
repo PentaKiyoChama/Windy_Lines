@@ -657,7 +657,7 @@ static void TriggerBackgroundCacheRefresh()
 		char content[768];
 		snprintf(content, sizeof(content),
 			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
-			"license_key_masked=\nmachine_id_hash=%s\ncache_signature=%s\n",
+			"machine_id_hash=%s\ncache_signature=%s\n",
 			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
 			mid.c_str(), sig.c_str());
 
@@ -835,7 +835,7 @@ static void TriggerBackgroundCacheRefresh()
 		char content[768];
 		snprintf(content, sizeof(content),
 			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
-			"license_key_masked=\nmachine_id_hash=%s\ncache_signature=%s\n",
+			"machine_id_hash=%s\ncache_signature=%s\n",
 			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
 			mid.c_str(), sig.c_str());
 

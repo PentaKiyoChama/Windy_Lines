@@ -40,6 +40,15 @@
 #include <thread>
 #include <vector>
 
+// === License verification: shared with CPU (single source of truth) ===
+#include "__TPL_MATCH_NAME___License.h"
+
+static bool IsGpuLicenseAuthenticated()
+{
+    RefreshLicenseAuthenticatedState(false);
+    return IsLicenseAuthenticated();
+}
+
 // ========== プラットフォーム分岐 ==========
 #if _WIN32
     #define HAS_CUDA    1
@@ -182,6 +191,9 @@ public:
         // TODO: PPixSuite でバッファ取得
         // mDeviceIndex でデバイスを識別
         // GetGPUPPixData() 等で実際のGPUポインタを取得
+
+        // --- License check (shared cache with CPU) ---
+        const bool isLicensed = IsGpuLicenseAuthenticated();
 
         // ========== GPUカーネル ディスパッチ ==========
 #if HAS_CUDA
