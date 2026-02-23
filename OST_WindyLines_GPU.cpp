@@ -943,9 +943,9 @@ public:
 	const PrTime ticksPerFrame = inRenderParams->inRenderTicksPerFrame;
 	const PrTime seqTime = inRenderParams->inSequenceTime;
 	
-	PrTime trackItemStart = 0;
-	bool trackItemStartFound = false;
-	
+	PrTime trackItemStart = mCachedTrackItemStart;
+	bool trackItemStartFound = mTrackItemStartCached;
+
 	// Get hash of our own mNodeID for matching against operators in the tree
 	prPluginID myNodeHash = {};
 	{
@@ -959,9 +959,8 @@ public:
 	if (!trackItemStartFound && mVideoSegmentSuite)
 	{
 		// One-time tree dump for diagnostics
-		static bool sTreeDumped = false;
-		const bool doDump = !sTreeDumped;
-		if (doDump) sTreeDumped = true;
+		static std::atomic<bool> sTreeDumped{false};
+		const bool doDump = !sTreeDumped.exchange(true, std::memory_order_relaxed);
 		
 		if (doDump)
 			DebugLog("GPU TREE: mNodeID=%d myHash=%08x%08x%08x%08x",
@@ -1064,6 +1063,8 @@ public:
 									std::istringstream stream((const char*)buffer);
 									stream >> trackItemStart;
 									trackItemStartFound = true;
+									mTrackItemStartCached = true;
+									mCachedTrackItemStart = trackItemStart;
 									DebugLog("GPU CLIP FOUND: mNodeID=%d parentNode=%d parentType='%s' TrackItemStart=%lld (frame %lld)",
 										mNodeID, currentNode, nodeType, (long long)trackItemStart,
 										ticksPerFrame > 0 ? (long long)(trackItemStart / ticksPerFrame) : 0LL);
@@ -1113,10 +1114,10 @@ public:
 	
 	// DEBUG: Log time values (first 5 frames only)
 	{
-		static int sDebugFrameCount = 0;
-		if (sDebugFrameCount < 5)
+		static std::atomic<int> sDebugFrameCount{0};
+		if (sDebugFrameCount.load(std::memory_order_relaxed) < 5)
 		{
-			sDebugFrameCount++;
+			sDebugFrameCount.fetch_add(1, std::memory_order_relaxed);
 			DebugLog("GPU TIME DEBUG: clipTime=%lld seqTime=%lld trackItemStart=%lld ticksPerFrame=%lld frameIndex=%lld found=%d",
 				(long long)clipTime, (long long)seqTime, (long long)trackItemStart,
 				(long long)ticksPerFrame, (long long)frameIndex, trackItemStartFound ? 1 : 0);
@@ -2644,6 +2645,8 @@ private:
 	cl_kernel mKernelOpenCL;
 	cl_kernel mKernelOpenCLAlpha = nullptr;
 	cl_kernel mKernelOpenCLWatermark = nullptr;
+	bool mTrackItemStartCached = false;
+	PrTime mCachedTrackItemStart = 0;
 };
 
 #if ENABLE_GPU_RENDERING

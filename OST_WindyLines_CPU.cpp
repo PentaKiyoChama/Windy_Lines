@@ -404,6 +404,21 @@ static std::string GetActivationTokenPath()
 #endif
 }
 
+#ifndef _WIN32
+// Recursively create directories without forking a shell (replaces system("/bin/mkdir -p ..."))
+static void MkdirP(const std::string& path)
+{
+	for (size_t i = 1; i < path.size(); ++i)
+	{
+		if (path[i] == '/')
+		{
+			::mkdir(path.substr(0, i).c_str(), 0755);
+		}
+	}
+	::mkdir(path.c_str(), 0755);
+}
+#endif
+
 static std::string LoadOrCreateActivationToken()
 {
 	const std::string path = GetActivationTokenPath();
@@ -436,8 +451,7 @@ static std::string LoadOrCreateActivationToken()
 	const size_t lastSep = path.find_last_of('/');
 	if (lastSep != std::string::npos)
 	{
-		std::string mkdirCmd = "/bin/mkdir -p '" + path.substr(0, lastSep) + "'";
-		system(mkdirCmd.c_str());
+		MkdirP(path.substr(0, lastSep));
 	}
 #endif
 	FILE* fw = std::fopen(path.c_str(), "wb");
@@ -518,6 +532,7 @@ static std::string GetCacheSignatureSalt()
 }
 static std::atomic<bool> sAutoRefreshInProgress{false};
 static std::atomic<uint32_t> sLastAutoRefreshAttemptMs{0};
+static std::atomic<bool> sPluginShuttingDown{false};
 static const uint32_t kMinAutoRefreshIntervalMs = 60000; // min 60s between API calls
 
 // Post-activation rapid check: after user clicks "Activate", check every 5s for 2 minutes
@@ -590,8 +605,7 @@ static void TriggerBackgroundCacheRefresh()
 		DebugLog("[License] background cache refresh started (Mac/popen)");
 
 		// Ensure directory exists
-		std::string mkdirCmd = "/bin/mkdir -p '" + cacheDir + "'";
-		system(mkdirCmd.c_str());
+		MkdirP(cacheDir);
 
 		// Run curl and capture response
 		std::string curlCmd =
@@ -687,12 +701,15 @@ static void TriggerBackgroundCacheRefresh()
 				authStr.c_str(), sig.c_str(), cachePath.c_str());
 		}
 
-		sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
-
-		// If authorized, clear rapid-check window
-		if (authorized)
+		if (!sPluginShuttingDown.load(std::memory_order_acquire))
 		{
-			sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+			sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
+
+			// If authorized, clear rapid-check window
+			if (authorized)
+			{
+				sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+			}
 		}
 
 		sAutoRefreshInProgress.store(false, std::memory_order_release);
@@ -862,12 +879,15 @@ static void TriggerBackgroundCacheRefresh()
 				authStr.c_str(), sig.c_str(), cachePath.c_str());
 		}
 
-		sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
-
-		// If authorized, clear rapid-check window (no need to keep polling)
-		if (authorized)
+		if (!sPluginShuttingDown.load(std::memory_order_acquire))
 		{
-			sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+			sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
+
+			// If authorized, clear rapid-check window (no need to keep polling)
+			if (authorized)
+			{
+				sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
+			}
 		}
 
 		sAutoRefreshInProgress.store(false, std::memory_order_release);
@@ -1121,6 +1141,7 @@ static PF_Err GlobalSetdown(
 	PF_ParamDef* params[],
 	PF_LayerDef* output)
 {
+	sPluginShuttingDown.store(true, std::memory_order_release);
 	return PF_Err_NONE;
 }
 
@@ -2595,10 +2616,10 @@ static PF_Err Render(
 	
 	// DEBUG: Log CPU time values (first 5 frames only)
 	{
-		static int sCpuDebugCount = 0;
-		if (sCpuDebugCount < 5)
+		static std::atomic<int> sCpuDebugCount{0};
+		if (sCpuDebugCount.load(std::memory_order_relaxed) < 5)
 		{
-			sCpuDebugCount++;
+			sCpuDebugCount.fetch_add(1, std::memory_order_relaxed);
 			DebugLog("CPU TIME DEBUG: current_time=%ld time_step=%ld frameIndex=%ld lineStartTime=%.1f timeFramesBase=%.1f",
 				(long)in_data->current_time, (long)in_data->time_step, (long)frameIndex, lineStartTime, timeFramesBase);
 		}
