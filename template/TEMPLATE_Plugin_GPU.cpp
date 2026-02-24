@@ -155,6 +155,27 @@ static id<MTLComputePipelineState> sMetalPipelineStateCache[kMaxDevices] = {};
 class GPUFilter : public PrGPUFilterBase
 {
 public:
+    virtual ~GPUFilter()
+    {
+        if (mDeviceIndex >= 0 && mDeviceIndex < kMaxDevices)
+        {
+            if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_OpenCL && sKernelCache[mDeviceIndex])
+            {
+                clReleaseKernel(sKernelCache[mDeviceIndex]);
+                sKernelCache[mDeviceIndex] = nullptr;
+                mKernelOpenCL = nullptr;
+            }
+
+#if HAS_METAL
+            if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_Metal && sMetalPipelineStateCache[mDeviceIndex])
+            {
+                [sMetalPipelineStateCache[mDeviceIndex] release];
+                sMetalPipelineStateCache[mDeviceIndex] = nil;
+            }
+#endif
+        }
+    }
+
     virtual prSuiteError Initialize(PrGPUFilterInstance* ioInstanceData)
     {
         PrGPUFilterBase::Initialize(ioInstanceData);
@@ -286,29 +307,6 @@ public:
     prSuiteError InitializeDefaultParams(PrGPUFilterInstance* ioInstanceData)
     {
         return suiteError_NoError;
-    }
-
-    virtual prSuiteError Shutdown()
-    {
-        if (mDeviceIndex >= 0 && mDeviceIndex < kMaxDevices)
-        {
-            if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_OpenCL && sKernelCache[mDeviceIndex])
-            {
-                clReleaseKernel(sKernelCache[mDeviceIndex]);
-                sKernelCache[mDeviceIndex] = nullptr;
-                mKernelOpenCL = nullptr;
-            }
-
-#if HAS_METAL
-            if (mDeviceInfo.outDeviceFramework == PrGPUDeviceFramework_Metal && sMetalPipelineStateCache[mDeviceIndex])
-            {
-                [sMetalPipelineStateCache[mDeviceIndex] release];
-                sMetalPipelineStateCache[mDeviceIndex] = nil;
-            }
-#endif
-        }
-
-        return PrGPUFilterBase::Shutdown();
     }
 
     prSuiteError GetFrameDependencies(

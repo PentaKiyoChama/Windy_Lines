@@ -19,9 +19,9 @@ resource 'PiPL' (16000) {
             "__TPL_MATCH_NAME__"
         },
         // Category: Premiere Proのエフェクトカテゴリ
-        // TODO: patch_pipl_japanese.py で日本語に置換
+        // NOTE: .r では ASCII を維持し、patch_pipl_japanese.py で日本語へ置換
         Category {
-            "__TPL_CATEGORY_JP__"
+            "__TPL_CATEGORY_ASCII__"
         },
 #ifdef AE_OS_WIN
         #ifdef AE_PROC_INTELx64

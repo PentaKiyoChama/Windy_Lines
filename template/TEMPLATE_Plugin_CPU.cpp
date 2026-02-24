@@ -20,6 +20,8 @@
 #include "AEFX_SuiteHandlerTemplate.h"
 #include "Param_Utils.h"
 #include "PrSDKAESupport.h"
+#include "Smart_Utils.h"
+#include "entry.h"
 
 #include <atomic>
 #include <cstdarg>

@@ -285,11 +285,14 @@ Metal専用コードの二重管理を回避。メンテナンスが1箇所で�
 | `__TPL_UPPER_PREFIX__` | 大文字プレフィックス | `OST` |
 | `__TPL_UPPER_PLUGIN__` | 大文字プラグインID | `MY_EFFECT` |
 | `__TPL_EFFECT_NAME_JP__` | 日本語エフェクト名 | `きらめくパーティクル` |
+| `__TPL_CATEGORY_ASCII__` | `.r` 用 ASCII カテゴリ名 | `Oshare Telop` |
 | `__TPL_CATEGORY_JP__` | 日本語カテゴリ名 | `おしゃれテロップ` |
 | `__TPL_AUTHOR__` | 著作者名 | `Kiyoto Nakamura` |
 | `__TPL_VENDOR__` | ベンダー名 | `OshareTelop` |
 | `__TPL_YEAR__` | 年 | `2026` |
 | `__TPL_PROJECT_GUID__` | VS プロジェクトGUID | 自動生成 |
+
+> PiPL の `.r` 内カテゴリは `__TPL_CATEGORY_ASCII__` を使い、Windows ビルド時に `tools/patch_pipl_japanese.py` で日本語へパッチ適用します。
 
 ---
 

@@ -3,26 +3,29 @@
   <ItemGroup>
     <ClCompile Include="..\__TPL_MATCH_NAME___CPU.cpp" />
     <ClCompile Include="..\__TPL_MATCH_NAME___GPU.cpp" />
-    <ClCompile Include="..\..\Utils\DirectXUtils.cpp">
+    <ClCompile Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Projects\GPUVideoFilter\Utils\DirectXUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="$(AE_SDK_BASE_PATH)\Examples\Util\Smart_Utils.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\__TPL_MATCH_NAME__.h" />
-    <ClInclude Include="..\..\Utils\PrGPUFilterModule.h" />
-    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUDeviceSuite.h">
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Utils\PrGPUFilterModule.h" />
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKGPUDeviceSuite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUFilter.h">
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKGPUFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUImageProcessingSuite.h">
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKGPUImageProcessingSuite.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\Headers\PrSDKPixelFormat.h">
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKPixelFormat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Utils\DirectXUtils.h">
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Projects\GPUVideoFilter\Utils\DirectXUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>

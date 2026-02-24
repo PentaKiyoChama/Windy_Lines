@@ -35,6 +35,7 @@ echo ""
 # ---- 1. まずプラグインIDだけ入力（他はデフォルトを提示） ----
 DEFAULT_PROJECT_PREFIX="OST"
 DEFAULT_CATEGORY_JP="おしゃれテロップ"
+DEFAULT_CATEGORY_ASCII="Oshare Telop"
 DEFAULT_AUTHOR="Kiyoto Nakamura"
 DEFAULT_VENDOR="OshareTelop"
 
@@ -60,6 +61,7 @@ echo "  プラグインID:   ${PLUGIN_ID}"
 echo "  Match Name:     ${DEFAULT_MATCH_NAME}"
 echo "  日本語名:       ${EFFECT_NAME_JP}"
 echo "  カテゴリ:       ${DEFAULT_CATEGORY_JP}"
+echo "  ASCIIカテゴリ:  ${DEFAULT_CATEGORY_ASCII}"
 echo "  著作者:         ${DEFAULT_AUTHOR}"
 echo "  ベンダー名:     ${DEFAULT_VENDOR}"
 echo "  出力先:         ${DEFAULT_OUTPUT_DIR}"
@@ -72,6 +74,7 @@ if [[ "$QUICK_CONFIRM" == "y" || "$QUICK_CONFIRM" == "Y" ]]; then
     MATCH_NAME="$DEFAULT_MATCH_NAME"
     # EFFECT_NAME_JP は既に入力済み
     CATEGORY_NAME_JP="$DEFAULT_CATEGORY_JP"
+    CATEGORY_NAME_ASCII="$DEFAULT_CATEGORY_ASCII"
     AUTHOR_NAME="$DEFAULT_AUTHOR"
     VENDOR_NAME="$DEFAULT_VENDOR"
     OUTPUT_DIR="$DEFAULT_OUTPUT_DIR"
@@ -86,6 +89,9 @@ else
 
     read -p "日本語カテゴリ名 (例: おしゃれテロップ) [デフォルト: ${DEFAULT_CATEGORY_JP}]: " CATEGORY_NAME_JP
     CATEGORY_NAME_JP=${CATEGORY_NAME_JP:-"${DEFAULT_CATEGORY_JP}"}
+
+    read -p "ASCII カテゴリ名 (.r 用) [デフォルト: ${DEFAULT_CATEGORY_ASCII}]: " CATEGORY_NAME_ASCII
+    CATEGORY_NAME_ASCII=${CATEGORY_NAME_ASCII:-"${DEFAULT_CATEGORY_ASCII}"}
 
     read -p "英語Match Name (例: ${PROJECT_PREFIX}_${PLUGIN_ID}) [デフォルト: ${PROJECT_PREFIX}_${PLUGIN_ID}]: " MATCH_NAME
     MATCH_NAME=${MATCH_NAME:-"${PROJECT_PREFIX}_${PLUGIN_ID}"}
@@ -112,6 +118,7 @@ echo "  プラグインID:   ${PLUGIN_ID}"
 echo "  Match Name:     ${MATCH_NAME}"
 echo "  日本語名:       ${EFFECT_NAME_JP}"
 echo "  カテゴリ:       ${CATEGORY_NAME_JP}"
+echo "  ASCIIカテゴリ:  ${CATEGORY_NAME_ASCII}"
 echo "  著作者:         ${AUTHOR_NAME}"
 echo "  ベンダー名:     ${VENDOR_NAME}"
 echo "  出力先:         ${OUTPUT_DIR}"
@@ -185,6 +192,7 @@ find "$OUTPUT_DIR" -type f \( -name "*.h" -o -name "*.cpp" -o -name "*.cu" -o -n
         -e "s/__TPL_UPPER_PLUGIN__/${UPPER_PLUGIN}/g" \
         -e "s/__TPL_EFFECT_NAME_JP__/${EFFECT_NAME_JP}/g" \
         -e "s/__TPL_CATEGORY_JP__/${CATEGORY_NAME_JP}/g" \
+        -e "s/__TPL_CATEGORY_ASCII__/${CATEGORY_NAME_ASCII}/g" \
         -e "s/__TPL_AUTHOR__/${AUTHOR_NAME}/g" \
         -e "s/__TPL_VENDOR__/${VENDOR_NAME}/g" \
         -e "s/__TPL_YEAR__/${CURRENT_YEAR}/g" \

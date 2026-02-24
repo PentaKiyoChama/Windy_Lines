@@ -38,6 +38,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros">
     <!-- SDK パスのデフォルト値（環境変数未定義時に使用） -->
+    <PREMIERE_SDK_BASE_PATH Condition="'$(PREMIERE_SDK_BASE_PATH)' == ''">..\..\..\..\..\..\..\..</PREMIERE_SDK_BASE_PATH>
     <AE_SDK_BASE_PATH Condition="'$(AE_SDK_BASE_PATH)' == ''">..\..\..\..\..\..\..\..</AE_SDK_BASE_PATH>
     <CUDA_SDK_BASE_PATH Condition="'$(CUDA_SDK_BASE_PATH)' == ''">C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0</CUDA_SDK_BASE_PATH>
     <PREMSDKBUILDPATH Condition="'$(PREMSDKBUILDPATH)' == ''">$(ProjectDir)Build</PREMSDKBUILDPATH>
@@ -66,7 +67,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..\..\Headers;..\..\..\..\Headers\SP;..\..\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(PREMIERE_SDK_BASE_PATH)\Examples\Headers;$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\SP;$(PREMIERE_SDK_BASE_PATH)\Examples\Utils;$(PREMIERE_SDK_BASE_PATH)\Examples\Projects\GPUVideoFilter\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers\SP;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(AE_SDK_BASE_PATH)\Examples\GPUUtils;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <StructMemberAlignment>Default</StructMemberAlignment>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -106,7 +107,7 @@ if not defined BOOST_BASE_PATH echo "BOOST_BASE_PATH is not defined!"</Command>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\..\Headers;..\..\..\..\Headers\SP;..\..\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(PREMIERE_SDK_BASE_PATH)\Examples\Headers;$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\SP;$(PREMIERE_SDK_BASE_PATH)\Examples\Utils;$(PREMIERE_SDK_BASE_PATH)\Examples\Projects\GPUVideoFilter\Utils;$(AE_SDK_BASE_PATH)\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers;$(AE_SDK_BASE_PATH)\Examples\Headers\SP;$(AE_SDK_BASE_PATH)\Examples\Resources;$(AE_SDK_BASE_PATH)\Examples\Util\;$(AE_SDK_BASE_PATH)\Examples\GPUUtils;$(IntDir)PreprocessedOpenCL;$(CUDA_SDK_BASE_PATH)\Include\;$(BOOST_BASE_PATH);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <Optimization>Full</Optimization>
       <PreprocessorDefinitions>NDEBUG;MSWindows;_USE_MATH_DEFINES;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -134,28 +135,28 @@ if not defined BOOST_BASE_PATH echo "BOOST_BASE_PATH is not defined!"</Command>
   </ItemDefinitionGroup>
   <!-- ヘッダーファイル -->
   <ItemGroup>
-    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUDeviceSuite.h" />
-    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUImageProcessingSuite.h" />
-    <ClInclude Include="..\..\..\..\Headers\PrSDKGPUFilter.h" />
-    <ClInclude Include="..\..\..\..\Headers\PrSDKPixelFormat.h" />
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKGPUDeviceSuite.h" />
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKGPUImageProcessingSuite.h" />
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKGPUFilter.h" />
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Headers\PrSDKPixelFormat.h" />
     <ClInclude Include="..\__TPL_MATCH_NAME__.h" />
-    <ClInclude Include="..\..\Utils\PrGPUFilterModule.h" />
-    <ClInclude Include="..\..\Utils\DirectXUtils.h" />
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Utils\PrGPUFilterModule.h" />
+    <ClInclude Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Projects\GPUVideoFilter\Utils\DirectXUtils.h" />
   </ItemGroup>
   <!-- PiPL リソース (.r → .rcp → .rr) -->
   <ItemGroup>
     <CustomBuild Include="..\__TPL_MATCH_NAME__.r">
       <FileType>Document</FileType>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Converting PiPL for %(Filename) with Japanese patch</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cl /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cl /source-charset:utf-8 /execution-charset:shift_jis /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
 "$(AE_SDK_BASE_PATH)\Examples\Resources\PiPLTool" "$(IntDir)%(Filename).rr" "..\%(Filename).rcp"
-python "..\patch_pipl_japanese.py"
+    python "..\tools\patch_pipl_japanese.py"
       </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).rr;%(Outputs)</Outputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Converting PiPL for %(Filename) with Japanese patch</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">cl /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">cl /source-charset:utf-8 /execution-charset:shift_jis /D "PRWIN_ENV" /I "$(AE_SDK_BASE_PATH)\Examples\Headers" /I "$(AE_SDK_BASE_PATH)\Examples\Resources" /EP "..\%(Filename).r" &gt; "$(IntDir)%(Filename).rr"
 "$(AE_SDK_BASE_PATH)\Examples\Resources\PiPLTool" "$(IntDir)%(Filename).rr" "..\%(Filename).rcp"
-python "..\patch_pipl_japanese.py"
+    python "..\tools\patch_pipl_japanese.py"
       </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).rr;%(Outputs)</Outputs>
     </CustomBuild>
@@ -166,7 +167,8 @@ python "..\patch_pipl_japanese.py"
   </ItemGroup>
   <!-- ソースファイル -->
   <ItemGroup>
-    <ClCompile Include="..\..\Utils\DirectXUtils.cpp" />
+    <ClCompile Include="$(PREMIERE_SDK_BASE_PATH)\Examples\Projects\GPUVideoFilter\Utils\DirectXUtils.cpp" />
+    <ClCompile Include="$(AE_SDK_BASE_PATH)\Examples\Util\Smart_Utils.cpp" />
     <ClCompile Include="..\__TPL_MATCH_NAME___CPU.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\Debug/</ObjectFileName>
     </ClCompile>
@@ -179,11 +181,11 @@ python "..\patch_pipl_japanese.py"
     <CustomBuild Include="..\__TPL_MATCH_NAME__.cu">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">rem CUDA compilation
-"$(CUDA_SDK_BASE_PATH)\bin\nvcc.exe" -D_DEBUG -arch=sm_75 -use_fast_math -m64 -c -ccbin "$(VC_ExecutablePath_x64_x64)" -D_MBCS -Xcompiler /MDd,/EHsc,/W3,/nologo,/Zi -I"$(CUDA_SDK_BASE_PATH)\include" -I"./" -I"$(ProjectDir)..\..\..\..\Headers" -I"$(BOOST_BASE_PATH)" -I"$(AE_SDK_BASE_PATH)\Examples\Headers" -I"$(AE_SDK_BASE_PATH)\Shared\Headers" -o "$(IntDir)%(Filename).obj" "$(ProjectDir)..\%(Filename).cu"</Command>
+"$(CUDA_SDK_BASE_PATH)\bin\nvcc.exe" -D_DEBUG -arch=sm_75 -use_fast_math -m64 -c -ccbin "$(VC_ExecutablePath_x64_x64)" -D_MBCS -Xcompiler /MDd,/EHsc,/W3,/nologo,/Zi -I"$(CUDA_SDK_BASE_PATH)\include" -I"./" -I"$(PREMIERE_SDK_BASE_PATH)\Examples\Headers" -I"$(BOOST_BASE_PATH)" -I"$(AE_SDK_BASE_PATH)\Examples\Headers" -I"$(AE_SDK_BASE_PATH)\Shared\Headers" -o "$(IntDir)%(Filename).obj" "$(ProjectDir)..\%(Filename).cu"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building %(Filename).cu</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).obj</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">rem CUDA compilation
-"$(CUDA_SDK_BASE_PATH)\bin\nvcc.exe" -arch=sm_75 -use_fast_math -m64 -c -ccbin "$(VC_ExecutablePath_x64_x64)" -D_MBCS -Xcompiler /MD,/EHsc,/W3,/nologo,/Zi -I"$(CUDA_SDK_BASE_PATH)\include" -I"./" -I"$(ProjectDir)..\..\..\..\Headers" -I"$(BOOST_BASE_PATH)" -I"$(AE_SDK_BASE_PATH)\Examples\Headers" -I"$(AE_SDK_BASE_PATH)\Shared\Headers" -o "$(IntDir)%(Filename).obj" "$(ProjectDir)..\%(Filename).cu"</Command>
+"$(CUDA_SDK_BASE_PATH)\bin\nvcc.exe" -arch=sm_75 -use_fast_math -m64 -c -ccbin "$(VC_ExecutablePath_x64_x64)" -D_MBCS -Xcompiler /MD,/EHsc,/W3,/nologo,/Zi -I"$(CUDA_SDK_BASE_PATH)\include" -I"./" -I"$(PREMIERE_SDK_BASE_PATH)\Examples\Headers" -I"$(BOOST_BASE_PATH)" -I"$(AE_SDK_BASE_PATH)\Examples\Headers" -I"$(AE_SDK_BASE_PATH)\Shared\Headers" -o "$(IntDir)%(Filename).obj" "$(ProjectDir)..\%(Filename).cu"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building %(Filename).cu</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).obj</Outputs>
     </CustomBuild>
@@ -193,13 +195,13 @@ python "..\patch_pipl_japanese.py"
     <CustomBuild Include="..\__TPL_MATCH_NAME__.cl">
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">del /Q "$(ProjectDir)%(Filename).i" 2&gt; nul
-"cl.exe" /nologo -D GF_DEVICE_TARGET_OPENCL=1 -I"$(BOOST_BASE_PATH)" -I"..\..\..\..\Headers" /TP /P "%(FullPath)"
-python "..\..\Utils\CreateCString.py" -i "$(ProjectDir)%(Filename).i" -o "$(IntDir)PreprocessedOpenCL\%(Filename).cl.h" --name k%(Filename)_OpenCLString</Command>
+    "cl.exe" /nologo /source-charset:utf-8 -D GF_DEVICE_TARGET_OPENCL=1 -I"$(BOOST_BASE_PATH)" -I"$(PREMIERE_SDK_BASE_PATH)\Examples\Headers" /TP /P "%(FullPath)"
+    python "$(PREMIERE_SDK_BASE_PATH)\Examples\Utils\CreateCString.py" -i "$(ProjectDir)%(Filename).i" -o "$(IntDir)PreprocessedOpenCL\%(Filename).cl.h" --name k%(Filename)_OpenCLString</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Preprocessing OpenCL to Strings for %(Filename).cl</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)%(Filename).i;$(IntDir)\PreprocessedOpenCL\%(Filename).cl.h;%(Outputs)</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">del /Q "$(ProjectDir)%(Filename).i" 2&gt; nul
-"cl.exe" /nologo -D GF_DEVICE_TARGET_OPENCL=1 -I"$(BOOST_BASE_PATH)" -I"..\..\..\..\Headers" /TP /P "%(FullPath)"
-python "..\..\Utils\CreateCString.py" -i "$(ProjectDir)%(Filename).i" -o "$(IntDir)PreprocessedOpenCL\%(Filename).cl.h" --name k%(Filename)_OpenCLString</Command>
+    "cl.exe" /nologo /source-charset:utf-8 -D GF_DEVICE_TARGET_OPENCL=1 -I"$(BOOST_BASE_PATH)" -I"$(PREMIERE_SDK_BASE_PATH)\Examples\Headers" /TP /P "%(FullPath)"
+    python "$(PREMIERE_SDK_BASE_PATH)\Examples\Utils\CreateCString.py" -i "$(ProjectDir)%(Filename).i" -o "$(IntDir)PreprocessedOpenCL\%(Filename).cl.h" --name k%(Filename)_OpenCLString</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Preprocessing OpenCL to Strings for %(Filename).cl</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)%(Filename).i;$(IntDir)\PreprocessedOpenCL\%(Filename).cl.h;%(Outputs)</Outputs>
     </CustomBuild>

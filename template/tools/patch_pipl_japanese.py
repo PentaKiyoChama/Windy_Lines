@@ -29,7 +29,8 @@ JAPANESE_STRINGS = {
     'match_name': '__TPL_MATCH_NAME__',
 }
 
-RCP_FILE = "__TPL_MATCH_NAME__.rcp"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+RCP_FILE = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "__TPL_MATCH_NAME__.rcp"))
 
 
 def to_sjis_pascal(text):

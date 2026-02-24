@@ -243,6 +243,13 @@ pixel.w  // Alpha
 - [x] `_GPU.cpp` に Metal パイプライン初期化 / キャッシュ / Shutdown を実装
 - [x] `_GPU.cpp` のバンドル ID をテンプレート変数化（`__TPL_BUNDLE_ID__`）
 - [x] 派生時に `AGENT_IMPLEMENTATION_GUIDE.md` をプロジェクトの `docs/` にコピー
+- [x] `Win/*.vcxproj` の SDK 参照を相対パス依存から `PREMIERE_SDK_BASE_PATH` / `AE_SDK_BASE_PATH` ベースへ統一
+- [x] `Win/*.vcxproj` の Custom Build パスを修正（`tools/patch_pipl_japanese.py`, `$(PREMIERE_SDK_BASE_PATH)\Examples\Utils\CreateCString.py`）
+- [x] `.r` の Category を ASCII プレースホルダー化し、日本語は `patch_pipl_japanese.py` で適用する運用に固定
+- [x] `tools/patch_pipl_japanese.py` の対象 `.rcp` 解決を CWD 依存からスクリプト相対に変更
+- [x] `_GPU.cpp` のリソース解放を `Shutdown` override ではなくデストラクタへ移動
+- [x] `.cl` から Metal 固有 include ブロックを除去（`.metal` 側 include に一本化）
+- [x] `_CPU.cpp` に `Smart_Utils.h` / `entry.h` を追加
 
 ---
 

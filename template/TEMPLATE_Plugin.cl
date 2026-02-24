@@ -24,13 +24,6 @@
 #include "PrGPU/KernelSupport/KernelCore.h"
 #include "PrGPU/KernelSupport/KernelMemory.h"
 
-// Metal 固有のインクルード
-#if GF_DEVICE_TARGET_METAL
-#include <metal_stdlib>
-#include <metal_atomic>
-    using namespace metal;
-#endif
-
 #if GF_DEVICE_TARGET_DEVICE
 
 // ===================== ユーティリティ関数 =====================
