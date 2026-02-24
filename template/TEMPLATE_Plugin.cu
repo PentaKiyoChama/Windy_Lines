@@ -71,8 +71,11 @@ __device__ __forceinline__ float ApplyEasing(float t, int easing)
 /*******************************************************************/
 GF_KERNEL_FUNCTION(PluginKernel,
     // ---- 入出力バッファ ----
-    ((GF_PTR(GF_PIXEL_FLOAT))(inBuf))
-    ((GF_PTR(GF_PIXEL_FLOAT))(outBuf)),
+    ((GF_PTR(float4))(inBuf))
+    ((GF_PTR(float4))(outBuf)),
+    ((int)(inPitch))
+    ((int)(outPitch))
+    ((int)(in16f))
     // ---- パラメータ（ProcAmpParamsの順序と一致させること） ----
     ((int)(inWidth))
     ((int)(inHeight))
@@ -88,8 +91,7 @@ GF_KERNEL_FUNCTION(PluginKernel,
     int y = inXY.y;
     if (x >= inWidth || y >= inHeight) return;
 
-    // 入力ピクセル読み込み
-    GF_PIXEL_FLOAT pixel = GF_LOAD_PIXEL(inBuf, x, y);
+    float4 pixel = ReadFloat4(inBuf, y * inPitch + x, !!in16f);
 
     // ========================================
     // TODO: ここにGPUエフェクトロジックを実装
@@ -97,12 +99,11 @@ GF_KERNEL_FUNCTION(PluginKernel,
 
     // サンプル: amountに応じて色を混ぜる
     float t = inAmount / 100.0f;
-    pixel.red   = pixel.red   * (1.0f - t) + inColorR * t * pixel.alpha;
-    pixel.green = pixel.green * (1.0f - t) + inColorG * t * pixel.alpha;
-    pixel.blue  = pixel.blue  * (1.0f - t) + inColorB * t * pixel.alpha;
+    pixel.z = pixel.z * (1.0f - t) + inColorR * t * pixel.w;
+    pixel.y = pixel.y * (1.0f - t) + inColorG * t * pixel.w;
+    pixel.x = pixel.x * (1.0f - t) + inColorB * t * pixel.w;
 
-    // 出力に書き込み
-    GF_STORE_PIXEL(outBuf, x, y, pixel);
+    WriteFloat4(pixel, outBuf, y * outPitch + x, !!in16f);
 }
 
 #endif // GF_DEVICE_TARGET_DEVICE

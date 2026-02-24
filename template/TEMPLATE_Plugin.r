@@ -4,6 +4,10 @@
 // NOTE: 日本語文字列はShift-JIS 16進エスケープで記述する
 //       → tools/patch_pipl_japanese.py で自動パッチ推奨
 
+#include "AEConfig.h"
+#include "AE_EffectVers.h"
+#include <AE_General.r>
+
 resource 'PiPL' (16000) {
     {
         Kind {
@@ -22,18 +26,16 @@ resource 'PiPL' (16000) {
 #ifdef AE_OS_WIN
         #ifdef AE_PROC_INTELx64
         CodeWin64X86 {
-            "__TPL_MATCH_NAME___GPU"
+            "EffectMain"
         },
         #endif
 #else
-        #ifdef AE_OS_MAC
         CodeMacIntel64 {
-            "__TPL_MATCH_NAME___GPU"
+            "EffectMain"
         },
         CodeMacARM64 {
-            "__TPL_MATCH_NAME___GPU"
+            "EffectMain"
         },
-        #endif
 #endif
         AE_PiPL_Version {
             2,
@@ -45,6 +47,15 @@ resource 'PiPL' (16000) {
         },
         AE_Effect_Version {
             524288    /* 8.0 = (MAJOR << 19) | (MINOR << 15) | 0 */
+        },
+        AE_Effect_Info_Flags {
+            0
+        },
+        AE_Effect_Global_OutFlags {
+            0x44
+        },
+        AE_Effect_Global_OutFlags_2 {
+            0x100
         },
         AE_Effect_Match_Name {
             "__TPL_MATCH_NAME__"

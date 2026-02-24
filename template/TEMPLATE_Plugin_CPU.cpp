@@ -716,6 +716,15 @@ static PF_Err GlobalSetup(
     out_data->out_flags2 |= PF_OutFlag2_SUPPORTS_GPU_RENDER_F32;
 #endif
 
+    if (in_data->appl_id == 'PrMr')
+    {
+        AEFX_SuiteScoper<PF_PixelFormatSuite1> pixelFormatSuite(
+            in_data, kPFPixelFormatSuite, kPFPixelFormatSuiteVersion1, out_data);
+        (*pixelFormatSuite->ClearSupportedPixelFormats)(in_data->effect_ref);
+        (*pixelFormatSuite->AddSupportedPixelFormat)(
+            in_data->effect_ref, PrPixelFormat_VUYA_4444_32f);
+    }
+
     return err;
 }
 
@@ -925,8 +934,8 @@ static PF_Err SmartRender(
 /*******************************************************************/
 /*  メインディスパッチャー                                          */
 /*******************************************************************/
-DllExport
-PF_Err PluginMain(
+extern "C" DllExport
+PF_Err EffectMain(
     PF_Cmd cmd,
     PF_InData* in_data,
     PF_OutData* out_data,

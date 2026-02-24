@@ -20,6 +20,14 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+sed_in_place() {
+    if sed --version >/dev/null 2>&1; then
+        sed -i "$@"
+    else
+        sed -i '' "$@"
+    fi
+}
+
 echo ""
 echo -e "${BLUE}=== Premiere Pro GPU Plugin — プロジェクト初期化 ===${NC}"
 echo ""
@@ -131,7 +139,13 @@ echo -e "${BLUE}[1/8] テンプレートをコピー中...${NC}"
 mkdir -p "$OUTPUT_DIR"
 
 # テンプレートファイルをコピー（init_project.sh自体と.gitは除外）
-rsync -a --exclude='init_project.sh' --exclude='.git' --exclude='__pycache__' "$SCRIPT_DIR/" "$OUTPUT_DIR/"
+if command -v rsync >/dev/null 2>&1; then
+    rsync -a --exclude='init_project.sh' --exclude='.git' --exclude='__pycache__' "$SCRIPT_DIR/" "$OUTPUT_DIR/"
+else
+    cp -a "$SCRIPT_DIR/." "$OUTPUT_DIR/"
+    rm -f "$OUTPUT_DIR/init_project.sh"
+    rm -rf "$OUTPUT_DIR/.git" "$OUTPUT_DIR/__pycache__"
+fi
 
 # ---- 3. ファイル名のリネーム（深い順に処理） ----
 echo -e "${BLUE}[2/8] ファイル名を置換中...${NC}"
@@ -149,6 +163,8 @@ CURRENT_YEAR=$(date +%Y)
 
 # MATCH_NAME からアンダースコアを除去したバージョン（bundle identifier用）
 MATCH_NAME_NOUNDERSCORE=$(echo "$MATCH_NAME" | tr -d '_')
+VENDOR_BUNDLE_SAFE=$(echo "$VENDOR_NAME" | tr -d ' ')
+BUNDLE_ID="com.${VENDOR_BUNDLE_SAFE}.${MATCH_NAME_NOUNDERSCORE}"
 
 # テキストファイルのみ処理（pbxproj, xcworkspacedata, strings も含む）
 find "$OUTPUT_DIR" -type f \( -name "*.h" -o -name "*.cpp" -o -name "*.cu" -o -name "*.cl" -o -name "*.metal" \
@@ -159,10 +175,11 @@ find "$OUTPUT_DIR" -type f \( -name "*.h" -o -name "*.cpp" -o -name "*.cu" -o -n
     -o -name "*.entitlements" \
     -o -name "*.pbxproj" -o -name "*.xcworkspacedata" -o -name "*.strings" \) | while read f; do
     
-    sed -i '' \
+    sed_in_place \
         -e "s/__TPL_PREFIX__/${PROJECT_PREFIX}/g" \
         -e "s/__TPL_PLUGIN_ID__/${PLUGIN_ID}/g" \
         -e "s/__TPL_MATCH_NAME_NOUNDERSCORE__/${MATCH_NAME_NOUNDERSCORE}/g" \
+        -e "s/__TPL_BUNDLE_ID__/${BUNDLE_ID}/g" \
         -e "s/__TPL_MATCH_NAME__/${MATCH_NAME}/g" \
         -e "s/__TPL_UPPER_PREFIX__/${UPPER_PREFIX}/g" \
         -e "s/__TPL_UPPER_PLUGIN__/${UPPER_PLUGIN}/g" \
@@ -178,14 +195,30 @@ done
 echo -e "${BLUE}[4/8] Xcode プロジェクト内のリファレンスを置換中...${NC}"
 PBXPROJ="$OUTPUT_DIR/Mac/${MATCH_NAME}.xcodeproj/project.pbxproj"
 if [[ -f "$PBXPROJ" ]]; then
-    sed -i '' "s/TEMPLATE_Plugin/${MATCH_NAME}/g" "$PBXPROJ"
+    sed_in_place "s/TEMPLATE_Plugin/${MATCH_NAME}/g" "$PBXPROJ"
 fi
 
 # ---- 6. 新しいGUIDを生成（vcxproj用） ----
 echo -e "${BLUE}[5/8] プロジェクトGUIDを生成中...${NC}"
-NEW_GUID=$(python3 -c "import uuid; print(str(uuid.uuid4()).upper())")
+NEW_GUID=""
+if command -v python3 >/dev/null 2>&1; then
+    NEW_GUID=$(python3 -c "import uuid; print(str(uuid.uuid4()).upper())" 2>/dev/null || true)
+fi
+if [[ -z "$NEW_GUID" ]] && command -v python >/dev/null 2>&1; then
+    NEW_GUID=$(python -c "import uuid; print(str(uuid.uuid4()).upper())" 2>/dev/null || true)
+fi
+if [[ -z "$NEW_GUID" ]] && command -v powershell.exe >/dev/null 2>&1; then
+    NEW_GUID=$(powershell.exe -NoProfile -Command "[guid]::NewGuid().ToString().ToUpper()" 2>/dev/null | tr -d '\r' || true)
+fi
+if [[ -z "$NEW_GUID" ]] && [[ -f /proc/sys/kernel/random/uuid ]]; then
+    NEW_GUID=$(cat /proc/sys/kernel/random/uuid | tr '[:lower:]' '[:upper:]')
+fi
+if [[ -z "$NEW_GUID" ]]; then
+    echo -e "${RED}GUID生成に必要なランタイムが見つかりませんでした${NC}"
+    exit 1
+fi
 find "$OUTPUT_DIR" -type f \( -name "*.sln" -o -name "*.vcxproj" \) | while read f; do
-    sed -i '' "s/__TPL_PROJECT_GUID__/${NEW_GUID}/g" "$f"
+    sed_in_place "s/__TPL_PROJECT_GUID__/${NEW_GUID}/g" "$f"
 done
 
 # ---- 7. SDK パスの自動検出＆設定 ----
@@ -232,15 +265,22 @@ PBXPROJ="$OUTPUT_DIR/Mac/${MATCH_NAME}.xcodeproj/project.pbxproj"
 if [[ -f "$PBXPROJ" ]]; then
     if [[ -n "$PREMIERE_SDK_PATH" ]]; then
         # sed でスラッシュを含むパスを扱うため区切り文字を | に変更
-        sed -i '' "s|__TPL_PREMIERE_SDK_PATH__|${PREMIERE_SDK_PATH}|g" "$PBXPROJ"
+        sed_in_place "s|__TPL_PREMIERE_SDK_PATH__|${PREMIERE_SDK_PATH}|g" "$PBXPROJ"
     fi
     if [[ -n "$AE_SDK_PATH" ]]; then
-        sed -i '' "s|__TPL_AE_SDK_PATH__|${AE_SDK_PATH}|g" "$PBXPROJ"
+        sed_in_place "s|__TPL_AE_SDK_PATH__|${AE_SDK_PATH}|g" "$PBXPROJ"
     fi
 fi
 
 # ---- 8. git init ----
 echo -e "${BLUE}[7/8] Git リポジトリを初期化中...${NC}"
+
+# 派生後ドキュメント配置（エージェント実装ガイドを docs/ に複製）
+if [[ -f "$OUTPUT_DIR/AGENT_IMPLEMENTATION_GUIDE.md" ]]; then
+    mkdir -p "$OUTPUT_DIR/docs"
+    cp "$OUTPUT_DIR/AGENT_IMPLEMENTATION_GUIDE.md" "$OUTPUT_DIR/docs/AGENT_IMPLEMENTATION_GUIDE.md"
+fi
+
 (
     cd "$OUTPUT_DIR"
     git init -q
@@ -273,11 +313,12 @@ fi
 echo -e "${YELLOW}次のステップ:${NC}"
 echo "  1. cd ${OUTPUT_DIR}"
 echo "  2. README_TEMPLATE.md と docs/TEMPLATE_DEV_GUIDE.md を読む"
-echo "  3. _ParamNames.h でパラメータ名を定義"
-echo "  4. .h でパラメータ enum / 定数 / ProcAmpParams を定義"
-echo "  5. .cu でCUDAカーネルを実装 → .cl に同期 → _CPU.cpp にフォールバック"
-echo "  6. ウォーターマーク生成: python3 tools/generate_watermark_mask.py --font ... --out ${MATCH_NAME}_WatermarkMask.h"
-echo "  7. Mac: cd Mac && open ${MATCH_NAME}.xcodeproj → ビルド → ./install_plugin.sh"
-echo "  8. Win: ${MATCH_NAME}.sln → ビルド → プラグイン配置"
-echo "  9. ライセンステスト: python3 tools/activate_license_cache.py"
+echo "  3. docs/AGENT_IMPLEMENTATION_GUIDE.md の必須実装を先に確認"
+echo "  4. _ParamNames.h でパラメータ名を定義"
+echo "  5. .h でパラメータ enum / 定数 / ProcAmpParams を定義"
+echo "  6. .cu でCUDAカーネルを実装 → .cl に同期 → _CPU.cpp にフォールバック"
+echo "  7. ウォーターマーク生成: python3 tools/generate_watermark_mask.py --font ... --out ${MATCH_NAME}_WatermarkMask.h"
+echo "  8. Mac: cd Mac && open ${MATCH_NAME}.xcodeproj → ビルド → ./install_plugin.sh"
+echo "  9. Win: ${MATCH_NAME}.sln → ビルド → プラグイン配置"
+echo " 10. ライセンステスト: python3 tools/activate_license_cache.py"
 echo ""

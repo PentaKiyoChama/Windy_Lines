@@ -117,7 +117,8 @@ template/
 │   └── activate_license_cache.py    ← ライセンスキャッシュ手動書き込みツール
 │
 └── docs/
-    └── TEMPLATE_DEV_GUIDE.md        ← 開発ガイド（本ファイル参照）
+  ├── TEMPLATE_DEV_GUIDE.md        ← 開発ガイド（本ファイル参照）
+  └── AGENT_IMPLEMENTATION_GUIDE.md ← init_project.sh 実行時に自動コピー
 ```
 
 ---
@@ -280,6 +281,7 @@ Metal専用コードの二重管理を回避。メンテナンスが1箇所で�
 | `__TPL_PREFIX__` | プロジェクトプレフィックス | `OST` |
 | `__TPL_PLUGIN_ID__` | プラグインID (PascalCase) | `MyEffect` |
 | `__TPL_MATCH_NAME__` | PiPL Match Name | `OST_MyEffect` |
+| `__TPL_BUNDLE_ID__` | Mac Bundle Identifier | `com.OshareTelop.OSTMyEffect` |
 | `__TPL_UPPER_PREFIX__` | 大文字プレフィックス | `OST` |
 | `__TPL_UPPER_PLUGIN__` | 大文字プラグインID | `MY_EFFECT` |
 | `__TPL_EFFECT_NAME_JP__` | 日本語エフェクト名 | `きらめくパーティクル` |

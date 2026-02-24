@@ -227,22 +227,22 @@ pixel.w  // Alpha
 
 テンプレート自体に以下の修正を反映すべき:
 
-- [ ] `.r` ファイルに 3 つの include を含めておく
-- [ ] `.r` のエントリポイントを `"EffectMain"` にする
-- [ ] `.r` に OutFlags 系プロパティを含める
-- [ ] `_CPU.cpp` のエントリポイントを `extern "C" DllExport PF_Err EffectMain(...)` にする
-- [ ] `_CPU.cpp` の GlobalSetup に PF_PixelFormatSuite 登録を含める
-- [ ] `project.pbxproj` の PBXRezBuildPhase に .r ファイル参照を含める（または Shell Script 方式にする）
-- [ ] Deploy スクリプトで `xattr -cr` を使わない
-- [ ] GPU カーネルテンプレートで `ReadFloat4`/`WriteFloat4` と BGRA アクセスを使う
-- [ ] 派生スクリプトで .r ファイル内のプラグイン名・マッチ名の置換を行う
-- [ ] `_GPU.cpp` に `<Metal/Metal.h>` の include を追加
-- [ ] `_GPU.cpp` の `GetFrameDependencies` で入力フレームを要求する実装に修正
-- [ ] `_GPU.cpp` の `Render` で `GetGPUPPixData` による入出力バッファ取得を実装
-- [ ] `_GPU.cpp` の GPU フレームワーク判定を `mDeviceInfo.outDeviceFramework` に修正
-- [ ] `_GPU.cpp` に Metal パイプライン初期化 / キャッシュ / Shutdown を実装
-- [ ] `_GPU.cpp` のバンドル ID をテンプレート変数化（`__TPL_BUNDLE_ID__`）
-- [ ] 派生時に `AGENT_IMPLEMENTATION_GUIDE.md` をプロジェクトの `docs/` にコピー
+- [x] `.r` ファイルに 3 つの include を含めておく
+- [x] `.r` のエントリポイントを `"EffectMain"` にする
+- [x] `.r` に OutFlags 系プロパティを含める
+- [x] `_CPU.cpp` のエントリポイントを `extern "C" DllExport PF_Err EffectMain(...)` にする
+- [x] `_CPU.cpp` の GlobalSetup に PF_PixelFormatSuite 登録を含める
+- [x] `project.pbxproj` の PBXRezBuildPhase に .r ファイル参照を含める（または Shell Script 方式にする）
+- [x] Deploy スクリプトで `xattr -cr` を使わない
+- [x] GPU カーネルテンプレートで `ReadFloat4`/`WriteFloat4` と BGRA アクセスを使う
+- [x] 派生スクリプトで .r ファイル内のプラグイン名・マッチ名の置換を行う
+- [x] `_GPU.cpp` に `<Metal/Metal.h>` の include を追加
+- [x] `_GPU.cpp` の `GetFrameDependencies` で入力フレームを要求する実装に修正
+- [x] `_GPU.cpp` の `Render` で `GetGPUPPixData` による入出力バッファ取得を実装
+- [x] `_GPU.cpp` の GPU フレームワーク判定を `mDeviceInfo.outDeviceFramework` に修正
+- [x] `_GPU.cpp` に Metal パイプライン初期化 / キャッシュ / Shutdown を実装
+- [x] `_GPU.cpp` のバンドル ID をテンプレート変数化（`__TPL_BUNDLE_ID__`）
+- [x] 派生時に `AGENT_IMPLEMENTATION_GUIDE.md` をプロジェクトの `docs/` にコピー
 
 ---
 
