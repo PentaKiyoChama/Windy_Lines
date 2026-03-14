@@ -353,6 +353,21 @@ static std::string GetActivationTokenPath()
 #endif
 }
 
+#ifndef _WIN32
+// Recursively create directories without forking a shell (replaces system("/bin/mkdir -p ..."))
+static void MkdirP(const std::string& path)
+{
+    for (size_t i = 1; i < path.size(); ++i)
+    {
+        if (path[i] == '/')
+        {
+            ::mkdir(path.substr(0, i).c_str(), 0755);
+        }
+    }
+    ::mkdir(path.c_str(), 0755);
+}
+#endif
+
 static std::string LoadOrCreateActivationToken()
 {
     const std::string path = GetActivationTokenPath();

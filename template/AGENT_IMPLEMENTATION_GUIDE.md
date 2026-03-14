@@ -749,7 +749,7 @@ static void ExtractColorParam(const PrParam& cp, float& r, float& g, float& b)
 **クリップ先頭からの相対時間**と**クリップの長さ（秒）**が必要になる。
 これらは GPU フィルタープラグインでは自明に取得できず、複数の罠がある。
 
-### 11-1. 3つの致命的な罠
+### 11-1. 5つの致命的な罠
 
 #### ❌ 罠1: `inClipTime` はクリップ相対時間ではない
 
@@ -766,18 +766,28 @@ double sec = (double)clipTime / 254016000000.0;
 
 → **「クリップの先頭から何秒目か」は `inClipTime` だけでは分からない。**
 
-#### ❌ 罠2: `TrackItemStartAsTicks / TrackItemEndAsTicks` はトリム後の長さではない
+#### ❌ 罠2: `GetSegmentInfo` のセグメント長はクリップ長ではない（セグメント分断）
 
 ```cpp
-// ❌ TrackItemEnd - TrackItemStart をクリップの「表示長さ」として使う
-double clipDurSec = (TrackItemEndAsTicks - TrackItemStartAsTicks) / ticksPerSec;
-// → メディアソースのイン/アウトポイント間の長さが返る
-// → タイムラインでトリムしてもこの値は変わらない！
+// ❌ 現在のセグメントの segEnd - segStart をクリップ長として使う
+for (int i = 0; i < numSegments; i++) {
+    mVideoSegmentSuite->GetSegmentInfo(segmentsID, i, &segStart, &segEnd, ...);
+    if (sequenceTime >= segStart && sequenceTime < segEnd) {
+        clipDuration = segEnd - segStart;  // ← 危険!
+        break;
+    }
+}
 ```
 
-**実測値の例:**
-- タイムラインで 5 秒にトリムしたクリップ → `TrackItemEnd - TrackItemStart = 10.67秒`
-- これはメディアファイルの使用区間であり、タイムライン上の表示長さではない
+**同一トラック上に他のクリップが重なると、セグメントが分断される。**
+例えば10秒のクリップの中央3〜5秒に別クリップが配置された場合:
+- セグメント1: 0〜3秒（自クリップ前半）
+- セグメント2: 3〜5秒（他クリップが上位）→ **自エフェクトに到達しない**
+- セグメント3: 5〜10秒（自クリップ後半）
+
+この場合 `segEnd - segStart` は 3秒 や 5秒 を返し、正しいクリップ長10秒にならない。
+結果、**他クリップの先頭でアウトアニメーションが早期発動**し、
+**他クリップの終了後にインアニメーションが再発動**する。
 
 #### ❌ 罠3: パラメータが変わらないフレームは再描画されない
 
@@ -788,23 +798,68 @@ double clipDurSec = (TrackItemEndAsTicks - TrackItemStartAsTicks) / ticksPerSec;
 Premiere Pro はパラメータが変化しない場合、レンダリング結果をキャッシュして再利用する。
 時間依存アニメーションはパラメータのキーフレームがないため、全フレームが「同じ結果」と判断される。
 
-### 11-2. 正しい取得方法（3つの API を組み合わせる）
+#### ❌ 罠4: `MediaNode::InPointMediaTimeAsTicks` は信頼できない
 
-| 必要な値 | 取得元 API | 説明 |
-|---------|-----------|------|
-| **クリップ相対時間** | `AcquireNodeForTime` の `outSegmentOffset` | セグメント内オフセット。シーケンス配置に依存しない |
-| **トリム後クリップ長** | `GetSegmentInfo` の `segEnd - segStart` | セグメントのタイムライン上の実際の長さ |
-| **キャッシュ無効化** | `PF_OutFlag_NON_PARAM_VARY` + カーネルパラメータにハッシュ | フレームごとに異なるキャッシュキーを生成 |
-
+```cpp
+// ❌ MediaNodeのInPoint/OutPointを使ってクリップ相対時間を計算
+PrTime mediaIn, mediaOut;
+GetNodeProperty(mediaNodeID, "MediaNode::InPointMediaTimeAsTicks", &mediaIn);
+clipRelative = inClipTime - mediaIn;
 ```
-AcquireNodeForTime(segmentsID, sequenceTime, ...)
-    → outSegmentOffset = クリップ先頭からの相対時間 (ticks)
 
-GetSegmentInfo(segmentsID, segIndex, &segStart, &segEnd, ...)
-    → segEnd - segStart = トリム後クリップ長 (ticks)
+実測では `MediaNode::InPointMediaTimeAsTicks` が 4×10¹⁸ 台のゴミ値を返すケースが確認されている。
+仮に正しい値が返る環境が存在しても、`inClipTime` がソース絶対時刻であるため、
+トリム後の長さ（タイムライン表示長）との対応が不明確。
 
-TickRate = 254016000000 ticks/秒
+#### ❌ 罠5: `GetNodeProperty` は PrTime ではなく ASCII 文字列を返す
+
+```cpp
+// ❌ GetNodeProperty の返り値を PrTime* にキャストして読む
+PrMemoryPtr ptr;
+mVideoSegmentSuite->GetNodeProperty(nodeID, "ClipNode::TrackItemStartAsTicks", &ptr);
+PrTime val = *reinterpret_cast<PrTime*>(ptr);  // ← ゴミ値になる!
 ```
+
+`GetNodeProperty` は `PrMemoryPtr` を返すが、中身は **NULL終端ASCII文字列**。
+例: `"76281004800\0"` (12バイト)
+
+バイナリダンプ例:
+```
+PropDump: 37 36 32 38 31 30 30 34 38 30 30 00
+          '7' '6' '2' '8' '1' '0' '0' '4' '8' '0' '0' '\0'
+```
+
+これを `reinterpret_cast<PrTime*>` で読むと、ASCII文字のバイト列が int64 として解釈され、
+`3760558676808709687` のような巨大なゴミ値になる。
+
+**正しい変換方法:**
+```cpp
+const char* str = reinterpret_cast<const char*>(ptr);
+PrTime val = (PrTime)strtoll(str, nullptr, 10);
+```
+
+### 11-2. 正しい取得方法 — TrackItem プロパティ方式
+
+| 必要な値 | 取得元 | 説明 |
+|---------|--------|------|
+| **クリップ相対時間** | `sequenceTime - TrackItemStartAsTicks` | シーケンス配置開始位置からの差分 |
+| **トリム後クリップ長** | `TrackItemEndAsTicks - TrackItemStartAsTicks` | タイムライン上の実際のクリップ長 |
+| **キャッシュ無効化** | `PF_OutFlag_NON_PARAM_VARY` + `mSeqTimeHash` | フレームごとに異なるキャッシュキー |
+
+`ClipNode::TrackItemStartAsTicks` と `ClipNode::TrackItemEndAsTicks` は
+**シーケンス上のクリップ配置位置（ticks）** を返す。
+上位トラックに他クリップが重なっても、この値は分断されず変わらない。
+
+取得方法:
+```
+mNodeID (自エフェクトのオペレータノードID)
+    → AcquireOperatorOwnerNodeID → 親 Clip ノード
+    → GetNodeProperty("ClipNode::TrackItemStartAsTicks") → ASCII文字列
+    → strtoll() で PrTime に変換
+```
+
+フォールバック: `AcquireNodeForTime` + `GetSegmentInfo` の従来方式
+（他クリップが同一トラックに無い場合は正確に動作する）
 
 ### 11-3. 前提: `PrGPUFilterBase` の利用可能リソース
 
@@ -815,6 +870,7 @@ TickRate = 254016000000 ticks/秒
 | `mTimelineID` | `PrTimelineID` | 現在のシーケンスID |
 | `mNodeID` | `csSDK_int32` | このエフェクトインスタンスのノードID |
 | `mVideoSegmentSuite` | `PrSDKVideoSegmentSuite*` | ノードグラフ探索API |
+| `mMemoryManagerSuite` | `PrSDKMemoryManagerSuite*` | GetNodePropertyのメモリ解放用 |
 
 これらは `Initialize()` 時に SDK が自動取得済みなので、追加の Suite 取得は不要。
 
@@ -831,13 +887,13 @@ prSuiteError Render(...)
 
     // クリップ相対時間とクリップ長を取得
     PrTime segOffsetTicks = 0, segDurationTicks = 0;
-    FindClipBoundsTicks(sequenceTime, &segOffsetTicks, &segDurationTicks);
+    FindClipBoundsTicks(sequenceTime, clipTime, &segOffsetTicks, &segDurationTicks);
 
     // クリップ先頭からの相対時間（秒）
     double clipTimeSec = (double)segOffsetTicks / kTicksPerSecond;
     if (clipTimeSec < 0.0) clipTimeSec = 0.0;
 
-    // クリップの長さ（セグメントのタイムライン上の長さ = トリム後の長さ）
+    // クリップの長さ（トリム後の実際の長さ）
     double clipDurSec = (double)segDurationTicks / kTicksPerSecond;
 
     // カーネルに渡す
@@ -849,34 +905,83 @@ prSuiteError Render(...)
 }
 ```
 
-#### FindClipBoundsTicks — segOffset + セグメント長の二重取得
+#### GetNodePropertyTime — ASCII文字列からPrTimeへの変換ヘルパー
 
 ```cpp
-void FindClipBoundsTicks(PrTime sequenceTime,
-                         PrTime* outSegOffset,
-                         PrTime* outSegDuration)
+// ※ GetNodeProperty は値を NULL終端ASCII文字列として返す（罠5参照）
+bool GetNodePropertyTime(csSDK_int32 nodeID, const char* key, PrTime* outVal)
+{
+    PrMemoryPtr ptr = nullptr;
+    prSuiteError err = mVideoSegmentSuite->GetNodeProperty(nodeID, key, &ptr);
+    if (err != suiteError_NoError || !ptr) return false;
+    const char* str = reinterpret_cast<const char*>(ptr);
+    char* endp = nullptr;
+    long long val = strtoll(str, &endp, 10);
+    bool ok = (endp != str && *endp == '\0');
+    if (ok) *outVal = (PrTime)val;
+    if (mMemoryManagerSuite) mMemoryManagerSuite->PrDisposePtr(ptr);
+    return ok;
+}
+```
+
+#### FindClipBoundsTicks — TrackItem方式 + セグメントフォールバック
+
+```cpp
+void FindClipBoundsTicks(PrTime sequenceTime, PrTime inClipTime,
+                         PrTime* outSegOffset, PrTime* outSegDuration)
 {
     *outSegOffset = 0;
     *outSegDuration = 0;
     if (!mVideoSegmentSuite) return;
 
+    // ================================================================
+    // ① TrackItem プロパティ方式（メイン）
+    //    mNodeID → AcquireOperatorOwnerNodeID → 親Clipノード
+    //    → ClipNode::TrackItemStartAsTicks / EndAsTicks
+    //    上位トラックによるセグメント分断の影響を受けない
+    // ================================================================
+    csSDK_int32 clipNodeID = 0;
+    prSuiteError err = mVideoSegmentSuite->AcquireOperatorOwnerNodeID(
+        mNodeID, &clipNodeID);
+    if (err == suiteError_NoError && clipNodeID != 0) {
+        PrTime trackStart = 0, trackEnd = 0;
+        bool gotStart = GetNodePropertyTime(
+            clipNodeID, "ClipNode::TrackItemStartAsTicks", &trackStart);
+        bool gotEnd = GetNodePropertyTime(
+            clipNodeID, "ClipNode::TrackItemEndAsTicks", &trackEnd);
+        mVideoSegmentSuite->ReleaseVideoNodeID(clipNodeID);
+
+        // サニティチェック: 24時間(= 86400秒)以内の妥当な値
+        const PrTime kMax24h = 254016000000LL * 86400;
+        if (gotStart && gotEnd && trackEnd > trackStart
+            && trackStart >= 0 && trackStart < kMax24h
+            && trackEnd > 0 && trackEnd < kMax24h) {
+            *outSegOffset   = sequenceTime - trackStart;
+            *outSegDuration = trackEnd - trackStart;
+            return;
+        }
+    }
+
+    // ================================================================
+    // ② 従来のセグメント方式（フォールバック）
+    //    ⚠️ 同一トラックに他クリップが重なるとセグメントが分断される
+    // ================================================================
     csSDK_int32 segmentsID = 0;
-    prSuiteError err = mVideoSegmentSuite->AcquireVideoSegmentsID(
+    err = mVideoSegmentSuite->AcquireVideoSegmentsID(
         mTimelineID, &segmentsID);
     if (err != suiteError_NoError) return;
 
-    // ① AcquireNodeForTime でクリップ内オフセットを取得
+    // AcquireNodeForTime でクリップ内オフセットを取得
     csSDK_int32 rootNodeID = 0;
     PrTime segOffset = 0;
     err = mVideoSegmentSuite->AcquireNodeForTime(
         segmentsID, sequenceTime, &rootNodeID, &segOffset);
-
     if (err == suiteError_NoError && rootNodeID != 0) {
         *outSegOffset = segOffset;
         mVideoSegmentSuite->ReleaseVideoNodeID(rootNodeID);
     }
 
-    // ② GetSegmentInfo でセグメントのタイムライン上の長さを取得
+    // GetSegmentInfo でセグメントのタイムライン上の長さを取得
     csSDK_int32 numSegments = 0;
     mVideoSegmentSuite->GetSegmentCount(segmentsID, &numSegments);
     for (csSDK_int32 i = 0; i < numSegments; i++) {
@@ -941,10 +1046,13 @@ Premiere の GPU キャッシュキーがフレームごとに変わり、再レ
 |------|------|
 | **TickRate** | `254016000000` ticks/秒 (Premiere Pro 標準) |
 | **`inClipTime` の正体** | メディアソースの絶対タイムコード位置。クリップ相対時間ではない |
-| **`segOffset` の正体** | `AcquireNodeForTime` が返す、セグメント内のクリップ相対オフセット。シーケンス配置に依存しない |
-| **`TrackItemStart/End` の正体** | メディアソースのイン/アウトポイント（ticks）。タイムラインでのトリムは反映されない |
-| **トリム後のクリップ長** | `GetSegmentInfo` の `segEnd - segStart` が正確な値。クリップをトリムするとこの値が追従する |
-| **リソース解放** | `AcquireVideoSegmentsID` → `ReleaseVideoSegmentsID`、`AcquireNodeForTime` → `ReleaseVideoNodeID` を必ずペアで呼ぶ |
+| **`TrackItemStartAsTicks` の正体** | **シーケンス上のクリップ配置開始位置**（ticks）。他クリップとの重なりに依存しない |
+| **`TrackItemEndAsTicks` の正体** | **シーケンス上のクリップ配置終了位置**（ticks）。トリムを反映する |
+| **`GetNodeProperty` の返り値** | `PrMemoryPtr` だが中身は **NULL終端ASCII文字列**。`strtoll()` で変換が必要。`reinterpret_cast<PrTime*>` は**厳禁** |
+| **`GetNodeProperty` のメモリ解放** | `mMemoryManagerSuite->PrDisposePtr(ptr)` で解放必須 |
+| **`GetSegmentInfo` の segEnd - segStart** | セグメント分断がない場合はクリップ長と一致するが、同一トラック上に他クリップが重なるとセグメントが分割されて短くなる。**フォールバック用途のみ** |
+| **`AcquireOperatorOwnerNodeID(mNodeID)`** | 自エフェクトのオペレータノードから親Clipノードを取得。Clip→Media→エフェクトの構造を利用 |
+| **リソース解放ペア** | `AcquireOperatorOwnerNodeID` → `ReleaseVideoNodeID`、`AcquireVideoSegmentsID` → `ReleaseVideoSegmentsID`、`AcquireNodeForTime` → `ReleaseVideoNodeID`、`GetNodeProperty` → `PrDisposePtr` |
 | **キャッシュ無効化** | `PF_OutFlag_NON_PARAM_VARY`（CPU側）と `mSeqTimeHash`（GPU側）の **両方** が必要 |
 | **UX 原則** | ユーザーはクリップの長さを変えるだけでイン/アウトがレスポンシブに追従すべき。追加パラメータでの時間指定は不要 |
 
@@ -964,10 +1072,23 @@ ClipTiming: segOffset=127009  segDur=1270096128000 clipTimeSec=0.0500 clipDurSec
 ClipTiming: segOffset=126xxx  segDur=1270096128000 clipTimeSec=4.9500 clipDurSec=5.00   ← 末尾付近
 ```
 
-**異常な出力例（旧手法の場合）:**
+**異常な出力例（罠に陥った場合）:**
 ```
-ClipTiming: clipTimeSec=3600.28  ← inClipTime をそのまま使った場合（メディア絶対時間）
-ClipTiming: clipDurSec=10.67     ← TrackItemEnd-Start を使った場合（トリム前のメディア長）
+ClipTiming: clipTimeSec=3600.28  ← inClipTime をそのまま使った場合（罠1: メディア絶対時間）
+ClipTiming: clipDurSec=3.00      ← GetSegmentInfoを使い他クリップで分断された場合（罠2）
+ClipTiming: start=3760558676808709687  ← GetNodePropertyをPrTime*キャストした場合（罠5: ASCII文字列をバイナリ解釈）
+```
+
+#### GetNodeProperty のバイトダンプによるデバッグ
+
+トラブル時は生バイトをダンプして、文字列として正しいか確認する:
+
+```cpp
+const unsigned char* raw = reinterpret_cast<const unsigned char*>(ptr);
+GpuLog("PropDump: %02x %02x %02x %02x %02x %02x %02x %02x",
+       raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7]);
+// 正常例: 37 36 32 38 31 30 30 34 = "76281004" (ASCII文字)
+// 異常例: 00 80 3A 12 00 00 00 00 = バイナリ値（文字列ではない別のプロパティ）
 ```
 
 ### 11-8. ユースケース例
@@ -1032,13 +1153,17 @@ float py = localY + dir.y * animOffset;
 ### クリップ時間・アニメーション関連
 
 - [ ] **`inClipTime` を直接使用していない**（メディアソース絶対時刻であり、クリップ相対時刻ではない）
-- [ ] **`TrackItemStartAsTicks` / `TrackItemEndAsTicks` をクリップ長として使用していない**（トリム前のメディアソース範囲を返す）
-- [ ] クリップ相対時刻は `AcquireNodeForTime` の `segOffset` から取得している
-- [ ] トリム後のクリップ長は `GetSegmentInfo` の `segEnd - segStart` から取得している
+- [ ] **TrackItem プロパティ方式をメインで使用している**（`AcquireOperatorOwnerNodeID` → `ClipNode::TrackItemStartAsTicks` / `EndAsTicks`）
+- [ ] **`GetNodeProperty` の返り値を `strtoll()` で変換している**（`reinterpret_cast<PrTime*>` は厳禁 — 中身はASCII文字列）
+- [ ] **`GetNodeProperty` のメモリを `PrDisposePtr` で解放している**
+- [ ] `GetSegmentInfo` はフォールバック用途のみ（同一トラックのクリップ重なりでセグメント分断されるため）
+- [ ] TrackItem のサニティチェックあり（≥ 0、< 24時間、end > start）
+- [ ] `FindClipBoundsTicks` に `inClipTime` も渡している（キャッシュハッシュ用）
 - [ ] アニメーション使用時は `PF_OutFlag_NON_PARAM_VARY` が GlobalSetup で設定されている
 - [ ] `mSeqTimeHash` がカーネル引数に渡されている（GPU キャッシュ無効化用）
 - [ ] `mClipTimeSec` と `mSeqTimeHash` が `ProcAmpParams` / `.cl` / `.cu` で全て一致している
 - [ ] tick → 秒 変換で `254016000000` (kTicksPerSecond) を使用している
+- [ ] `mMemoryManagerSuite` が利用可能か確認している（`GetNodeProperty` のメモリ解放に必要）
 
 ### ピクセル変形・バッファ安全性
 
