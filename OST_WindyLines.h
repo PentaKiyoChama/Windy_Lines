@@ -220,10 +220,16 @@ enum
 	OST_WINDYLINES_LINE_COLOR_G,                 // 66. (hidden)
 	OST_WINDYLINES_LINE_COLOR_B,                 // 67. (hidden)
 	
-	// ▼ License
-	OST_WINDYLINES_LICENSE_HEADER,               // 68. License topic start
-	OST_WINDYLINES_LICENSE_STATUS,               // 69. License status / activate popup
-	OST_WINDYLINES_LICENSE_TOPIC_END,            // License topic end
+	// ▼ License (legacy hidden — v1.x で出荷済み。param ID 位置を温存するため
+	//   削除せず、SDK が PF_PUI_INVISIBLE ダミーとして再登録する。触らない)
+	OST_WINDYLINES_LICENSE_HEADER,               // 68. legacy hidden（位置温存）
+	OST_WINDYLINES_LICENSE_STATUS,               // 69. legacy hidden（位置温存）
+	OST_WINDYLINES_LICENSE_TOPIC_END,            //     legacy hidden（位置温存）
+
+	// ▼ SDK ライセンス移行で追加（末尾追加で既存 .prproj 互換）
+	OST_WINDYLINES_LICENSE_STATUS_V2,            // 新・単一ライセンス popup（SDK unified）
+	OST_WINDYLINES_PROJECT_UUID,                 // project UUID ARB（UI 非表示）
+	OST_WINDYLINES_LICENSE_TOKEN,                // project token ARB（UI 非表示）
 	
 	OST_WINDYLINES_NUM_PARAMS
 };

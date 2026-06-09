@@ -22,6 +22,15 @@
 #include "OST_WindyLines_Common.h"
 #include "AE_EffectSuites.h"
 #include "PrSDKAESupport.h"
+
+// ===== SDK ライセンス backend（共有・正本は DevGuide/sdk/license/）=====
+// OST_WindyLines.h が AE_Effect.h を取り込み済みのため、ここで取り込めば
+// OSTLicense.h の PF ヘルパー（_H_AE_Effect ガード）が可視になる。
+// Windy Lines は SDK examples ツリー深部のため相対パスは 7 階層上（→ Desktop）。
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicense.h"
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicenseProjectUUID.h"
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicenseTokenParam.h"
+#include "OST_WindyLines_License.h"
 #include <atomic>
 #include <cstdarg>
 #include <cstdio>
@@ -53,10 +62,105 @@
 // Debounce for preset button double-fire issue
 static std::atomic<uint32_t> sLastPresetClickTime{ 0 };
 static const uint32_t kPresetDebounceMs = 200;
-static std::atomic<uint32_t> sLastLicenseRefreshTimeMs{ 0 };
-static const uint32_t kLicenseRefreshIntervalMs = 200;
+// ============================================================================
+//  SDK ライセンス設定 + backend inline 取り込み（TileFlipPro / SBV2 と同方式）
+//  device-local 認証・キャッシュ・署名検証・プロジェクトトークン検証は全て
+//  SDK 側 (OSTLicense*.cpp) に集約。プラグインは config を渡すだけ。
+// ============================================================================
+static OSTLicenseConfig gOSTLicenseConfig = {
+	"OST_WindyLines",
+	OST_WINDYLINES_VERSION_FULL,
+#if defined(OST_FORCE_TEST_ENDPOINT)
+	"https://penta.bubbleapps.io/version-test",
+#elif defined(NDEBUG)
+	"https://penta.bubbleapps.io",
+#else
+	"https://penta.bubbleapps.io/version-test",
+#endif
+#ifdef _WIN32
+	L"penta.bubbleapps.io",
+	// Windows 経路を Mac (OSTLicense.cpp は wf/verify ハードコード) と統一。
+	// project_token を返すのは verify ワークフローのみ。
+#if defined(OST_FORCE_TEST_ENDPOINT)
+	L"/version-test/api/1.1/wf/verify"
+#elif defined(NDEBUG)
+	L"/api/1.1/wf/verify"
+#else
+	L"/version-test/api/1.1/wf/verify"
+#endif
+#endif
+};
 
-static uint32_t GetCurrentTimeMs()
+// AE SDK helper: AEGP_SuiteHandler の実装をリンクするため inline 取り込み。
+// OSTLicenseProjectUUID.cpp / OSTLicenseTokenParam.cpp の ARB ハンドラが使用する。
+// .h/.cpp とも Premiere SDK 同梱の Examples/Utils から明示的相対参照（CPU ソースから
+// ../../../Utils）。include パス経由だと AE SDK 版と取り違える恐れがあるため明示。
+// MSVC は引用 include を「そのファイルのディレクトリ優先」で解決するので、.cpp 内部の
+// #include "AEGP_SuiteHandler.h" も同じ Examples/Utils 版に解決され自己整合する。
+#include "../../../Utils/AEGP_SuiteHandler.h"
+#include "../../../Utils/AEGP_SuiteHandler.cpp"
+void AEGP_SuiteHandler::MissingSuiteError() const { throw (A_Err)A_Err_MISSING_SUITE; }
+
+#define OSTDebugLog DebugLog
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicense.cpp"
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicenseToken.cpp"
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicenseProjectUUID.cpp"
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicenseTokenParam.cpp"
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/third_party/monocypher/monocypher.c"
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/third_party/monocypher/monocypher-ed25519.c"
+#undef OSTDebugLog
+
+// ============================================================================
+//  Project token: per-UUID 認可キャッシュ + サイドカー（SBV2 / TileFlipPro と同仕様）
+//  実装本体は CPU TU、宣言は OST_WindyLines_License.h で共有。GPU TU は header
+//  経由で呼び、リンク時に解決する。
+// ============================================================================
+void OST_WindyLines_UpdateAuthCacheFromParams(struct PF_ParamDef_* paramsOpaque[])
+{
+	auto** params = reinterpret_cast<PF_ParamDef**>(paramsOpaque);
+	if (!params) return;
+
+	// device-local 認証のバックグラウンド refresh を継続的に走らせる
+	RefreshLicenseAuthenticatedState(false);
+
+	const char* token = OSTLicense_GetTokenFromParam(
+		params[OST_WINDYLINES_LICENSE_TOKEN]);
+	const char* uuid = OSTLicense_GetProjectUUID(
+		params[OST_WINDYLINES_PROJECT_UUID]);
+	const int64_t now = static_cast<int64_t>(std::time(nullptr));
+
+	// device-local が active な瞬間のみ per-project サイドカーに登録。
+	// policy「認証済みプロジェクトは恒久」のスコープを project 単位に保つ。
+	OSTLicense_TryPersistProjectAuthorizationSidecar(uuid, token, "OST_WindyLines");
+
+	// Path 1/2/3 統合判定 → SDK の per-UUID キャッシュに格納
+	const bool authorized = OSTLicense_IsAuthorizedForRender(
+		token, uuid, "OST_WindyLines", now);
+	OSTLicense_SetProjectAuthCached(uuid, authorized);
+}
+
+bool OST_WindyLines_IsAuthorizedCached()
+{
+	// CPU render/SmartRender 用 fallback。UUID context が無いので per-UUID lookup
+	// できない。Path 1 (device-local) のみで判定。GPU 経路は per-UUID lookup を行う。
+	if (IsLicenseAuthenticated()) return true;
+	return false;
+}
+
+bool OST_WindyLines_IsAuthorizedForUUID(const char* uuid)
+{
+	if (IsLicenseAuthenticated()) return true;       // Path 1: 課金中なら全プロジェクト OK
+	if (!uuid || !*uuid) return true;                 // UUID 不明 → 認可とみなす (flicker 防止)
+	bool authorized = true;                           // 未登録時のデフォルト
+	if (OSTLicense_GetProjectAuthCached(uuid, &authorized)) {
+		return authorized;                            // キャッシュに登録あり → その値
+	}
+	return true;                                      // キャッシュ未登録 → 認可とみなす
+}
+
+// プラグインローカルの tick 取得（プリセット debounce 用）。SDK の inline 取り込み
+// (OSTLicense.cpp) も同名 static GetCurrentTimeMs を持つため、衝突回避で改名。
+static uint32_t WL_GetCurrentTimeMs()
 {
 #ifdef _WIN32
 	return GetTickCount();
@@ -67,886 +171,6 @@ static uint32_t GetCurrentTimeMs()
 #endif
 }
 
-static std::string TrimAscii(const std::string& value)
-{
-	size_t begin = 0;
-	size_t end = value.size();
-	while (begin < end && (value[begin] == ' ' || value[begin] == '\t' || value[begin] == '\r' || value[begin] == '\n'))
-	{
-		++begin;
-	}
-	while (end > begin && (value[end - 1] == ' ' || value[end - 1] == '\t' || value[end - 1] == '\r' || value[end - 1] == '\n'))
-	{
-		--end;
-	}
-	return value.substr(begin, end - begin);
-}
-
-static bool ParseBoolLike(const std::string& value, bool* outValue)
-{
-	if (!outValue)
-	{
-		return false;
-	}
-	if (value == "1" || value == "true" || value == "TRUE" || value == "True")
-	{
-		*outValue = true;
-		return true;
-	}
-	if (value == "0" || value == "false" || value == "FALSE" || value == "False")
-	{
-		*outValue = false;
-		return true;
-	}
-	return false;
-}
-
-static std::vector<std::string> GetLicenseCachePaths()
-{
-#ifdef _WIN32
-	std::vector<std::string> paths;
-	char appData[MAX_PATH] = { 0 };
-	DWORD appDataLen = GetEnvironmentVariableA("APPDATA", appData, MAX_PATH);
-	if (appDataLen > 0 && appDataLen < MAX_PATH)
-	{
-		paths.push_back(std::string(appData) + "\\OshareTelop\\license_cache_v1.txt");
-	}
-	const char* userProfile = std::getenv("USERPROFILE");
-	if (userProfile && *userProfile)
-	{
-		paths.push_back(std::string(userProfile) + "\\AppData\\Roaming\\OshareTelop\\license_cache_v1.txt");
-	}
-	paths.push_back(std::string("C:\\Temp\\ost_windylines_license_cache_v1.txt"));
-	return paths;
-#else
-	std::vector<std::string> paths;
-	const char* home = std::getenv("HOME");
-	if (home && *home)
-	{
-		paths.push_back(std::string(home) + "/Library/Application Support/OshareTelop/license_cache_v1.txt");
-	}
-
-	struct passwd* pw = getpwuid(getuid());
-	if (pw && pw->pw_dir && *pw->pw_dir)
-	{
-		const std::string pwHomePath = std::string(pw->pw_dir) + "/Library/Application Support/OshareTelop/license_cache_v1.txt";
-		bool exists = false;
-		for (const auto& path : paths)
-		{
-			if (path == pwHomePath)
-			{
-				exists = true;
-				break;
-			}
-		}
-		if (!exists)
-		{
-			paths.push_back(pwHomePath);
-		}
-	}
-
-	paths.push_back(std::string("/tmp/ost_windylines_license_cache_v1.txt"));
-	return paths;
-#endif
-}
-
-// Forward declarations (defined later in file)
-static std::string GetMachineIdHash();
-static std::string ComputeCacheSignature(const std::string& authorizedStr,
-                                          const std::string& validatedUnixStr,
-                                          const std::string& machineIdHash,
-                                          const std::string& expireUnixStr);
-
-// Offline grace: allow authorized state for 1h after last successful verification
-// even when cache TTL expires (e.g. network temporarily unavailable)
-static const int kOfflineGracePeriodSec = 3600;
-
-static bool LoadLicenseAuthenticatedFromCache(bool* outAuthenticated, bool* outExpired = nullptr)
-{
-	if (!outAuthenticated)
-	{
-		return false;
-	}
-	if (outExpired)
-	{
-		*outExpired = false;
-	}
-
-	const std::vector<std::string> cachePaths = GetLicenseCachePaths();
-	std::string cachePath;
-	FILE* file = nullptr;
-	for (const auto& candidate : cachePaths)
-	{
-		file = std::fopen(candidate.c_str(), "rb");
-		if (file)
-		{
-			cachePath = candidate;
-			break;
-		}
-	}
-
-	if (!file)
-	{
-		if (!cachePaths.empty())
-		{
-			DebugLog("[License] cache file not found. first_path=%s", cachePaths.front().c_str());
-		}
-		else
-		{
-			DebugLog("[License] cache file not found. no candidate paths");
-		}
-		return false;
-	}
-
-	bool hasAuthorized = false;
-	bool authorized = false;
-	bool hasExpire = false;
-	long long expireUnix = 0;
-	std::string cachedMachineIdHash;
-	std::string authorizedRaw;
-	std::string validatedUnixRaw;
-	std::string expireUnixRaw;
-	std::string cachedSignature;
-
-	char line[512];
-	while (std::fgets(line, static_cast<int>(sizeof(line)), file) != nullptr)
-	{
-		std::string rawLine(line);
-		const size_t sep = rawLine.find('=');
-		if (sep == std::string::npos)
-		{
-			continue;
-		}
-		const std::string key = TrimAscii(rawLine.substr(0, sep));
-		const std::string value = TrimAscii(rawLine.substr(sep + 1));
-
-		if (key == "authorized")
-		{
-			authorizedRaw = value;
-			bool parsed = false;
-			if (ParseBoolLike(value, &parsed))
-			{
-				authorized = parsed;
-				hasAuthorized = true;
-			}
-		}
-		else if (key == "cache_expire_unix")
-		{
-			expireUnixRaw = value;
-			char* endPtr = nullptr;
-			const long long parsed = std::strtoll(value.c_str(), &endPtr, 10);
-			if (endPtr != value.c_str())
-			{
-				expireUnix = parsed;
-				hasExpire = true;
-			}
-		}
-		else if (key == "validated_unix")
-		{
-			validatedUnixRaw = value;
-		}
-		else if (key == "machine_id_hash")
-		{
-			cachedMachineIdHash = value;
-		}
-		else if (key == "cache_signature")
-		{
-			cachedSignature = value;
-		}
-	}
-
-	std::fclose(file);
-
-	if (!hasAuthorized)
-	{
-		DebugLog("[License] cache invalid: authorized missing");
-		return false;
-	}
-
-	if (!hasExpire)
-	{
-		DebugLog("[License] cache invalid: cache_expire_unix missing");
-		return false;
-	}
-
-	// --- Machine ID verification (anti-copy) ---
-	if (!cachedMachineIdHash.empty())
-	{
-		const std::string localMid = GetMachineIdHash();
-		if (cachedMachineIdHash != localMid)
-		{
-			DebugLog("[License] machine_id mismatch: cached=%s local=%s",
-				cachedMachineIdHash.c_str(), localMid.c_str());
-			return false;
-		}
-	}
-
-	// --- Signature verification (anti-tampering) ---
-	if (cachedSignature.empty())
-	{
-		// No signature = legacy or tampered cache → treat as unauthorized
-		DebugLog("[License] cache missing signature — treating as unauthorized");
-		*outAuthenticated = false;
-		return true;
-	}
-
-	const std::string expectedSig = ComputeCacheSignature(
-		authorizedRaw, validatedUnixRaw, cachedMachineIdHash, expireUnixRaw);
-	if (cachedSignature != expectedSig)
-	{
-		DebugLog("[License] cache signature mismatch (tampering detected)");
-		*outAuthenticated = false;
-		return true;
-	}
-
-	const long long nowUnix = static_cast<long long>(std::time(nullptr));
-
-	// --- TTL check with offline grace ---
-	if (expireUnix <= nowUnix)
-	{
-		// Cache expired — check offline grace period (signature was valid)
-		long long validatedUnix = 0;
-		if (!validatedUnixRaw.empty())
-		{
-			char* endPtr = nullptr;
-			validatedUnix = std::strtoll(validatedUnixRaw.c_str(), &endPtr, 10);
-		}
-		const long long graceCutoff = validatedUnix + kOfflineGracePeriodSec;
-		if (authorized && graceCutoff > nowUnix)
-		{
-			// Within 1h grace: keep authorized state, but caller should try refresh
-			DebugLog("[License] cache expired but within offline grace (grace_remain=%llds)",
-				graceCutoff - nowUnix);
-			*outAuthenticated = true;
-			if (outExpired)
-			{
-				*outExpired = true;  // Signal caller to trigger background refresh
-			}
-			return true;
-		}
-		DebugLog("[License] cache expired beyond grace: now=%lld expire=%lld", nowUnix, expireUnix);
-		return false;
-	}
-
-	*outAuthenticated = authorized;
-	DebugLog("[License] cache loaded: authenticated=%s sig=OK path=%s",
-		authorized ? "true" : "false", cachePath.c_str());
-	return true;
-}
-
-static std::atomic<bool> sLicenseAuthenticated{ false };
-
-// === Machine ID hash (simple, no OpenSSL dependency) ===
-static uint32_t SimpleHash32(const char* str)
-{
-	uint32_t hash = 5381;
-	while (*str)
-	{
-		hash = ((hash << 5) + hash) + static_cast<unsigned char>(*str);
-		++str;
-	}
-	return hash;
-}
-
-static std::string GetMachineIdHash()
-{
-	char hostname[256] = {0};
-#ifdef _WIN32
-	DWORD size = sizeof(hostname);
-	GetComputerNameA(hostname, &size);
-	std::string raw = std::string(hostname) + "|win|" + std::to_string(sizeof(void*));
-#else
-	gethostname(hostname, sizeof(hostname) - 1);
-	std::string raw = std::string(hostname) + "|mac|" + std::to_string(sizeof(void*));
-#endif
-	uint32_t h1 = SimpleHash32(raw.c_str());
-	uint32_t h2 = SimpleHash32((raw + "_salt_ost").c_str());
-	char buf[20];
-	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
-	return std::string(buf);
-}
-
-// === Activation token generation & persistence ===
-static std::string GenerateActivationToken()
-{
-	uint32_t parts[4];
-	parts[0] = static_cast<uint32_t>(std::time(nullptr));
-	parts[1] = GetCurrentTimeMs();
-#ifdef _WIN32
-	parts[2] = GetCurrentProcessId();
-	parts[3] = GetTickCount();
-#else
-	parts[2] = static_cast<uint32_t>(getpid());
-	struct timeval tv;
-	gettimeofday(&tv, nullptr);
-	parts[3] = static_cast<uint32_t>(tv.tv_usec);
-#endif
-	char buf[40];
-	std::snprintf(buf, sizeof(buf), "%08x%08x%08x%08x",
-		SimpleHash32(reinterpret_cast<const char*>(&parts[0])),
-		SimpleHash32(reinterpret_cast<const char*>(&parts[1])),
-		parts[2], parts[3]);
-	return std::string(buf);
-}
-
-static std::string GetActivationTokenPath()
-{
-	const std::vector<std::string> paths = GetLicenseCachePaths();
-	if (paths.empty()) return "";
-	std::string dir = paths.front();
-	const size_t lastSep = dir.find_last_of("/\\");
-	if (lastSep != std::string::npos)
-		dir = dir.substr(0, lastSep);
-#ifdef _WIN32
-	return dir + "\\activation_token.txt";
-#else
-	return dir + "/activation_token.txt";
-#endif
-}
-
-#ifndef _WIN32
-// Recursively create directories without forking a shell (replaces system("/bin/mkdir -p ..."))
-static void MkdirP(const std::string& path)
-{
-	for (size_t i = 1; i < path.size(); ++i)
-	{
-		if (path[i] == '/')
-		{
-			::mkdir(path.substr(0, i).c_str(), 0755);
-		}
-	}
-	::mkdir(path.c_str(), 0755);
-}
-#endif
-
-static std::string LoadOrCreateActivationToken()
-{
-	const std::string path = GetActivationTokenPath();
-	if (path.empty()) return GenerateActivationToken();
-
-	FILE* f = std::fopen(path.c_str(), "rb");
-	if (f)
-	{
-		char buf[128] = {0};
-		if (std::fgets(buf, sizeof(buf), f))
-		{
-			std::fclose(f);
-			std::string token = TrimAscii(std::string(buf));
-			if (!token.empty()) return token;
-		}
-		else
-		{
-			std::fclose(f);
-		}
-	}
-
-	std::string token = GenerateActivationToken();
-#ifdef _WIN32
-	const size_t lastSep = path.find_last_of('\\');
-	if (lastSep != std::string::npos)
-	{
-		CreateDirectoryA(path.substr(0, lastSep).c_str(), nullptr);
-	}
-#else
-	const size_t lastSep = path.find_last_of('/');
-	if (lastSep != std::string::npos)
-	{
-		MkdirP(path.substr(0, lastSep));
-	}
-#endif
-	FILE* fw = std::fopen(path.c_str(), "wb");
-	if (fw)
-	{
-		std::fputs(token.c_str(), fw);
-		std::fputs("\n", fw);
-		std::fclose(fw);
-	}
-	return token;
-}
-
-// === Bubble endpoints ===
-// - Release (NDEBUG defined): production endpoint (no /version-test)
-// - Debug  : test endpoint (/version-test)
-// Optional override for local QA:
-// - Define OST_WINDYLINES_FORCE_TEST_ENDPOINT to force /version-test even in Release
-#if defined(OST_WINDYLINES_FORCE_TEST_ENDPOINT)
-static const char* kBubbleBaseUrl = "https://penta.bubbleapps.io/version-test";
-static const wchar_t* kBubbleApiHostW = L"penta.bubbleapps.io";
-static const wchar_t* kBubbleApiPathW = L"/version-test/api/1.1/wf/ppplugin_test";
-#elif defined(NDEBUG)
-static const char* kBubbleBaseUrl = "https://penta.bubbleapps.io";
-static const wchar_t* kBubbleApiHostW = L"penta.bubbleapps.io";
-static const wchar_t* kBubbleApiPathW = L"/api/1.1/wf/ppplugin_test";
-#else
-static const char* kBubbleBaseUrl = "https://penta.bubbleapps.io/version-test";
-static const wchar_t* kBubbleApiHostW = L"penta.bubbleapps.io";
-static const wchar_t* kBubbleApiPathW = L"/version-test/api/1.1/wf/ppplugin_test";
-#endif
-
-// === Open browser for activation ===
-static const std::string kActivatePageUrl = std::string(kBubbleBaseUrl) + "/activate";
-
-static void OpenActivationPage()
-{
-	const std::string mid = GetMachineIdHash();
-	const std::string token = LoadOrCreateActivationToken();
-	const char* platform =
-#ifdef _WIN32
-		"win";
-#else
-		"mac";
-#endif
-	const std::string url = kActivatePageUrl
-		+ "?token=" + token
-		+ "&mid=" + mid
-		+ "&platform=" + std::string(platform)
-		+ "&product=OST_WindyLines"
-		+ "&ver=" OST_WINDYLINES_VERSION_FULL;
-
-	DebugLog("[License] Opening activation page: token=%s mid=%s", token.c_str(), mid.c_str());
-
-#ifdef _WIN32
-	ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-#else
-	std::string cmd = "open '" + url + "' &";
-	system(cmd.c_str());
-#endif
-}
-
-// === License auto-refresh: background API check when cache expires ===
-static const std::string kLicenseApiEndpoint = std::string(kBubbleBaseUrl) + "/api/1.1/wf/ppplugin_test";
-static const int kAuthorizedCacheTtlSec = 600;     // 10 min TTL (periodic re-verification)
-static const int kDeniedCacheTtlSec = 600;          // 10 min TTL when denied
-// Salt is XOR-obfuscated so `strings` cannot extract it from the binary.
-// To regenerate: python3 -c "salt='OST_WL_2026_SALT_K9x3'; key=0xA7; print(','.join(f'0x{c^key:02X}' for c in salt.encode()))"
-static std::string GetCacheSignatureSalt()
-{
-	static const unsigned char enc[] = {
-		0xE8, 0xF4, 0xF3, 0xF8, 0xF0, 0xEB, 0xF8, 0x95, 0x97, 0x95, 0x91,
-		0xF8, 0xF4, 0xE6, 0xEB, 0xF3, 0xF8, 0xEC, 0x9E, 0xDF, 0x94
-	};
-	static const unsigned char k = 0xA7;
-	std::string s(sizeof(enc), '\0');
-	for (size_t i = 0; i < sizeof(enc); ++i) { s[i] = static_cast<char>(enc[i] ^ k); }
-	return s;
-}
-static std::atomic<bool> sAutoRefreshInProgress{false};
-static std::atomic<uint32_t> sLastAutoRefreshAttemptMs{0};
-static std::atomic<bool> sPluginShuttingDown{false};
-static const uint32_t kMinAutoRefreshIntervalMs = 60000; // min 60s between API calls
-
-// Post-activation rapid check: after user clicks "Activate", check every 5s for 2 minutes
-static std::atomic<uint32_t> sActivationTriggeredAtMs{0};
-static const uint32_t kPostActivationRapidWindowMs = 120000; // 2 min window
-static const uint32_t kPostActivationCheckIntervalMs = 5000; // 5s interval during rapid window
-
-// === Cache signature: DJB2-based HMAC to detect tampering ===
-static std::string ComputeCacheSignature(const std::string& authorizedStr,
-                                          const std::string& validatedUnixStr,
-                                          const std::string& machineIdHash,
-                                          const std::string& expireUnixStr)
-{
-	// Build: "authorized_val|validated_unix|machine_id|expire_unix|salt"
-	std::string payload = authorizedStr + "|" + validatedUnixStr + "|" + machineIdHash + "|" + expireUnixStr + "|" + GetCacheSignatureSalt();
-	uint32_t h1 = SimpleHash32(payload.c_str());
-	// Double-hash for extra diffusion
-	std::string pass2 = payload + "|" + std::to_string(h1);
-	uint32_t h2 = SimpleHash32(pass2.c_str());
-	char buf[20];
-	std::snprintf(buf, sizeof(buf), "%08x%08x", h1, h2);
-	return std::string(buf);
-}
-
-static void TriggerBackgroundCacheRefresh()
-{
-	bool expected = false;
-	if (!sAutoRefreshInProgress.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
-	{
-		return;
-	}
-
-	const uint32_t nowMs = GetCurrentTimeMs();
-	const uint32_t lastMs = sLastAutoRefreshAttemptMs.load(std::memory_order_relaxed);
-
-	// Use shorter interval during post-activation rapid check window
-	const uint32_t activatedAt = sActivationTriggeredAtMs.load(std::memory_order_relaxed);
-	const bool inRapidWindow = (activatedAt != 0) && (nowMs - activatedAt < kPostActivationRapidWindowMs);
-	const uint32_t minInterval = inRapidWindow ? kPostActivationCheckIntervalMs : kMinAutoRefreshIntervalMs;
-
-	if (nowMs - lastMs < minInterval)
-	{
-		sAutoRefreshInProgress.store(false, std::memory_order_release);
-		return;
-	}
-	sLastAutoRefreshAttemptMs.store(nowMs, std::memory_order_relaxed);
-
-	const std::vector<std::string> paths = GetLicenseCachePaths();
-	if (paths.empty())
-	{
-		sAutoRefreshInProgress.store(false, std::memory_order_release);
-		return;
-	}
-
-	const std::string cachePath = paths.front();
-	std::string cacheDir = cachePath;
-	const size_t lastSlash = cacheDir.find_last_of("/\\");
-	if (lastSlash != std::string::npos)
-	{
-		cacheDir = cacheDir.substr(0, lastSlash);
-	}
-
-#ifndef _WIN32
-	const std::string endpoint(kLicenseApiEndpoint);
-	const int ttlSecOk = kAuthorizedCacheTtlSec;
-	const int ttlSecDenied = kDeniedCacheTtlSec;
-	const std::string mid = GetMachineIdHash();
-
-	std::thread([endpoint, ttlSecOk, ttlSecDenied, mid, cachePath, cacheDir]() {
-		DebugLog("[License] background cache refresh started (Mac/popen)");
-
-		// Ensure directory exists
-		MkdirP(cacheDir);
-
-		// Run curl and capture response
-		std::string curlCmd =
-			"/usr/bin/curl -s -m 10 -X POST "
-			"-H 'Content-Type: application/json' "
-			"-d '{\"action\":\"verify\",\"product\":\"OST_WindyLines\","
-			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\","
-			"\"platform\":\"mac\",\"machine_id\":\"" + mid + "\"}' "
-			"'" + endpoint + "' 2>/dev/null";
-
-		FILE* pipe = popen(curlCmd.c_str(), "r");
-		if (!pipe)
-		{
-			DebugLog("[License] popen failed for curl");
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		std::string responseBody;
-		char buf[512];
-		while (std::fgets(buf, sizeof(buf), pipe) != nullptr)
-		{
-			responseBody += buf;
-		}
-		pclose(pipe);
-
-		DebugLog("[License] API response: %s", responseBody.c_str());
-
-		// Parse "authorized" field
-		bool authorized = false;
-		std::string reason = "unknown";
-		if (responseBody.find("\"authorized\"") != std::string::npos)
-		{
-			if (responseBody.find("\"authorized\":true") != std::string::npos ||
-				responseBody.find("\"authorized\": true") != std::string::npos ||
-				responseBody.find("\"authorized\" : true") != std::string::npos)
-			{
-				authorized = true;
-				reason = "ok";
-			}
-			else
-			{
-				authorized = false;
-				reason = "denied";
-			}
-		}
-		else
-		{
-			DebugLog("[License] API response missing 'authorized' field");
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		// Build cache content with signature
-		const long long nowUnix = static_cast<long long>(std::time(nullptr));
-		const int ttlSec = authorized ? ttlSecOk : ttlSecDenied;
-		const long long expireUnix = nowUnix + ttlSec;
-		const std::string authStr = authorized ? "true" : "false";
-		const std::string nowStr = std::to_string(nowUnix);
-		const std::string expireStr = std::to_string(expireUnix);
-		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid, expireStr);
-
-		char content[768];
-		snprintf(content, sizeof(content),
-			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
-			"machine_id_hash=%s\ncache_signature=%s\n",
-			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
-			mid.c_str(), sig.c_str());
-
-		// Atomic write: temp file then rename
-		std::string tmpPath = "/tmp/ost_wl_cache_XXXXXX";
-		char tmpBuf[64];
-		std::snprintf(tmpBuf, sizeof(tmpBuf), "/tmp/ost_wl_cache_%08x", static_cast<unsigned>(nowUnix));
-		std::string tmpFile(tmpBuf);
-
-		FILE* fp = std::fopen(tmpFile.c_str(), "wb");
-		if (fp)
-		{
-			std::fputs(content, fp);
-			std::fclose(fp);
-			if (std::rename(tmpFile.c_str(), cachePath.c_str()) != 0)
-			{
-				// rename failed (cross-device), try copy
-				fp = std::fopen(cachePath.c_str(), "wb");
-				if (fp)
-				{
-					std::fputs(content, fp);
-					std::fclose(fp);
-				}
-				std::remove(tmpFile.c_str());
-			}
-			DebugLog("[License] cache updated: authorized=%s sig=%s path=%s",
-				authStr.c_str(), sig.c_str(), cachePath.c_str());
-		}
-
-		if (!sPluginShuttingDown.load(std::memory_order_acquire))
-		{
-			sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
-
-			// If authorized, clear rapid-check window
-			if (authorized)
-			{
-				sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
-			}
-		}
-
-		sAutoRefreshInProgress.store(false, std::memory_order_release);
-	}).detach();
-
-	DebugLog("[License] background cache refresh triggered");
-#else
-	// Windows: WinHTTP-based background API call (runs in detached thread)
-	const int ttlSecOk = kAuthorizedCacheTtlSec;
-	const int ttlSecDenied = kDeniedCacheTtlSec;
-	const std::string mid = GetMachineIdHash();
-	std::thread([cachePath, cacheDir, ttlSecOk, ttlSecDenied, mid]() {
-		DebugLog("[License] background cache refresh started (WinHTTP)");
-
-		// Ensure directory exists
-		CreateDirectoryA(cacheDir.c_str(), nullptr);
-
-		std::string body = "{\"action\":\"verify\",\"product\":\"OST_WindyLines\","
-			"\"plugin_version\":\"" OST_WINDYLINES_VERSION_FULL "\",\"platform\":\"win\","
-			"\"machine_id\":\"" + mid + "\"}";
-
-		HINTERNET hSession = WinHttpOpen(
-			L"OST_WindyLines/1.0",
-			WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-			WINHTTP_NO_PROXY_NAME,
-			WINHTTP_NO_PROXY_BYPASS, 0);
-		if (!hSession)
-		{
-			DebugLog("[License] WinHttpOpen failed: %lu", GetLastError());
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		HINTERNET hConnect = WinHttpConnect(hSession,
-			kBubbleApiHostW,
-			INTERNET_DEFAULT_HTTPS_PORT, 0);
-		if (!hConnect)
-		{
-			DebugLog("[License] WinHttpConnect failed: %lu", GetLastError());
-			WinHttpCloseHandle(hSession);
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		HINTERNET hRequest = WinHttpOpenRequest(hConnect,
-			L"POST",
-			kBubbleApiPathW,
-			NULL, WINHTTP_NO_REFERER,
-			WINHTTP_DEFAULT_ACCEPT_TYPES,
-			WINHTTP_FLAG_SECURE);
-		if (!hRequest)
-		{
-			DebugLog("[License] WinHttpOpenRequest failed: %lu", GetLastError());
-			WinHttpCloseHandle(hConnect);
-			WinHttpCloseHandle(hSession);
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		DWORD timeout = 10000;
-		WinHttpSetOption(hRequest, WINHTTP_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
-		WinHttpSetOption(hRequest, WINHTTP_OPTION_SEND_TIMEOUT, &timeout, sizeof(timeout));
-		WinHttpSetOption(hRequest, WINHTTP_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
-
-		BOOL bResult = WinHttpSendRequest(hRequest,
-			L"Content-Type: application/json", -1,
-			(LPVOID)body.c_str(), (DWORD)body.size(), (DWORD)body.size(), 0);
-		if (!bResult)
-		{
-			DebugLog("[License] WinHttpSendRequest failed: %lu", GetLastError());
-			WinHttpCloseHandle(hRequest);
-			WinHttpCloseHandle(hConnect);
-			WinHttpCloseHandle(hSession);
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		bResult = WinHttpReceiveResponse(hRequest, NULL);
-		if (!bResult)
-		{
-			DebugLog("[License] WinHttpReceiveResponse failed: %lu", GetLastError());
-			WinHttpCloseHandle(hRequest);
-			WinHttpCloseHandle(hConnect);
-			WinHttpCloseHandle(hSession);
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		std::string responseBody;
-		DWORD bytesAvailable = 0;
-		while (WinHttpQueryDataAvailable(hRequest, &bytesAvailable) && bytesAvailable > 0)
-		{
-			std::vector<char> buf(bytesAvailable);
-			DWORD bytesRead = 0;
-			if (WinHttpReadData(hRequest, buf.data(), bytesAvailable, &bytesRead))
-			{
-				responseBody.append(buf.data(), bytesRead);
-			}
-			else { break; }
-		}
-
-		WinHttpCloseHandle(hRequest);
-		WinHttpCloseHandle(hConnect);
-		WinHttpCloseHandle(hSession);
-
-		DebugLog("[License] API response: %s", responseBody.c_str());
-
-		bool authorized = false;
-		std::string reason = "unknown";
-		if (responseBody.find("\"authorized\"") != std::string::npos)
-		{
-			if (responseBody.find("\"authorized\":true") != std::string::npos ||
-				responseBody.find("\"authorized\": true") != std::string::npos ||
-				responseBody.find("\"authorized\" : true") != std::string::npos)
-			{
-				authorized = true;
-				reason = "ok";
-			}
-			else
-			{
-				authorized = false;
-				reason = "denied";
-			}
-		}
-		else
-		{
-			DebugLog("[License] API response missing 'authorized' field");
-			sAutoRefreshInProgress.store(false, std::memory_order_release);
-			return;
-		}
-
-		const long long nowUnix = static_cast<long long>(std::time(nullptr));
-		const int ttlSec = authorized ? ttlSecOk : ttlSecDenied;
-		const long long expireUnix = nowUnix + ttlSec;
-		const std::string authStr = authorized ? "true" : "false";
-		const std::string nowStr = std::to_string(nowUnix);
-		const std::string expireStr = std::to_string(expireUnix);
-		const std::string sig = ComputeCacheSignature(authStr, nowStr, mid, expireStr);
-
-		char content[768];
-		snprintf(content, sizeof(content),
-			"authorized=%s\nreason=%s\nvalidated_unix=%lld\ncache_expire_unix=%lld\n"
-			"machine_id_hash=%s\ncache_signature=%s\n",
-			authStr.c_str(), reason.c_str(), nowUnix, expireUnix,
-			mid.c_str(), sig.c_str());
-
-		DWORD existingAttr = GetFileAttributesA(cachePath.c_str());
-		if (existingAttr != INVALID_FILE_ATTRIBUTES && (existingAttr & FILE_ATTRIBUTE_DIRECTORY))
-		{
-			if (RemoveDirectoryA(cachePath.c_str()))
-			{
-				DebugLog("[License] removed unexpected directory at cache path: %s", cachePath.c_str());
-			}
-			else
-			{
-				DebugLog("[License] failed to remove unexpected directory at cache path: %s err=%lu",
-					cachePath.c_str(), GetLastError());
-			}
-		}
-
-		FILE* fp = std::fopen(cachePath.c_str(), "wb");
-		if (fp)
-		{
-			std::fputs(content, fp);
-			std::fclose(fp);
-			DebugLog("[License] cache updated: authorized=%s sig=%s path=%s",
-				authStr.c_str(), sig.c_str(), cachePath.c_str());
-		}
-
-		if (!sPluginShuttingDown.load(std::memory_order_acquire))
-		{
-			sLicenseAuthenticated.store(authorized, std::memory_order_relaxed);
-
-			// If authorized, clear rapid-check window (no need to keep polling)
-			if (authorized)
-			{
-				sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
-			}
-		}
-
-		sAutoRefreshInProgress.store(false, std::memory_order_release);
-	}).detach();
-#endif
-}
-
-// Shared with GPU — declared in OST_WindyLines_License.h
-void RefreshLicenseAuthenticatedState(bool force)
-{
-	const uint32_t nowMs = GetCurrentTimeMs();
-	if (!force)
-	{
-		const uint32_t lastMs = sLastLicenseRefreshTimeMs.load(std::memory_order_relaxed);
-		if (nowMs - lastMs < kLicenseRefreshIntervalMs)
-		{
-			return;
-		}
-	}
-
-	sLastLicenseRefreshTimeMs.store(nowMs, std::memory_order_relaxed);
-
-	bool cachedAuthenticated = false;
-	bool cacheExpired = false;
-	if (LoadLicenseAuthenticatedFromCache(&cachedAuthenticated, &cacheExpired))
-	{
-		sLicenseAuthenticated.store(cachedAuthenticated, std::memory_order_relaxed);
-
-		// If authorized during rapid check window, clear the window (no more polling needed)
-		if (cachedAuthenticated)
-		{
-			sActivationTriggeredAtMs.store(0, std::memory_order_relaxed);
-
-			// TTL expired but within offline grace — trigger background refresh
-			// so subscription cancellation is detected promptly
-			if (cacheExpired)
-			{
-				TriggerBackgroundCacheRefresh();
-			}
-		}
-		else
-		{
-			// Cache is valid but authorized=false — during rapid check window,
-			// force a background refresh to pick up server-side changes immediately
-			const uint32_t activatedAt = sActivationTriggeredAtMs.load(std::memory_order_relaxed);
-			if (activatedAt != 0 && (nowMs - activatedAt < kPostActivationRapidWindowMs))
-			{
-				TriggerBackgroundCacheRefresh();
-			}
-		}
-	}
-	else
-	{
-		sLicenseAuthenticated.store(false, std::memory_order_relaxed);
-
-		// Cache expired or missing — always attempt refresh
-		TriggerBackgroundCacheRefresh();
-	}
-}
 static int NormalizePopupValue(int value, int maxValue)
 {
 	// Premiere Pro popup values are 1-based, convert to 0-based
@@ -1107,6 +331,8 @@ static PF_Err GlobalSetup(
 	PF_ParamDef* params[],
 	PF_LayerDef* output)
 {
+	// SDK ライセンス backend 初期化（一度だけ）。以降 Refresh/IsAuthenticated 等が有効。
+	OSTLicense_Init(gOSTLicenseConfig);
 	RefreshLicenseAuthenticatedState(true);
 
 	out_data->my_version	= PF_VERSION(MAJOR_VERSION, MINOR_VERSION, BUG_VERSION, STAGE_VERSION, BUILD_VERSION);
@@ -1141,7 +367,8 @@ static PF_Err GlobalSetdown(
 	PF_ParamDef* params[],
 	PF_LayerDef* output)
 {
-	sPluginShuttingDown.store(true, std::memory_order_release);
+	// ライセンス backend のバックグラウンドスレッド寿命は SDK (OSTLicense.cpp) が
+	// 内部管理するため、旧 sPluginShuttingDown フラグの操作は不要になった。
 	return PF_Err_NONE;
 }
 
@@ -1221,12 +448,6 @@ struct InstanceState
 
 static std::unordered_map<const void*, std::shared_ptr<InstanceState>> sInstanceStates;
 static std::mutex sInstanceStatesMutex;
-
-// Shared with GPU — declared in OST_WindyLines_License.h
-bool IsLicenseAuthenticated()
-{
-	return sLicenseAuthenticated.load(std::memory_order_relaxed);
-}
 
 static const void* GetInstanceKey(const PF_InData* in_data)
 {
@@ -2256,25 +1477,32 @@ static PF_Err ParamsSetup(
 		PF_Precision_TENTHS, 0, 0, OST_WINDYLINES_LINE_COLOR_B);
 
 	// ============================================================
-	// License Section
+	// License Section（SDK ユニファイドヘルパー / レガシー移行モード）
 	// ============================================================
-	AEFX_CLR_STRUCT(def);
-	PF_ADD_TOPIC(P_LICENSE_HEADER, OST_WINDYLINES_LICENSE_HEADER);
-
-	AEFX_CLR_STRUCT(def);
-	def.flags = PF_ParamFlag_CANNOT_TIME_VARY | PF_ParamFlag_SUPERVISE;
-	PF_ADD_POPUP(
-		P_LICENSE_STATUS,
-		2,
-		1,
-		PM_LICENSE_STATUS,
-		OST_WINDYLINES_LICENSE_STATUS);
-
-	AEFX_CLR_STRUCT(def);
-	PF_END_TOPIC(OST_WINDYLINES_LICENSE_TOPIC_END);
+	// 旧 3 スロット（HEADER/STATUS/TOPIC_END）は v1.x で出荷済みのため、param ID
+	// 位置を温存して PF_PUI_INVISIBLE ダミー再登録（保存済み .prproj 互換）。
+	// 登録順 = enum 順を厳守（PF_ADD_PARAM は append）。
+	PF_Err licErr = PF_Err_NONE;
+	licErr = OSTLicense_RegisterLegacyHiddenSlots(
+		in_data, out_data,
+		OST_WINDYLINES_LICENSE_HEADER,
+		OST_WINDYLINES_LICENSE_STATUS,
+		OST_WINDYLINES_LICENSE_TOPIC_END);
+	// 新・単一ライセンス popup（SDK 内蔵: 2 択アクションボタン「選択してください｜ライセンス認証」、
+	// ラベル名「ライセンス」。常に「選択してください」に戻る。文字列は SDK が単一管理）
+	if (!licErr)
+		licErr = OSTLicense_RegisterStatusParam(
+			in_data, out_data, OST_WINDYLINES_LICENSE_STATUS_V2);
+	// Project token 機構: UUID + Token ARB（UI 非表示）。末尾追加で既存 .prproj 互換。
+	if (!licErr)
+		licErr = OSTLicense_RegisterProjectUUIDParam(
+			in_data, out_data, OST_WINDYLINES_PROJECT_UUID);
+	if (!licErr)
+		licErr = OSTLicense_RegisterTokenParam(
+			in_data, out_data, OST_WINDYLINES_LICENSE_TOKEN);
 
 	out_data->num_params = OST_WINDYLINES_NUM_PARAMS;
-	return PF_Err_NONE;
+	return licErr;
 }
 
 /*
@@ -2481,7 +1709,10 @@ static PF_Err Render(
 
 		// Branchless clamp for line count
 		const int clampedLineCount = (int)fminf(fmaxf((float)lineCount, 1.0f), 5000.0f);
-		const bool isLicensedThisFrame = IsLicenseAuthenticated();
+		// CPU 経路は UUID context を持たないため Path 1 (device-local) のみで判定。
+		// GPU 経路は GetParam(PROJECT_UUID) で per-UUID 判定する。
+		RefreshLicenseAuthenticatedState(false);
+		const bool isLicensedThisFrame = OST_WindyLines_IsAuthorizedCached();
 		const int intervalFrames = lineInterval < 0.5f ? 0 : (int)(lineInterval + 0.5f);
 		
 		// Generate line params locally each frame for stateless rendering
@@ -3478,7 +2709,7 @@ extern "C" DllExport PF_Err EffectMain(
 			else if (normalizedPresetIndex > 0)
 			{
 				// Debounce: ignore double-fire within 200ms
-				const uint32_t currentTime = GetCurrentTimeMs();
+				const uint32_t currentTime = WL_GetCurrentTimeMs();
 				const uint32_t lastTime = sLastPresetClickTime.load();
 				DebugLog("Debounce check: currentTime=%u, lastTime=%u, diff=%u, threshold=%u",
 					currentTime, lastTime, currentTime - lastTime, kPresetDebounceMs);
@@ -3543,37 +2774,29 @@ extern "C" DllExport PF_Err EffectMain(
 			out_data->out_flags |= PF_OutFlag_FORCE_RERENDER | PF_OutFlag_REFRESH_UI;
 		}
 		
-		// License Status popup: "Activate" selected (value 2)
-		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_LICENSE_STATUS)
+		// License Status popup (SDK unified V2): ユーザーが「ライセンス認証」を
+		// 選択したらブラウザ起動 → 強制リフレッシュ → popup 同期（全て SDK 内に密閉）。
+		if (changedExtra && changedExtra->param_index == OST_WINDYLINES_LICENSE_STATUS_V2)
 		{
-			const int licenseValue = params[OST_WINDYLINES_LICENSE_STATUS]->u.pd.value;
-			DebugLog("[License] License status popup changed: value=%d", licenseValue);
-			if (licenseValue == 2) // "アクティベート..."
-			{
-				// Open browser for activation
-				OpenActivationPage();
-
-				// Start post-activation rapid check mode (5s interval for 2 minutes)
-				sActivationTriggeredAtMs.store(GetCurrentTimeMs(), std::memory_order_relaxed);
-				sLastAutoRefreshAttemptMs.store(0, std::memory_order_relaxed); // allow immediate refresh
-				RefreshLicenseAuthenticatedState(true); // force immediate check
-				
-				// Reset popup back to "選択してください" (value 1)
-				params[OST_WINDYLINES_LICENSE_STATUS]->u.pd.value = 1;
-				params[OST_WINDYLINES_LICENSE_STATUS]->uu.change_flags = PF_ChangeFlag_CHANGED_VALUE;
-				AEFX_SuiteScoper<PF_ParamUtilsSuite3> paramUtils(in_data, kPFParamUtilsSuite, kPFParamUtilsSuiteVersion3);
-				if (paramUtils.get())
-				{
-					paramUtils->PF_UpdateParamUI(in_data->effect_ref, OST_WINDYLINES_LICENSE_STATUS, params[OST_WINDYLINES_LICENSE_STATUS]);
-				}
-			}
+			err = OSTLicense_HandleStatusParamChanged(
+				in_data, params, OST_WINDYLINES_LICENSE_STATUS_V2);
 		}
-		
+
 		ApplyRectColorUi(in_data, out_data, params);
 		SyncLineColorParams(params);
 		HideLineColorParams(in_data);
 		UpdateAlphaThresholdVisibility(in_data, params);
 		UpdatePseudoGroupVisibility(in_data, params);
+
+		// popup を最新の認証状態に同期（差分時のみ PF_UpdateParamUI）。
+		if (!err)
+			err = OSTLicense_UpdateStatusParamUI(
+				in_data, params, OST_WINDYLINES_LICENSE_STATUS_V2);
+		// BG verify が掴んだ project_token を ARB に flush し .prproj へ永続化。
+		// （drain + CHANGED_VALUE + PF_UpdateParamUI を SDK が一括処理）。.prproj 焼込が
+		// 動く唯一の経路。pending 無し/既 embed 済 → no-op。毎 USER_CHANGED で安全。
+		OSTLicense_DrainAndSignalPendingToken(
+			in_data, params, OST_WINDYLINES_LICENSE_TOKEN);
 	}
 		break;
 	case PF_Cmd_UPDATE_PARAMS_UI:
@@ -3584,6 +2807,30 @@ extern "C" DllExport PF_Err EffectMain(
 		HideLineColorParams(in_data);
 		UpdateAlphaThresholdVisibility(in_data, params);
 		UpdatePseudoGroupVisibility(in_data, params);
+
+		// ライセンス popup を SDK に同期
+		err = OSTLicense_UpdateStatusParamUI(
+			in_data, params, OST_WINDYLINES_LICENSE_STATUS_V2);
+		// token + UUID から Path 1/2/3 認可を判定し per-UUID キャッシュ更新（GPU/CPU 共用）。
+		// project_token の ARB embed 自体は USER_CHANGED_PARAM 側で行う（UPDATE_PARAMS_UI の
+		// params[] は read-only スクラッチのため）。
+		OST_WindyLines_UpdateAuthCacheFromParams(
+			reinterpret_cast<struct PF_ParamDef_**>(params));
+	}
+		break;
+	case PF_Cmd_ARBITRARY_CALLBACK:
+	{
+		// 2 種類の ARB (UUID, Token) を refcon でディスパッチ。各ハンドラは自分の
+		// refcon でなければ PF_Err_UNRECOGNIZED_PARAM_TYPE を返すので UUID → Token
+		// の順にチェインする。
+		PF_ArbParamsExtra* arbExtra = reinterpret_cast<PF_ArbParamsExtra*>(extra);
+		err = OSTLicense_HandleProjectUUIDArbitrary(
+			in_data, out_data, params, inOutput, arbExtra);
+		if (err == PF_Err_UNRECOGNIZED_PARAM_TYPE)
+		{
+			err = OSTLicense_HandleTokenArbitrary(
+				in_data, out_data, params, inOutput, arbExtra);
+		}
 	}
 		break;
 	case PF_Cmd_RENDER:

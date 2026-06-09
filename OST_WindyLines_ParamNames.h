@@ -212,10 +212,8 @@ namespace ParamNames
     constexpr const char* BLEND_MODE_MENU   = "背面|前面|背面と前面|アルファ";
     constexpr const char* LINKAGE_MODE_MENU = "オフ（直接入力）|範囲の幅に連動|範囲の高さに連動";
 
-    // License
-    constexpr const char* LICENSE_HEADER      = "ライセンス";
-    constexpr const char* LICENSE_STATUS      = "アクティベート";
-    constexpr const char* LICENSE_STATUS_MENU = "選択してください|アクティベート...";
+    // License: ラベル/メニュー文字列は SDK (OSTLicense.cpp) 内に閉じ込め済みのため
+    // プラグイン側の定数は不要（旧 LICENSE_HEADER/LICENSE_STATUS/LICENSE_STATUS_MENU は削除）。
 }
 
 // ========================================
@@ -297,9 +295,6 @@ namespace ParamNames
 #define PM_BLEND_MODE       PARAM_MENU(ParamNames::BLEND_MODE_MENU)
 #define PM_LINKAGE_MODE     PARAM_MENU(ParamNames::LINKAGE_MODE_MENU)
 
-// License
-#define P_LICENSE_HEADER    PARAM(ParamNames::LICENSE_HEADER)
-#define P_LICENSE_STATUS    PARAM(ParamNames::LICENSE_STATUS)
-#define PM_LICENSE_STATUS   PARAM_MENU(ParamNames::LICENSE_STATUS_MENU)
+// License: P_LICENSE_*/PM_LICENSE_STATUS は SDK 移行で不要になったため削除。
 
 #endif // OST_WINDYLINES_PARAM_NAMES_H

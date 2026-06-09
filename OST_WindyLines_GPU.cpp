@@ -212,12 +212,25 @@ static std::vector<ShaderObjectPtr> sShaderObjectAlphaCache;
 #endif //HAS_DIRECTX
 
 // === License verification: shared with CPU (single source of truth) ===
+// backend 本体は CPU TU が SDK を inline 取り込みして提供。GPU は header 経由で呼ぶ。
+#include "../../../../../../../PremierePro_GPU_Plugin_DevGuide/sdk/license/OSTLicense.h"
 #include "OST_WindyLines_License.h"
 
+// CPU 経路の互換 fallback (UUID context が取れないとき)。
 static bool IsGpuLicenseAuthenticated()
 {
 	RefreshLicenseAuthenticatedState(false);
-	return IsLicenseAuthenticated();
+	return OST_WindyLines_IsAuthorizedCached();
+}
+
+// 2026-06-05 確定: GPU でも GetParam(PROJECT_UUID, clipTime) で UUID 文字列が
+// 取れる (type=kPrParamType_PrMemoryPtr, mMemoryPtr が UUID 先頭ポインタ)。
+// 取得した UUID を CPU 経路 (UPDATE_PARAMS_UI) が書いた SDK per-UUID キャッシュに
+// 渡して per-project 判定する (SBV2 / TileFlipPro と同仕様)。
+static bool IsGpuLicenseAuthenticatedForUUID(const char* uuid)
+{
+	RefreshLicenseAuthenticatedState(false);
+	return OST_WindyLines_IsAuthorizedForUUID(uuid);
 }
 
 #if HAS_METAL
@@ -885,6 +898,22 @@ public:
 
 		// Cache-consistent approach using media in point to calculate clip-relative frame
 		const PrTime clipTime = inRenderParams->inClipTime;
+
+		// === License (per-UUID, SBV2 / TileFlipPro と同仕様) ===
+		// GPU は GetParam(PROJECT_UUID) で UUID 文字列を取得し、CPU 経路
+		// (UPDATE_PARAMS_UI) が SDK per-UUID キャッシュに書いた認可結果を参照する。
+		// 取得できなければ uuid=nullptr → Path 1 のみで判定 + 未登録 UUID は認可扱い
+		// (初回 render flicker 防止)。各透かしゲートでこの値を使う。
+		const char* gpuProjectUUID = nullptr;
+		{
+			PrParam uuidParam = GetParam(OST_WINDYLINES_PROJECT_UUID, clipTime);
+			if (uuidParam.mType == kPrParamType_PrMemoryPtr && uuidParam.mMemoryPtr)
+				gpuProjectUUID = reinterpret_cast<const char*>(uuidParam.mMemoryPtr);
+			else if (uuidParam.mType == kPrParamType_Guid)
+				gpuProjectUUID = uuidParam.mGuid.mGUID;
+		}
+		const bool gpuIsLicensed = IsGpuLicenseAuthenticatedForUUID(gpuProjectUUID);
+
 		const bool allowMidPlay = BoolParamFromPrParam(GetParam(OST_WINDYLINES_LINE_ALLOW_MIDPLAY, inRenderParams->inClipTime));
 		const bool hideElement = BoolParamFromPrParam(GetParam(OST_WINDYLINES_HIDE_ELEMENT, inRenderParams->inClipTime));
 		const int blendMode = NormalizePopupParam(GetParam(OST_WINDYLINES_BLEND_MODE, inRenderParams->inClipTime), 4);
@@ -2175,7 +2204,7 @@ public:
 			params.mMotionBlurStrength);
 
 			// --- Watermark overlay (free mode) ---
-			if (!IsGpuLicenseAuthenticated())
+			if (!gpuIsLicensed)
 			{
 				const size_t wmMaskBytes = (size_t)FreeModeWatermark::kMaskWidth * FreeModeWatermark::kMaskHeight;
 				EnsureCudaBuffer((void**)&sCudaWatermarkFill, sCudaWatermarkFillBytes, wmMaskBytes);
@@ -2319,7 +2348,7 @@ public:
 			if (lineIndicesBuffer) { clReleaseMemObject(lineIndicesBuffer); }
 
 			// --- Watermark overlay (free mode) ---
-			if (result == CL_SUCCESS && !IsGpuLicenseAuthenticated())
+			if (result == CL_SUCCESS && !gpuIsLicensed)
 			{
 				const size_t wmMaskBytes = (size_t)FreeModeWatermark::kMaskWidth * FreeModeWatermark::kMaskHeight;
 				cl_mem wmFillBuf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, wmMaskBytes, (void*)FreeModeWatermark::kFillMask, &clResult);
@@ -2518,7 +2547,7 @@ public:
                 // result = CheckForMetalError([commandBuffer error]);
 
 				// --- Watermark overlay (free mode) ---
-				if (result == suiteError_NoError && !IsGpuLicenseAuthenticated())
+				if (result == suiteError_NoError && !gpuIsLicensed)
 				{
 					const size_t wmMaskBytes = (size_t)FreeModeWatermark::kMaskWidth * FreeModeWatermark::kMaskHeight;
 					id<MTLBuffer> wmFillBuf = [[device newBufferWithBytes:FreeModeWatermark::kFillMask
